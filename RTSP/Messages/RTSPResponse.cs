@@ -1,0 +1,160 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace RTSP.Messages
+{
+    public class RTSPResponse : RTSPMessage
+    {
+        /// <summary>
+        /// Gets the default error message for an error code.
+        /// </summary>
+        /// <param name="aErrorCode">An error code.</param>
+        /// <returns>The default error message associate</returns>
+        private static string GetDefaultError(int aErrorCode)
+        {
+            switch (aErrorCode)
+            {
+
+                case 100: return "Continue";
+
+                case 200: return "OK";
+                case 201: return "Created";
+                case 250: return "Low on Storage Space";
+
+                case 300: return "Multiple Choices";
+                case 301: return "Moved Permanently";
+                case 302: return "Moved Temporarily";
+                case 303: return "See Other";
+                case 305: return "Use Proxy";
+
+                case 400: return "Bad Request";
+                case 401: return "Unauthorized";
+                case 402: return "Payment Required";
+                case 403: return "Forbidden";
+                case 404: return "Not Found";
+                case 405: return "Method Not Allowed";
+                case 406: return "Not Acceptable";
+                case 407: return "Proxy Authentication Required";
+                case 408: return "Request Timeout";
+                case 410: return "Gone";
+                case 411: return "Length Required";
+                case 412: return "Precondition Failed";
+                case 413: return "Request Entity Too Large";
+                case 414: return "Request-URI Too Long";
+                case 415: return "Unsupported Media Type";
+                case 451: return "Invalid parameter";
+                case 452: return "Illegal Conference Identifier";
+                case 453: return "Not Enough Bandwidth";
+                case 454: return "Session Not Found";
+                case 455: return "Method Not Valid In This State";
+                case 456: return "Header Field Not Valid";
+                case 457: return "Invalid Range";
+                case 458: return "Parameter Is Read-Only";
+                case 459: return "Aggregate Operation Not Allowed";
+                case 460: return "Only Aggregate Operation Allowed";
+                case 461: return "Unsupported Transport";
+                case 462: return "Destination Unreachable";
+
+                case 500: return "Internal Server Error";
+                case 501: return "Not Implemented";
+                case 502: return "Bad Gateway";
+                case 503: return "Service Unavailable";
+                case 504: return "Gateway Timeout";
+                case 505: return "RTSP Version Not Supported";
+                case 551: return "Option not support";
+                default:
+                    return "Return: " + aErrorCode.ToString();
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RTSPResponse"/> class.
+        /// </summary>
+        public RTSPResponse()
+            : base()
+        {
+            // Initialise with a default result code.
+            Command = "RTSP/1.0 200 OK";
+        }
+
+        private int _returnCode = 0;
+        /// <summary>
+        /// Gets or sets the return code of the response.
+        /// </summary>
+        /// <value>The return code.</value>
+        /// <remarks>On change the error message is set to the default one associate with the code</remarks>
+        public int ReturnCode
+        {
+            get
+            {
+                if (_returnCode == 0 && _command.Length >= 2)
+                {
+                    int.TryParse(_command[1], out _returnCode);
+                }
+
+                return _returnCode;
+            }
+            set
+            {
+                if (ReturnCode != value)
+                {
+                    _returnCode = value;
+                    // make sure we have the room
+                    if (_command.Length < 3)
+                    {
+                        Array.Resize(ref _command, 3);
+                    }
+                    _command[1] = value.ToString();
+                    _command[2] = GetDefaultError(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the error/return message.
+        /// </summary>
+        /// <value>The return message.</value>
+        public string ReturnMessage
+        {
+            get
+            {
+                if (_command.Length < 3)
+                    return String.Empty;
+                return _command[2];
+            }
+            set
+            {
+                // Make sure we have the room
+                if (_command.Length < 3)
+                {
+                    Array.Resize(ref _command, 3);
+                }
+                _command[2] = value;
+
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether this instance correspond to an OK response.
+        /// </summary>
+        /// <value><c>true</c> if this instance is OK; otherwise, <c>false</c>.</value>
+        public bool IsOK
+        {
+            get
+            {
+                if (ReturnCode > 0 && ReturnCode < 400)
+                    return true;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the original request associate with the response.
+        /// </summary>
+        /// <value>The original request.</value>
+        public RTSPRequest OriginalRequest
+        { get; set; }
+    }
+}

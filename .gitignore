@@ -1,0 +1,8 @@
+
+MolesAssemblies/
+bin/
+obj/
+packages/
+*.suo
+*.Cache
+*.g.cs
