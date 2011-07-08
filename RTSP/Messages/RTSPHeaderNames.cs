@@ -5,6 +5,9 @@ using System.Text;
 
 namespace RTSP.Messages
 {
+    /// <summary>
+    /// Class containing helper constant for general use headers.
+    /// </summary>
     public static class RTSPHeaderNames
     {
         public const string ContentBase = "Content-Base";

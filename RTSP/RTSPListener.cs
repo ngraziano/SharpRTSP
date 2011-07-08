@@ -18,43 +18,28 @@ namespace RTSP
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
+        IRTSPTransport _transport;
 
-        private TcpClient _RTSPServerClient;
         private Thread _ListenTread;
         Stream _stream;
 
         private int _sequenceNumber = 0;
 
         private Dictionary<int, RTSPRequest> _sentMessage = new Dictionary<int, RTSPRequest>();
-        
-        private IPEndPoint _currentEndPoint;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RTSPListener"/> class from a TCP connection.
         /// </summary>
-        /// <param name="aTCPConnection">A TCP connection.</param>
-        public RTSPListener(TcpClient aTCPConnection)
+        /// <param name="connection">The connection.</param>
+        public RTSPListener(IRTSPTransport connection)
         {
-            if (aTCPConnection == null)
-                throw new ArgumentNullException("aTCPConnection");
+            if (connection == null)
+                throw new ArgumentNullException("connection");
             Contract.EndContractBlock();
 
-            _currentEndPoint = (IPEndPoint)aTCPConnection.Client.RemoteEndPoint;
-            _RTSPServerClient = aTCPConnection;
-            _stream = _RTSPServerClient.GetStream();
+            _transport = connection;
+            _stream = connection.GetStream();
         }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPListener"/> class.
-        /// </summary>
-        /// <param name="aHost">A host.</param>
-        /// <param name="aPortNumber">A port number.</param>
-        public RTSPListener(string aHost, int aPortNumber)
-            : this(new TcpClient(aHost, aPortNumber))
-        {
-
-        }
-
 
         /// <summary>
         /// Gets the remote address.
@@ -64,7 +49,7 @@ namespace RTSP
         {
             get
             {
-                return string.Format("{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+                return _transport.RemoteAddress;
             }
         }
 
@@ -84,7 +69,7 @@ namespace RTSP
         {
             // brutally  close the TCP socket....
             // I hope the teardown was sent elsewhere
-            _RTSPServerClient.Close();
+            _transport.Close();
 
         }
 
@@ -137,7 +122,7 @@ namespace RTSP
             try
             {
                 _logger.Debug("Connection Open");
-                while (_RTSPServerClient.Connected)
+                while (_transport.Connected)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
                     RTSPChunk currentMessage = ReadOneMessage(_stream);
@@ -187,7 +172,7 @@ namespace RTSP
                     else
                     {
                         _stream.Close();
-                        _RTSPServerClient.Close();
+                        _transport.Close();
                     }
                 }
                 _logger.Debug("Connection Close");
@@ -195,10 +180,14 @@ namespace RTSP
             catch (IOException error)
             {
                 _logger.Warn("IO Error", error);
+                _stream.Close();
+                _transport.Close();
             }
             catch (SocketException error)
             {
                 _logger.Warn("Socket Error", error);
+                _stream.Close();
+                _transport.Close();
             }
             catch (Exception error)
             {
@@ -227,7 +216,7 @@ namespace RTSP
                 throw new ArgumentNullException("aMessage");
             Contract.EndContractBlock();
 
-            if (!_RTSPServerClient.Connected)
+            if (!_transport.Connected)
             {
                 _logger.Warn("Reconnect to a client, strange !!");
                 try
@@ -269,23 +258,21 @@ namespace RTSP
         public void ReConnect()
         {
             //if it is already connected do not reconnect
-            if (_RTSPServerClient.Connected)
+            if (_transport.Connected)
                 return;
 
-            // If it is not connected listenthread should should die.
+            // If it is not connected listenthread should have die.
             if (_ListenTread != null && _ListenTread.IsAlive)
                 _ListenTread.Join();
 
             // reconnect 
-            _RTSPServerClient = new TcpClient();
-            _RTSPServerClient.Connect(_currentEndPoint);
-            _stream = _RTSPServerClient.GetStream();
+            _transport.ReConnect();
+            _stream = _transport.GetStream();
 
             // If listen thread exist restart it
             if (_ListenTread != null)
                 Start();
         }
-
 
         /// <summary>
         /// Reads one message.
@@ -309,7 +296,7 @@ namespace RTSP
             while (currentReadingState != ReadingState.End)
             {
 
-                // if the system is not readeing binary data.
+                // if the system is not reading binary data.
                 if (currentReadingState != ReadingState.Data && currentReadingState != ReadingState.MoreInterleavedData)
                 {
                     oneLine = String.Empty;
@@ -432,7 +419,7 @@ namespace RTSP
                 throw new ArgumentNullException("frame");
             Contract.EndContractBlock();
 
-            if (!_RTSPServerClient.Connected)
+            if (!_transport.Connected)
             {
                 _logger.Warn("Reconnect to a client, strange !!");
                 ReConnect();

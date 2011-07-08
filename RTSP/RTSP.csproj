@@ -64,6 +64,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IRTSPTransport.cs" />
     <Compile Include="Messages\RTSPChunk.cs" />
     <Compile Include="Messages\RTSPData.cs" />
     <Compile Include="Messages\RTSPHeaderNames.cs" />
@@ -76,6 +77,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RTSPListener.cs" />
     <Compile Include="RTSPMessageEventArgs.cs" />
+    <Compile Include="RTSPTCPTransport.cs" />
     <Compile Include="RTSPUtils.cs" />
   </ItemGroup>
   <ItemGroup>
