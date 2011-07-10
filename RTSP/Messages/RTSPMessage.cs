@@ -88,7 +88,7 @@ namespace RTSP.Messages
                 if (value == null)
                     _command = new string[] { String.Empty };
                 else
-                    _command = value.Split(' ');
+                    _command = value.Split(new char[] {' '}, 3);
             }
         }
 
