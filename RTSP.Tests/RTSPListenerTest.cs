@@ -76,7 +76,7 @@ namespace RTSP.Tests
             Assert.AreEqual(RTSPRequest.RequestType.OPTIONS, theRequest.RequestTyped);
             Assert.AreEqual(3, theRequest.Headers.Count);
             Assert.AreEqual(1, theRequest.CSeq);
-            Assert.Contains("Require",theRequest.Headers.Keys);
+            Assert.Contains("Require", theRequest.Headers.Keys);
             Assert.Contains("Proxy-Require", theRequest.Headers.Keys);
             Assert.AreEqual(null, theRequest.RTSPUri);
 
@@ -161,6 +161,48 @@ namespace RTSP.Tests
             Assert.AreEqual(0, _receivedData.Count);
         }
 
+
+        [Test]
+        public void ReceiveData()
+        {
+            Random rnd = new Random();
+            byte[] data = new byte[0x0234];
+            rnd.NextBytes(data);
+
+            byte[] buffer = new byte[data.Length + 4];
+            buffer[0] = 0x24; // $
+            buffer[1] = 11;
+            buffer[2] = 0x02;
+            buffer[3] = 0x34;
+            Buffer.BlockCopy(data, 0, buffer, 4, data.Length);
+
+            MemoryStream stream = new MemoryStream(buffer);
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RTSPListener testedListener = new RTSPListener(_mockTransport);
+            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
+            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+
+            // Run
+            testedListener.Start();
+            System.Threading.Thread.Sleep(500);
+            testedListener.Stop();
+
+            // Check the transport was closed.
+            _mockTransport.Received().Close();
+            //Check the message recevied
+            Assert.AreEqual(0, _receivedMessage.Count);
+            Assert.AreEqual(1, _receivedData.Count);
+            Assert.IsInstanceOf<RTSPData>(_receivedData[0]);
+            RTSPData dataMessage = _receivedData[0] as RTSPData;
+
+            Assert.AreEqual(11, dataMessage.Channel);
+            Assert.AreSame(testedListener, dataMessage.SourcePort);
+            Assert.AreEqual(data, dataMessage.Data);
+
+
+        }
 
         [Test]
         public void ReceiveNoMessage()
