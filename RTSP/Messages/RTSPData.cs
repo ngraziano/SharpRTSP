@@ -43,7 +43,7 @@ namespace Rtsp.Messages
             result.Channel = this.Channel;
             if (this.Data != null)
                 result.Data = this.Data.Clone() as byte[];
-            result.SourcePort = result.SourcePort;
+            result.SourcePort = this.SourcePort;
             return result;
         }
     }
