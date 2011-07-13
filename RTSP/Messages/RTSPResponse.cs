@@ -90,9 +90,9 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (_returnCode == 0 && _command.Length >= 2)
+                if (_returnCode == 0 && commandArray.Length >= 2)
                 {
-                    int.TryParse(_command[1], out _returnCode);
+                    int.TryParse(commandArray[1], out _returnCode);
                 }
 
                 return _returnCode;
@@ -103,12 +103,12 @@ namespace Rtsp.Messages
                 {
                     _returnCode = value;
                     // make sure we have the room
-                    if (_command.Length < 3)
+                    if (commandArray.Length < 3)
                     {
-                        Array.Resize(ref _command, 3);
+                        Array.Resize(ref commandArray, 3);
                     }
-                    _command[1] = value.ToString(CultureInfo.InvariantCulture);
-                    _command[2] = GetDefaultError(value);
+                    commandArray[1] = value.ToString(CultureInfo.InvariantCulture);
+                    commandArray[2] = GetDefaultError(value);
                 }
             }
         }
@@ -121,18 +121,18 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (_command.Length < 3)
+                if (commandArray.Length < 3)
                     return String.Empty;
-                return _command[2];
+                return commandArray[2];
             }
             set
             {
                 // Make sure we have the room
-                if (_command.Length < 3)
+                if (commandArray.Length < 3)
                 {
-                    Array.Resize(ref _command, 3);
+                    Array.Resize(ref commandArray, 3);
                 }
-                _command[2] = value;
+                commandArray[2] = value;
 
             }
         }

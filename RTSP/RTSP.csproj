@@ -8,8 +8,8 @@
     <ProjectGuid>{0AD96152-EB0C-4F31-B4F4-583CE88A5046}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RTSP</RootNamespace>
-    <AssemblyName>RTSP</AssemblyName>
+    <RootNamespace>Rtsp</RootNamespace>
+    <AssemblyName>Rtsp</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

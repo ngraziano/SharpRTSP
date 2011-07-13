@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RTSP", "RTSP\RTSP.csproj", "{0AD96152-EB0C-4F31-B4F4-583CE88A5046}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rtsp", "RTSP\Rtsp.csproj", "{0AD96152-EB0C-4F31-B4F4-583CE88A5046}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RTSP.Tests", "RTSP.Tests\RTSP.Tests.csproj", "{823924AE-1792-4F94-8FF1-D58A958EA5F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rtsp.Tests", "RTSP.Tests\Rtsp.Tests.csproj", "{823924AE-1792-4F94-8FF1-D58A958EA5F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

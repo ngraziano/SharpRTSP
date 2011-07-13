@@ -114,7 +114,7 @@ namespace Rtsp.Messages
         {
             get
             {
-                return _command[0];
+                return commandArray[0];
             }
         }
 
@@ -128,14 +128,14 @@ namespace Rtsp.Messages
         {
             get
             {
-                return ParseRequest(_command[0]);
+                return ParseRequest(commandArray[0]);
             }
             set
             {
                 if (Enum.IsDefined(typeof(RequestType), value))
-                    _command[0] = value.ToString();
+                    commandArray[0] = value.ToString();
                 else
-                    _command[0] = RequestType.UNKNOWN.ToString();
+                    commandArray[0] = RequestType.UNKNOWN.ToString();
             }
         }
 
@@ -149,20 +149,20 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (_command.Length < 2 || _command[1]=="*")
+                if (commandArray.Length < 2 || commandArray[1]=="*")
                     return null;
                 if (_RtspUri == null)
-                    Uri.TryCreate(_command[1], UriKind.Absolute, out _RtspUri);
+                    Uri.TryCreate(commandArray[1], UriKind.Absolute, out _RtspUri);
                 return _RtspUri;
             }
             set
             {
                 _RtspUri = value;
-                if (_command.Length < 2)
+                if (commandArray.Length < 2)
                 {
-                    Array.Resize(ref _command, 3);
+                    Array.Resize(ref commandArray, 3);
                 }
-                _command[1] = value != null ? value.ToString():"*";
+                commandArray[1] = value != null ? value.ToString():"*";
             }
         }
 

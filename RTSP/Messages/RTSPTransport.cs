@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Rtsp.Messages
 {
@@ -303,9 +304,9 @@ mode                =    <"> *Method <"> | Method
             Contract.Requires(ports.Length > 0);
 
             if (ports.Length < 2 || ports[1] == 0)
-                return ports[0].ToString();
+                return ports[0].ToString(CultureInfo.InvariantCulture);
             else
-                return ports[0].ToString() + '-' + ports[1].ToString();
+                return ports[0].ToString(CultureInfo.InvariantCulture) + '-' + ports[1].ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>

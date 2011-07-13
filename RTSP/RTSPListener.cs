@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using Rtsp.Messages;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Rtsp
 {
@@ -131,7 +132,7 @@ namespace Rtsp
                         {
                             // on logue le tout
                             if (currentMessage.SourcePort != null)
-                                _logger.Debug("Receive from {0}", currentMessage.SourcePort.RemoteAdress);
+                                _logger.Debug(CultureInfo.InvariantCulture, "Receive from {0}", currentMessage.SourcePort.RemoteAdress);
                             currentMessage.LogMessage();
                         }
                         if (currentMessage is RtspResponse)
@@ -151,7 +152,7 @@ namespace Rtsp
                                 }
                                 else
                                 {
-                                    _logger.Warn("Receive response not asked {0}", response.CSeq);
+                                    _logger.Warn(CultureInfo.InvariantCulture, "Receive response not asked {0}", response.CSeq);
                                 }
                             }
                             OnMessageReceived(new RtspChunkEventArgs(response));
@@ -359,7 +360,7 @@ namespace Rtsp
                             // Read the remaning data
                             byteReaden += commandStream.Read(currentMessage.Data, byteReaden,
                                 currentMessage.Data.Length - byteReaden);
-                            _logger.Debug("Readen {0} byte of data", byteReaden);
+                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
                         }
                         // if we haven't read all go there again else go to end. 
                         if (byteReaden >= currentMessage.Data.Length)

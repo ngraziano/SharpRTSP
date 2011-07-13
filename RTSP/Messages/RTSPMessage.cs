@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Rtsp.Messages
 {
@@ -39,7 +40,7 @@ namespace Rtsp.Messages
                     returnValue = new RtspResponse();
                 else
                 {
-                    _logger.Warn("Got a strange message {0}", aRequestLine);
+                    _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                     returnValue = new RtspMessage();
                 }
             }
@@ -63,7 +64,7 @@ namespace Rtsp.Messages
 
         Dictionary<string, string> _headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        protected string[] _command;
+        internal protected string[] commandArray;
 
         /// <summary>
         /// Gets or sets the creation time.
@@ -79,16 +80,16 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (_command == null)
+                if (commandArray == null)
                     return string.Empty;
-                return string.Join(" ", _command);
+                return string.Join(" ", commandArray);
             }
             set
             {
                 if (value == null)
-                    _command = new string[] { String.Empty };
+                    commandArray = new string[] { String.Empty };
                 else
-                    _command = value.Split(new char[] {' '}, 3);
+                    commandArray = value.Split(new char[] {' '}, 3);
             }
         }
 
@@ -124,7 +125,7 @@ namespace Rtsp.Messages
             }
             else
             {
-                _logger.Warn("Invalid Header received : -{0}-", line);
+                _logger.Warn(CultureInfo.InvariantCulture, "Invalid Header received : -{0}-", line);
             }
         }
 
@@ -169,7 +170,7 @@ namespace Rtsp.Messages
             }
             set
             {
-                _headers["Session"] = value + "; Timeout=" + Timeout.ToString();
+                _headers["Session"] = value + "; Timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -220,7 +221,7 @@ namespace Rtsp.Messages
         {
             if (Data.Length > 0)
             {
-                _headers["Content-Length"] = Data.Length.ToString();
+                _headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
             }
             else
             {

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Rtsp
 {
@@ -17,15 +18,15 @@ namespace Rtsp
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
-        /// <param name="TCPConnection">The underlying TCP connection.</param>
-        public RtspTcpTransport(TcpClient TCPConnection)
+        /// <param name="tcpConnection">The underlying TCP connection.</param>
+        public RtspTcpTransport(TcpClient tcpConnection)
         {
-            if (TCPConnection == null)
-                throw new ArgumentNullException("TCPConnection");
+            if (tcpConnection == null)
+                throw new ArgumentNullException("tcpConnection");
             Contract.EndContractBlock();
 
-            _currentEndPoint = (IPEndPoint)TCPConnection.Client.RemoteEndPoint;
-            _RtspServerClient = TCPConnection;
+            _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
+            _RtspServerClient = tcpConnection;
         }
 
         /// <summary>
@@ -58,7 +59,7 @@ namespace Rtsp
         {
             get
             {
-                return string.Format("{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+                return string.Format(CultureInfo.InvariantCulture,"{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
             }
         }
 
