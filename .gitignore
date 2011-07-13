@@ -7,3 +7,6 @@ packages/
 *.suo
 *.Cache
 *.g.cs
+RTSP.Tests/cover.xml
+RTSP.Tests/TestResult.xml
+RTSP.Tests/Coverage/
