@@ -117,7 +117,7 @@ namespace Rtsp.Tests
             Assert.AreEqual(RtspRequest.RequestType.PLAY, theRequest.RequestTyped);
             Assert.AreEqual(1, theRequest.Headers.Count);
             Assert.AreEqual(835, theRequest.CSeq);
-            Assert.AreEqual("Rtsp://audio.example.com/audio", theRequest.RtspUri.ToString());
+            Assert.AreEqual("rtsp://audio.example.com/audio", theRequest.RtspUri.ToString());
 
             Assert.AreEqual(0, _receivedData.Count);
         }
