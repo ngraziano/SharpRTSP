@@ -66,7 +66,7 @@ namespace Rtsp.Messages
                 case 505: return "RTSP Version Not Supported";
                 case 551: return "Option not support";
                 default:
-                    return "Return: " + aErrorCode.ToString();
+                    return "Return: " + aErrorCode.ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -107,7 +107,7 @@ namespace Rtsp.Messages
                     {
                         Array.Resize(ref _command, 3);
                     }
-                    _command[1] = value.ToString();
+                    _command[1] = value.ToString(CultureInfo.InvariantCulture);
                     _command[2] = GetDefaultError(value);
                 }
             }
