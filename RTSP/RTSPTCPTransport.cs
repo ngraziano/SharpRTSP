@@ -9,16 +9,16 @@ namespace Rtsp
     /// <summary>
     /// TCP Connection for Rtsp
     /// </summary>
-    public class RtspTCPTransport : IRtspTransport
+    public class RtspTcpTransport : IRtspTransport, IDisposable
     {
         private IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RtspTCPTransport"/> class.
+        /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
         /// <param name="TCPConnection">The underlying TCP connection.</param>
-        public RtspTCPTransport(TcpClient TCPConnection)
+        public RtspTcpTransport(TcpClient TCPConnection)
         {
             if (TCPConnection == null)
                 throw new ArgumentNullException("TCPConnection");
@@ -29,11 +29,11 @@ namespace Rtsp
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RtspTCPTransport"/> class.
+        /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
         /// <param name="aHost">A host.</param>
         /// <param name="aPortNumber">A port number.</param>
-        public RtspTCPTransport(string aHost, int aPortNumber)
+        public RtspTcpTransport(string aHost, int aPortNumber)
             : this(new TcpClient(aHost, aPortNumber))
         {
         }
@@ -67,7 +67,7 @@ namespace Rtsp
         /// </summary>
         public void Close()
         {
-            _RtspServerClient.Close();
+            Dispose(true);
         }
 
         /// <summary>
@@ -92,5 +92,25 @@ namespace Rtsp
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _RtspServerClient.Close();
+                /*   // free managed resources
+                   if (managedResource != null)
+                   {
+                       managedResource.Dispose();
+                       managedResource = null;
+                   }*/
+            }
+        }
     }
 }
