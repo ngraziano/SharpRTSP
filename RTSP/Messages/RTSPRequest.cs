@@ -4,12 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
     /// <summary>
-    /// An RTSP Request
+    /// An Rtsp Request
     /// </summary>
-    public class RTSPRequest : RTSPMessage
+    public class RtspRequest : RtspMessage
     {
 
         /// <summary>
@@ -45,25 +45,25 @@ namespace RTSP.Messages
         }
 
         /// <summary>
-        /// Gets the RTSP request.
+        /// Gets the Rtsp request.
         /// </summary>
         /// <param name="aRequestParts">A request parts.</param>
         /// <returns>the parsed request</returns>
-        internal static RTSPMessage GetRTSPRequest(string[] aRequestParts)
+        internal static RtspMessage GetRtspRequest(string[] aRequestParts)
         {
             // <pex>
             Debug.Assert(aRequestParts != (string[])null, "aRequestParts");
             Debug.Assert(aRequestParts.Length != 0, "aRequestParts.Length == 0");
             // </pex>
             // we already know this is a Request
-            RTSPRequest returnValue;
+            RtspRequest returnValue;
             switch (ParseRequest(aRequestParts[0]))
             {
                 case RequestType.OPTIONS:
-                    returnValue = new RTSPRequestOptions();
+                    returnValue = new RtspRequestOptions();
                     break;
                 case RequestType.SETUP:
-                    returnValue = new RTSPRequestSetup();
+                    returnValue = new RtspRequestSetup();
                     break;
                     /*
                 case RequestType.DESCRIBE:
@@ -89,7 +89,7 @@ namespace RTSP.Messages
                      */
                 case RequestType.UNKNOWN:
                 default:
-                    returnValue = new RTSPRequest();
+                    returnValue = new RtspRequest();
                     break;
             } 
 
@@ -99,9 +99,9 @@ namespace RTSP.Messages
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPRequest"/> class.
+        /// Initializes a new instance of the <see cref="RtspRequest"/> class.
         /// </summary>
-        public RTSPRequest()
+        public RtspRequest()
         {
             Command = "OPTIONS * RTSP/1.0";
         }
@@ -120,7 +120,7 @@ namespace RTSP.Messages
 
         /// <summary>
         /// Gets the request.
-        /// <remarks>The return value is typed with <see cref="RTSP.RequestType"/> if the value is not
+        /// <remarks>The return value is typed with <see cref="Rtsp.RequestType"/> if the value is not
         /// reconise the value is sent. The string value can be get by <see cref="Request"/></remarks>
         /// </summary>
         /// <value>The request.</value>
@@ -139,25 +139,25 @@ namespace RTSP.Messages
             }
         }
 
-        Uri _RTSPUri = null;
+        Uri _RtspUri = null;
         /// <summary>
-        /// Gets or sets the RTSP asked URI.
+        /// Gets or sets the Rtsp asked URI.
         /// </summary>
-        /// <value>The RTSP asked URI.</value>
+        /// <value>The Rtsp asked URI.</value>
         /// <remarks>The request with uri * is return with null URI</remarks>
-        public Uri RTSPUri
+        public Uri RtspUri
         {
             get
             {
                 if (_command.Length < 2 || _command[1]=="*")
                     return null;
-                if (_RTSPUri == null)
-                    Uri.TryCreate(_command[1], UriKind.Absolute, out _RTSPUri);
-                return _RTSPUri;
+                if (_RtspUri == null)
+                    Uri.TryCreate(_command[1], UriKind.Absolute, out _RtspUri);
+                return _RtspUri;
             }
             set
             {
-                _RTSPUri = value;
+                _RtspUri = value;
                 if (_command.Length < 2)
                 {
                     Array.Resize(ref _command, 3);
@@ -169,15 +169,15 @@ namespace RTSP.Messages
         /// <summary>
         /// Gets the assiociate OK response with the request.
         /// </summary>
-        /// <returns>an RTSP response correcponding to request.</returns>
-        public virtual RTSPResponse GetResponse()
+        /// <returns>an Rtsp response correcponding to request.</returns>
+        public virtual RtspResponse GetResponse()
         {
-            RTSPResponse returnValue = new RTSPResponse();
+            RtspResponse returnValue = new RtspResponse();
             returnValue.ReturnCode = 200;
             returnValue.CSeq = this.CSeq;
-            if (this.Headers.ContainsKey(RTSPHeaderNames.Session))
+            if (this.Headers.ContainsKey(RtspHeaderNames.Session))
             {
-                returnValue.Headers[RTSPHeaderNames.Session] = this.Headers[RTSPHeaderNames.Session]; 
+                returnValue.Headers[RtspHeaderNames.Session] = this.Headers[RtspHeaderNames.Session]; 
             }
 
             return returnValue;

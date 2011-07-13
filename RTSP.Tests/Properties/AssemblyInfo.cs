@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // Les informations générales relatives à un assembly dépendent de 
 // l'ensemble d'attributs suivant. Changez les valeurs de ces attributs pour modifier les informations
 // associées à un assembly.
-[assembly: AssemblyTitle("RTSP.Tests")]
+[assembly: AssemblyTitle("Rtsp.Tests")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("SUEZ")]
-[assembly: AssemblyProduct("RTSP.Tests")]
+[assembly: AssemblyProduct("Rtsp.Tests")]
 [assembly: AssemblyCopyright("Copyright © SUEZ 2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

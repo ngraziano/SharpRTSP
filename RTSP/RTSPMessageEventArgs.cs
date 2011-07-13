@@ -3,20 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace RTSP
+namespace Rtsp
 {
     using Messages;
     /// <summary>
     /// Event args containing information for message events.
     /// </summary>
-    public class RTSPChunkEventArgs :EventArgs
+    public class RtspChunkEventArgs :EventArgs
     {
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPChunkEventArgs"/> class.
+        /// Initializes a new instance of the <see cref="RtspChunkEventArgs"/> class.
         /// </summary>
         /// <param name="aMessage">A message.</param>
-        public RTSPChunkEventArgs(RTSPChunk aMessage)
+        public RtspChunkEventArgs(RtspChunk aMessage)
         {
             Message = aMessage;
         }
@@ -25,6 +25,6 @@ namespace RTSP
         /// Gets or sets the message.
         /// </summary>
         /// <value>The message.</value>
-        public RTSPChunk Message { get; set; }
+        public RtspChunk Message { get; set; }
     }
 }

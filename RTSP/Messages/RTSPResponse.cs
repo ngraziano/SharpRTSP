@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Globalization;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
-    public class RTSPResponse : RTSPMessage
+    public class RtspResponse : RtspMessage
     {
         /// <summary>
         /// Gets the default error message for an error code.
@@ -70,9 +71,9 @@ namespace RTSP.Messages
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPResponse"/> class.
+        /// Initializes a new instance of the <see cref="RtspResponse"/> class.
         /// </summary>
-        public RTSPResponse()
+        public RtspResponse()
             : base()
         {
             // Initialise with a default result code.
@@ -154,7 +155,7 @@ namespace RTSP.Messages
         /// Gets or sets the original request associate with the response.
         /// </summary>
         /// <value>The original request.</value>
-        public RTSPRequest OriginalRequest
+        public RtspRequest OriginalRequest
         { get; set; }
     }
 }

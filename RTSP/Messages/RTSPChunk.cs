@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
     /// <summary>
-    /// Class wich represent each message echanged on RTSP socket.
+    /// Class wich represent each message echanged on Rtsp socket.
     /// </summary>
-    public abstract class RTSPChunk : ICloneable
+    public abstract class RtspChunk : ICloneable
     {
         /// <summary>
         /// Logs the message to debug.
@@ -35,7 +35,7 @@ namespace RTSP.Messages
         /// Gets or sets the source port wich receive the message.
         /// </summary>
         /// <value>The source port.</value>
-        public RTSPListener SourcePort { get; set; }
+        public RtspListener SourcePort { get; set; }
 
         #region ICloneable Membres
 

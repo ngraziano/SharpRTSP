@@ -4,42 +4,42 @@ using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics.Contracts;
 
-namespace RTSP
+namespace Rtsp
 {
     /// <summary>
-    /// TCP Connection for RTSP
+    /// TCP Connection for Rtsp
     /// </summary>
-    public class RTSPTCPTransport : IRTSPTransport
+    public class RtspTCPTransport : IRtspTransport
     {
         private IPEndPoint _currentEndPoint;
-        private TcpClient _RTSPServerClient;
+        private TcpClient _RtspServerClient;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPTCPTransport"/> class.
+        /// Initializes a new instance of the <see cref="RtspTCPTransport"/> class.
         /// </summary>
         /// <param name="TCPConnection">The underlying TCP connection.</param>
-        public RTSPTCPTransport(TcpClient TCPConnection)
+        public RtspTCPTransport(TcpClient TCPConnection)
         {
             if (TCPConnection == null)
                 throw new ArgumentNullException("TCPConnection");
             Contract.EndContractBlock();
 
             _currentEndPoint = (IPEndPoint)TCPConnection.Client.RemoteEndPoint;
-            _RTSPServerClient = TCPConnection;
+            _RtspServerClient = TCPConnection;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPTCPTransport"/> class.
+        /// Initializes a new instance of the <see cref="RtspTCPTransport"/> class.
         /// </summary>
         /// <param name="aHost">A host.</param>
         /// <param name="aPortNumber">A port number.</param>
-        public RTSPTCPTransport(string aHost, int aPortNumber)
+        public RtspTCPTransport(string aHost, int aPortNumber)
             : this(new TcpClient(aHost, aPortNumber))
         {
         }
 
 
-        #region IRTSPTransport Membres
+        #region IRtspTransport Membres
 
         /// <summary>
         /// Gets the stream of the transport.
@@ -47,7 +47,7 @@ namespace RTSP
         /// <returns>A stream</returns>
         public Stream GetStream()
         {
-            return _RTSPServerClient.GetStream();
+            return _RtspServerClient.GetStream();
         }
 
         /// <summary>
@@ -67,16 +67,16 @@ namespace RTSP
         /// </summary>
         public void Close()
         {
-            _RTSPServerClient.Close();
+            _RtspServerClient.Close();
         }
 
         /// <summary>
-        /// Gets a value indicating whether this <see cref="IRTSPTransport"/> is connected.
+        /// Gets a value indicating whether this <see cref="IRtspTransport"/> is connected.
         /// </summary>
         /// <value><c>true</c> if connected; otherwise, <c>false</c>.</value>
         public bool Connected
         {
-            get { return _RTSPServerClient.Connected; }
+            get { return _RtspServerClient.Connected; }
         }
 
         /// <summary>
@@ -85,10 +85,10 @@ namespace RTSP
         /// </summary>
         public void ReConnect()
         {
-            if (_RTSPServerClient.Connected)
+            if (_RtspServerClient.Connected)
                 return;
-            _RTSPServerClient = new TcpClient();
-            _RTSPServerClient.Connect(_currentEndPoint);
+            _RtspServerClient = new TcpClient();
+            _RtspServerClient.Connect(_currentEndPoint);
         }
 
         #endregion

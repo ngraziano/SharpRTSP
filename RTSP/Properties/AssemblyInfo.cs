@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // Les informations générales relatives à un assembly dépendent de 
 // l'ensemble d'attributs suivant. Changez les valeurs de ces attributs pour modifier les informations
 // associées à un assembly.
-[assembly: AssemblyTitle("RTSP")]
-[assembly: AssemblyDescription("Handle receive and send of RTSP Messages")]
+[assembly: AssemblyTitle("Rtsp")]
+[assembly: AssemblyDescription("Handle receive and send of Rtsp Messages")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("SUEZ")]
-[assembly: AssemblyProduct("RTSP")]
+[assembly: AssemblyProduct("Rtsp")]
 [assembly: AssemblyCopyright("Copyright © SUEZ 2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -34,5 +34,5 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
-[assembly: InternalsVisibleTo("RTSP.Tests")]
-[assembly: InternalsVisibleTo("RTSP.Explorables")]
+[assembly: InternalsVisibleTo("Rtsp.Tests")]
+[assembly: InternalsVisibleTo("Rtsp.Explorables")]

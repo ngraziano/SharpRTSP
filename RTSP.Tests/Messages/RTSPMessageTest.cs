@@ -3,36 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
-using RTSP.Messages;
+using Rtsp.Messages;
 
-namespace RTSP.Messages.Tests
+namespace Rtsp.Messages.Tests
 {
     [TestFixture]
-    public class RTSPMessageTest
+    public class RtspMessageTest
     {
         //Put a name on test to permit VSNunit to handle them.
         [Test]
-        [TestCase("OPTIONS * RTSP/1.0", RTSPRequest.RequestType.OPTIONS, TestName = "GetRTSPMessageRequest-OPTIONS")]
-        [TestCase("SETUP rtsp://audio.example.com/twister/audio.en RTSP/1.0", RTSPRequest.RequestType.SETUP, TestName = "GetRTSPMessageRequest-SETUP")]
-        [TestCase("PLAY rtsp://audio.example.com/twister/audio.en RTSP/1.0", RTSPRequest.RequestType.PLAY, TestName = "GetRTSPMessageRequest-PLAY")]
-        public void GetRTSPMessageRequest(string requestLine, RTSPRequest.RequestType requestType)
+        [TestCase("OPTIONS * RTSP/1.0", RtspRequest.RequestType.OPTIONS, TestName = "GetRtspMessageRequest-OPTIONS")]
+        [TestCase("SETUP rtsp://audio.example.com/twister/audio.en RTSP/1.0", RtspRequest.RequestType.SETUP, TestName = "GetRtspMessageRequest-SETUP")]
+        [TestCase("PLAY rtsp://audio.example.com/twister/audio.en RTSP/1.0", RtspRequest.RequestType.PLAY, TestName = "GetRtspMessageRequest-PLAY")]
+        public void GetRtspMessageRequest(string requestLine, RtspRequest.RequestType requestType)
         {
-            RTSPMessage oneMessage = RTSPMessage.GetRTSPMessage(requestLine);
-            Assert.IsInstanceOf<RTSPRequest>(oneMessage);
+            RtspMessage oneMessage = RtspMessage.GetRtspMessage(requestLine);
+            Assert.IsInstanceOf<RtspRequest>(oneMessage);
 
-            RTSPRequest oneRequest = oneMessage as RTSPRequest;
+            RtspRequest oneRequest = oneMessage as RtspRequest;
             Assert.AreEqual(requestType, oneRequest.RequestTyped);
         }
 
         //Put a name on test to permit VSNunit to handle them.
         [Test]
-        [TestCase("RTSP/1.0 551 Option not supported", 551, "Option not supported", TestName = "GetRTSPMessageResponse-551")]
-        public void GetRTSPMessageResponse(string requestLine, int returnCode, string returnMessage)
+        [TestCase("RTSP/1.0 551 Option not supported", 551, "Option not supported", TestName = "GetRtspMessageResponse-551")]
+        public void GetRtspMessageResponse(string requestLine, int returnCode, string returnMessage)
         {
-            RTSPMessage oneMessage = RTSPMessage.GetRTSPMessage(requestLine);
-            Assert.IsInstanceOf<RTSPResponse>(oneMessage);
+            RtspMessage oneMessage = RtspMessage.GetRtspMessage(requestLine);
+            Assert.IsInstanceOf<RtspResponse>(oneMessage);
 
-            RTSPResponse oneResponse = oneMessage as RTSPResponse;
+            RtspResponse oneResponse = oneMessage as RtspResponse;
             Assert.AreEqual(returnCode, oneResponse.ReturnCode);
             Assert.AreEqual(returnMessage, oneResponse.ReturnMessage);
         }

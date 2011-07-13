@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
-using RTSP;
+using Rtsp;
 
-namespace RTSP.Tests
+namespace Rtsp.Tests
 {
     [TestFixture]
-    public class RTSPUtilsTest
+    public class RtspUtilsTest
     {
         [Test]
         public void RegisterUri()
         {
-            RTSPUtils.RegisterUri();
+            RtspUtils.RegisterUri();
 
             // Check that rtsp is well registred
             Assert.IsTrue(Uri.CheckSchemeName("rtsp"));

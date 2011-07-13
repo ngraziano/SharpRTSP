@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace RTSP
+namespace Rtsp
 {
     /// <summary>
-    /// Interface for Transport of RTSP (TCP, TCP+SSL,..)
+    /// Interface for Transport of Rtsp (TCP, TCP+SSL,..)
     /// </summary>
-    public interface IRTSPTransport
+    public interface IRtspTransport
     {
         /// <summary>
         /// Gets the stream of the transport.
@@ -28,7 +28,7 @@ namespace RTSP
         void Close();
 
         /// <summary>
-        /// Gets a value indicating whether this <see cref="IRTSPTransport"/> is connected.
+        /// Gets a value indicating whether this <see cref="IRtspTransport"/> is connected.
         /// </summary>
         /// <value><c>true</c> if connected; otherwise, <c>false</c>.</value>
         bool Connected { get; }

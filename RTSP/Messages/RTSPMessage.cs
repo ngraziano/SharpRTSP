@@ -6,56 +6,56 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Diagnostics.Contracts;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
-    public class RTSPMessage : RTSPChunk
+    public class RtspMessage : RtspChunk
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
         /// <summary>
-        /// The regex to validate the RTSP message.
+        /// The regex to validate the Rtsp message.
         /// </summary>
         private static readonly Regex _rtspVersionTest = new Regex(@"^RTSP/\d\.\d", RegexOptions.Compiled);
         /// <summary>
-        /// Create the good type of RTSP Message from the header.
+        /// Create the good type of Rtsp Message from the header.
         /// </summary>
         /// <param name="aRequestLine">A request line.</param>
-        /// <returns>An RTSP message</returns>
-        public static RTSPMessage GetRTSPMessage(string aRequestLine)
+        /// <returns>An Rtsp message</returns>
+        public static RtspMessage GetRtspMessage(string aRequestLine)
         {
             // We can't determine the message 
             if (string.IsNullOrEmpty(aRequestLine))
-                return new RTSPMessage();
+                return new RtspMessage();
             string[] requestParts = aRequestLine.Split(new char[] { ' ' }, 3);
-            RTSPMessage returnValue;
+            RtspMessage returnValue;
             if (requestParts.Length == 3)
             {
                 // A request is : Method SP Request-URI SP RTSP-Version
                 // A response is : RTSP-Version SP Status-Code SP Reason-Phrase
                 // RTSP-Version = "RTSP" "/" 1*DIGIT "." 1*DIGIT
                 if (_rtspVersionTest.IsMatch(requestParts[2]))
-                    returnValue = RTSPRequest.GetRTSPRequest(requestParts);
+                    returnValue = RtspRequest.GetRtspRequest(requestParts);
                 else if (_rtspVersionTest.IsMatch(requestParts[0]))
-                    returnValue = new RTSPResponse();
+                    returnValue = new RtspResponse();
                 else
                 {
                     _logger.Warn("Got a strange message {0}", aRequestLine);
-                    returnValue = new RTSPMessage();
+                    returnValue = new RtspMessage();
                 }
             }
             else
             {
                 _logger.Warn("Got a strange message {0}", aRequestLine);
-                returnValue = new RTSPMessage();
+                returnValue = new RtspMessage();
             }
             returnValue.Command = aRequestLine;
             return returnValue;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPMessage"/> class.
+        /// Initializes a new instance of the <see cref="RtspMessage"/> class.
         /// </summary>
-        public RTSPMessage()
+        public RtspMessage()
         {
             Data = new byte[0];
             Creation = DateTime.Now;
@@ -303,7 +303,7 @@ namespace RTSP.Messages
         /// </returns>
         public override object Clone()
         {
-            RTSPMessage returnValue = GetRTSPMessage(this.Command);
+            RtspMessage returnValue = GetRtspMessage(this.Command);
 
             foreach (var item in this.Headers)
             {

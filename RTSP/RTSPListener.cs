@@ -6,32 +6,32 @@ using System.Net.Sockets;
 using System.Threading;
 using System.IO;
 using System.Net;
-using RTSP.Messages;
+using Rtsp.Messages;
 using System.Diagnostics.Contracts;
 
-namespace RTSP
+namespace Rtsp
 {
     /// <summary>
-    /// RTSP lister
+    /// Rtsp lister
     /// </summary>
-    public class RTSPListener
+    public class RtspListener
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
-        IRTSPTransport _transport;
+        IRtspTransport _transport;
 
         private Thread _ListenTread;
         Stream _stream;
 
         private int _sequenceNumber = 0;
 
-        private Dictionary<int, RTSPRequest> _sentMessage = new Dictionary<int, RTSPRequest>();
+        private Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPListener"/> class from a TCP connection.
+        /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
         /// <param name="connection">The connection.</param>
-        public RTSPListener(IRTSPTransport connection)
+        public RtspListener(IRtspTransport connection)
         {
             if (connection == null)
                 throw new ArgumentNullException("connection");
@@ -73,20 +73,18 @@ namespace RTSP
 
         }
 
-        public delegate void RTSPMessageEvent(object sender, RTSPChunkEventArgs e);
-
         /// <summary>
         /// Occurs when message is received.
         /// </summary>
-        public event RTSPMessageEvent MessageReceived;
+        public event EventHandler<RtspChunkEventArgs> MessageReceived;
 
         /// <summary>
         /// Raises the <see cref="E:MessageReceived"/> event.
         /// </summary>
-        /// <param name="e">The <see cref="RTSP.RTSPChunkEventArgs"/> instance containing the event data.</param>
-        protected void OnMessageReceived(RTSPChunkEventArgs e)
+        /// <param name="e">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
+        protected void OnMessageReceived(RtspChunkEventArgs e)
         {
-            RTSPMessageEvent handler = MessageReceived;
+            EventHandler<RtspChunkEventArgs> handler = MessageReceived;
 
             if (handler != null)
                 handler(this, e);
@@ -95,18 +93,18 @@ namespace RTSP
         /// <summary>
         /// Occurs when message is received.
         /// </summary>
-        public event RTSPMessageEvent DataReceived;
+        public event EventHandler<RtspChunkEventArgs> DataReceived;
 
         /// <summary>
         /// Raises the <see cref="E:DataReceived"/> event.
         /// </summary>
-        /// <param name="aRTSPChunkEventArgs">The <see cref="RTSP.RTSPChunkEventArgs"/> instance containing the event data.</param>
-        protected void OnDataReceived(RTSPChunkEventArgs aRTSPChunkEventArgs)
+        /// <param name="aRtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
+        protected void OnDataReceived(RtspChunkEventArgs aRtspChunkEventArgs)
         {
-            RTSPMessageEvent handler = DataReceived;
+            EventHandler<RtspChunkEventArgs> handler = DataReceived;
 
             if (handler != null)
-                handler(this, aRTSPChunkEventArgs);
+                handler(this, aRtspChunkEventArgs);
         }
 
         /// <summary>
@@ -125,25 +123,25 @@ namespace RTSP
                 while (_transport.Connected)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RTSPChunk currentMessage = ReadOneMessage(_stream);
+                    RtspChunk currentMessage = ReadOneMessage(_stream);
 
                     if (currentMessage != null)
                     {
-                        if (!(currentMessage is RTSPData))
+                        if (!(currentMessage is RtspData))
                         {
                             // on logue le tout
                             if (currentMessage.SourcePort != null)
                                 _logger.Debug("Receive from {0}", currentMessage.SourcePort.RemoteAdress);
                             currentMessage.LogMessage();
                         }
-                        if (currentMessage is RTSPResponse)
+                        if (currentMessage is RtspResponse)
                         {
 
-                            RTSPResponse response = currentMessage as RTSPResponse;
+                            RtspResponse response = currentMessage as RtspResponse;
                             lock (_sentMessage)
                             {
                                 // add the original question to the response.
-                                RTSPRequest originalRequest;
+                                RtspRequest originalRequest;
                                 if (_sentMessage.TryGetValue(response.CSeq, out originalRequest))
                                 {
                                     _sentMessage.Remove(response.CSeq);
@@ -156,16 +154,16 @@ namespace RTSP
                                     _logger.Warn("Receive response not asked {0}", response.CSeq);
                                 }
                             }
-                            OnMessageReceived(new RTSPChunkEventArgs(response));
+                            OnMessageReceived(new RtspChunkEventArgs(response));
 
                         }
-                        else if (currentMessage is RTSPRequest)
+                        else if (currentMessage is RtspRequest)
                         {
-                            OnMessageReceived(new RTSPChunkEventArgs(currentMessage));
+                            OnMessageReceived(new RtspChunkEventArgs(currentMessage));
                         }
-                        else if (currentMessage is RTSPData)
+                        else if (currentMessage is RtspData)
                         {
-                            OnDataReceived(new RTSPChunkEventArgs(currentMessage));
+                            OnDataReceived(new RtspChunkEventArgs(currentMessage));
                         }
 
                     }
@@ -210,7 +208,7 @@ namespace RTSP
         /// </summary>
         /// <param name="aMessage">A message.</param>
         /// <returns><see cref="true"/> if it is Ok, otherwise <see cref="false"/></returns>
-        public bool SendMessage(RTSPMessage aMessage)
+        public bool SendMessage(RtspMessage aMessage)
         {
             if (aMessage == null)
                 throw new ArgumentNullException("aMessage");
@@ -233,16 +231,16 @@ namespace RTSP
             // if it it a request  we store the original message
             // and we renumber it.
             //TODO handle lost message (for example every minute cleanup old message)
-            if (aMessage is RTSPRequest)
+            if (aMessage is RtspRequest)
             {
-                RTSPMessage originalMessage = aMessage;
+                RtspMessage originalMessage = aMessage;
                 // Do not modify original message
-                aMessage = aMessage.Clone() as RTSPMessage;
+                aMessage = aMessage.Clone() as RtspMessage;
                 _sequenceNumber++;
                 aMessage.CSeq = _sequenceNumber;
                 lock (_sentMessage)
                 {
-                    _sentMessage.Add(aMessage.CSeq, originalMessage as RTSPRequest);
+                    _sentMessage.Add(aMessage.CSeq, originalMessage as RtspRequest);
                 }
             }
 
@@ -253,7 +251,7 @@ namespace RTSP
         }
 
         /// <summary>
-        /// Reconnect this instance of RTSPListener.
+        /// Reconnect this instance of RtspListener.
         /// </summary>
         public void ReConnect()
         {
@@ -277,9 +275,9 @@ namespace RTSP
         /// <summary>
         /// Reads one message.
         /// </summary>
-        /// <param name="commandStream">The RTSP stream.</param>
+        /// <param name="commandStream">The Rtsp stream.</param>
         /// <returns>Message readen</returns>
-        public RTSPChunk ReadOneMessage(Stream commandStream)
+        public RtspChunk ReadOneMessage(Stream commandStream)
         {
             if (commandStream == null)
                 throw new ArgumentNullException("commandStream");
@@ -287,7 +285,7 @@ namespace RTSP
 
             ReadingState currentReadingState = ReadingState.NewCommand;
             // current decode message , create a fake new to permit compile.
-            RTSPChunk currentMessage = null;
+            RtspChunk currentMessage = null;
 
             int size = 0;
             int byteReaden = 0;
@@ -340,7 +338,7 @@ namespace RTSP
                 switch (currentReadingState)
                 {
                     case ReadingState.NewCommand:
-                        currentMessage = RTSPMessage.GetRTSPMessage(oneLine);
+                        currentMessage = RtspMessage.GetRtspMessage(oneLine);
                         currentReadingState = ReadingState.Headers;
                         break;
                     case ReadingState.Headers:
@@ -348,11 +346,11 @@ namespace RTSP
                         if (string.IsNullOrEmpty(line))
                         {
                             currentReadingState = ReadingState.Data;
-                            ((RTSPMessage)currentMessage).InitialiseDataFromContentLength();
+                            ((RtspMessage)currentMessage).InitialiseDataFromContentLength();
                         }
                         else
                         {
-                            ((RTSPMessage)currentMessage).AddHeader(line);
+                            ((RtspMessage)currentMessage).AddHeader(line);
                         }
                         break;
                     case ReadingState.Data:
@@ -368,8 +366,8 @@ namespace RTSP
                             currentReadingState = ReadingState.End;
                         break;
                     case ReadingState.InterleavedData:
-                        currentMessage = new RTSPData();
-                        ((RTSPData)currentMessage).Channel = commandStream.ReadByte();
+                        currentMessage = new RtspData();
+                        ((RtspData)currentMessage).Channel = commandStream.ReadByte();
                         size = (commandStream.ReadByte() << 8) + commandStream.ReadByte();
                         currentMessage.Data = new byte[size];
                         currentReadingState = ReadingState.MoreInterleavedData;
@@ -394,16 +392,16 @@ namespace RTSP
         /// <summary>
         /// Begins the send data.
         /// </summary>
-        /// <param name="aRTSPData">A RTSP data.</param>
+        /// <param name="aRtspData">A Rtsp data.</param>
         /// <param name="asyncCallback">The async callback.</param>
         /// <param name="aState">A state.</param>
-        public IAsyncResult BeginSendData(RTSPData aRTSPData, AsyncCallback asyncCallback, object aState)
+        public IAsyncResult BeginSendData(RtspData aRtspData, AsyncCallback asyncCallback, object aState)
         {
-            if (aRTSPData == null)
-                throw new ArgumentNullException("aRTSPData");
+            if (aRtspData == null)
+                throw new ArgumentNullException("aRtspData");
             Contract.EndContractBlock();
 
-            return BeginSendData(aRTSPData.Channel, aRTSPData.Data, asyncCallback, aState);
+            return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, aState);
         }
 
         /// <summary>

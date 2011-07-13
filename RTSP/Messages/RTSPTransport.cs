@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics.Contracts;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
-    public class RTSPTransport
+    public class RtspTransport
     {
-        public RTSPTransport()
+        public RtspTransport()
         {
             // Default value is true in RFC
             IsMulticast = true;
@@ -188,13 +188,13 @@ mode                =    <"> *Method <"> | Method
         /// <param name="aTransportString">A transport string.</param>
         /// <returns>The transport class.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="aTransportString"/> is null.</exception>
-        public static RTSPTransport Parse(string aTransportString)
+        public static RtspTransport Parse(string aTransportString)
         {
             if (aTransportString == null)
                 throw new ArgumentNullException("aTransportString");
             Contract.EndContractBlock();
 
-            RTSPTransport returnValue = new RTSPTransport();
+            RtspTransport returnValue = new RtspTransport();
 
             string[] transportPart = aTransportString.Split(';');
             string[] transportProtocolPart = transportPart[0].Split('/');

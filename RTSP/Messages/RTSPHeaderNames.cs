@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
     /// <summary>
     /// Class containing helper constant for general use headers.
     /// </summary>
-    public static class RTSPHeaderNames
+    public static class RtspHeaderNames
     {
         public const string ContentBase = "Content-Base";
         public const string ContentEncoding = "Content-Encoding";

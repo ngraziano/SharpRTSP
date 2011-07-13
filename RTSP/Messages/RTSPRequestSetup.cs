@@ -3,23 +3,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
-    public class RTSPRequestSetup : RTSPRequest
+    public class RtspRequestSetup : RtspRequest
     {
         /// <summary>
         /// Gets the transports associate with the request.
         /// </summary>
         /// <value>The transport.</value>
-        public RTSPTransport[] GetTransports()
+        public RtspTransport[] GetTransports()
         {
 
-            if (!Headers.ContainsKey(RTSPHeaderNames.Transport))
-                return new RTSPTransport[] { new RTSPTransport() };
+            if (!Headers.ContainsKey(RtspHeaderNames.Transport))
+                return new RtspTransport[] { new RtspTransport() };
 
-            string[] items = Headers[RTSPHeaderNames.Transport].Split(',');
-            return Array.ConvertAll<string, RTSPTransport>(items,
-                new Converter<string, RTSPTransport>(RTSPTransport.Parse));
+            string[] items = Headers[RtspHeaderNames.Transport].Split(',');
+            return Array.ConvertAll<string, RtspTransport>(items,
+                new Converter<string, RtspTransport>(RtspTransport.Parse));
 
         }
 

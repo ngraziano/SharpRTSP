@@ -4,25 +4,25 @@ using System.Linq;
 using System.Text;
 using NSubstitute;
 using NUnit.Framework;
-using RTSP.Messages;
+using Rtsp.Messages;
 using System.IO;
 
-namespace RTSP.Tests
+namespace Rtsp.Tests
 {
     [TestFixture]
-    public class RTSPListenerTest
+    public class RtspListenerTest
     {
-        IRTSPTransport _mockTransport;
+        IRtspTransport _mockTransport;
         bool _connected = true;
-        List<RTSPChunk> _receivedMessage;
-        List<RTSPChunk> _receivedData;
+        List<RtspChunk> _receivedMessage;
+        List<RtspChunk> _receivedData;
 
-        void MessageReceived(object sender, RTSPChunkEventArgs e)
+        void MessageReceived(object sender, RtspChunkEventArgs e)
         {
             _receivedMessage.Add(e.Message);
         }
 
-        void DataReceived(object sender, RTSPChunkEventArgs e)
+        void DataReceived(object sender, RtspChunkEventArgs e)
         {
             _receivedData.Add(e.Message);
         }
@@ -31,14 +31,14 @@ namespace RTSP.Tests
         public void Init()
         {
             // Setup a mock
-            _mockTransport = Substitute.For<IRTSPTransport>();
+            _mockTransport = Substitute.For<IRtspTransport>();
             _connected = true;
             _mockTransport.Connected.Returns(x => { return _connected; });
             _mockTransport.When(x => x.Close()).Do(x => { _connected = false; });
             _mockTransport.When(x => x.ReConnect()).Do(x => { _connected = true; });
 
-            _receivedData = new List<RTSPChunk>();
-            _receivedMessage = new List<RTSPChunk>();
+            _receivedData = new List<RtspChunk>();
+            _receivedMessage = new List<RtspChunk>();
         }
 
         [Test]
@@ -54,9 +54,9 @@ namespace RTSP.Tests
             _mockTransport.GetStream().Returns(stream);
 
             // Setup test object.
-            RTSPListener testedListener = new RTSPListener(_mockTransport);
-            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
-            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
 
             // Run
             testedListener.Start();
@@ -67,18 +67,18 @@ namespace RTSP.Tests
             _mockTransport.Received().Close();
             //Check the message recevied
             Assert.AreEqual(1, _receivedMessage.Count);
-            RTSPChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RTSPRequest>(theMessage);
+            RtspChunk theMessage = _receivedMessage[0];
+            Assert.IsInstanceOf<RtspRequest>(theMessage);
             Assert.AreEqual(0, theMessage.Data.Length);
             Assert.AreSame(testedListener, theMessage.SourcePort);
 
-            RTSPRequest theRequest = theMessage as RTSPRequest;
-            Assert.AreEqual(RTSPRequest.RequestType.OPTIONS, theRequest.RequestTyped);
+            RtspRequest theRequest = theMessage as RtspRequest;
+            Assert.AreEqual(RtspRequest.RequestType.OPTIONS, theRequest.RequestTyped);
             Assert.AreEqual(3, theRequest.Headers.Count);
             Assert.AreEqual(1, theRequest.CSeq);
             Assert.Contains("Require", theRequest.Headers.Keys);
             Assert.Contains("Proxy-Require", theRequest.Headers.Keys);
-            Assert.AreEqual(null, theRequest.RTSPUri);
+            Assert.AreEqual(null, theRequest.RtspUri);
 
             Assert.AreEqual(0, _receivedData.Count);
         }
@@ -95,9 +95,9 @@ namespace RTSP.Tests
             _mockTransport.GetStream().Returns(stream);
 
             // Setup test object.
-            RTSPListener testedListener = new RTSPListener(_mockTransport);
-            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
-            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
 
             // Run
             testedListener.Start();
@@ -108,16 +108,16 @@ namespace RTSP.Tests
             _mockTransport.Received().Close();
             //Check the message recevied
             Assert.AreEqual(1, _receivedMessage.Count);
-            RTSPChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RTSPRequest>(theMessage);
+            RtspChunk theMessage = _receivedMessage[0];
+            Assert.IsInstanceOf<RtspRequest>(theMessage);
             Assert.AreEqual(0, theMessage.Data.Length);
             Assert.AreSame(testedListener, theMessage.SourcePort);
 
-            RTSPRequest theRequest = theMessage as RTSPRequest;
-            Assert.AreEqual(RTSPRequest.RequestType.PLAY, theRequest.RequestTyped);
+            RtspRequest theRequest = theMessage as RtspRequest;
+            Assert.AreEqual(RtspRequest.RequestType.PLAY, theRequest.RequestTyped);
             Assert.AreEqual(1, theRequest.Headers.Count);
             Assert.AreEqual(835, theRequest.CSeq);
-            Assert.AreEqual("rtsp://audio.example.com/audio", theRequest.RTSPUri.ToString());
+            Assert.AreEqual("Rtsp://audio.example.com/audio", theRequest.RtspUri.ToString());
 
             Assert.AreEqual(0, _receivedData.Count);
         }
@@ -134,9 +134,9 @@ namespace RTSP.Tests
             _mockTransport.GetStream().Returns(stream);
 
             // Setup test object.
-            RTSPListener testedListener = new RTSPListener(_mockTransport);
-            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
-            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
 
             // Run
             testedListener.Start();
@@ -147,12 +147,12 @@ namespace RTSP.Tests
             _mockTransport.Received().Close();
             //Check the message recevied
             Assert.AreEqual(1, _receivedMessage.Count);
-            RTSPChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RTSPResponse>(theMessage);
+            RtspChunk theMessage = _receivedMessage[0];
+            Assert.IsInstanceOf<RtspResponse>(theMessage);
             Assert.AreEqual(0, theMessage.Data.Length);
             Assert.AreSame(testedListener, theMessage.SourcePort);
 
-            RTSPResponse theResponse = theMessage as RTSPResponse;
+            RtspResponse theResponse = theMessage as RtspResponse;
             Assert.AreEqual(551, theResponse.ReturnCode);
             Assert.AreEqual("Option not supported", theResponse.ReturnMessage);
             Assert.AreEqual(2, theResponse.Headers.Count);
@@ -180,9 +180,9 @@ namespace RTSP.Tests
             _mockTransport.GetStream().Returns(stream);
 
             // Setup test object.
-            RTSPListener testedListener = new RTSPListener(_mockTransport);
-            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
-            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
 
             // Run
             testedListener.Start();
@@ -194,8 +194,8 @@ namespace RTSP.Tests
             //Check the message recevied
             Assert.AreEqual(0, _receivedMessage.Count);
             Assert.AreEqual(1, _receivedData.Count);
-            Assert.IsInstanceOf<RTSPData>(_receivedData[0]);
-            RTSPData dataMessage = _receivedData[0] as RTSPData;
+            Assert.IsInstanceOf<RtspData>(_receivedData[0]);
+            RtspData dataMessage = _receivedData[0] as RtspData;
 
             Assert.AreEqual(11, dataMessage.Channel);
             Assert.AreSame(testedListener, dataMessage.SourcePort);
@@ -212,9 +212,9 @@ namespace RTSP.Tests
             _mockTransport.GetStream().Returns(stream);
 
             // Setup test object.
-            RTSPListener testedListener = new RTSPListener(_mockTransport);
-            testedListener.MessageReceived += new RTSPListener.RTSPMessageEvent(MessageReceived);
-            testedListener.DataReceived += new RTSPListener.RTSPMessageEvent(DataReceived);
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
 
             // Run
             testedListener.Start();

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace RTSP.Messages
+namespace Rtsp.Messages
 {
     /// <summary>
     /// Message wich represent data. ($ limited message)
     /// </summary>
-    public class RTSPData : RTSPChunk
+    public class RtspData : RtspChunk
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
@@ -39,7 +39,7 @@ namespace RTSP.Messages
         /// <returns>a clone of this instance</returns>
         public override object Clone()
         {
-            RTSPData result = new RTSPData();
+            RtspData result = new RtspData();
             result.Channel = this.Channel;
             if (this.Data != null)
                 result.Data = this.Data.Clone() as byte[];
