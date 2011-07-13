@@ -1,0 +1,9 @@
+﻿<NUnitProject>
+  <Settings activeconfig="Debug" />
+  <Config name="Debug" binpathtype="Auto" runtimeFramework="any">
+    <assembly path="bin\Debug\RTSP.Tests.dll" />
+  </Config>
+  <Config name="Release" binpathtype="Auto">
+    <assembly path="bin\Release\RTSP.Tests.dll" />
+  </Config>
+</NUnitProject>
