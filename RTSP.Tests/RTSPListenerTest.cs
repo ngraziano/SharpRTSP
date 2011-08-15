@@ -227,6 +227,35 @@ namespace Rtsp.Tests
             Assert.AreEqual(0, _receivedData.Count);
         }
 
+        [Test]
+        public void ReceiveMessageInterrupt()
+        {
+            string message = string.Empty;
+            message += "PLAY rtsp://audio.example.com/audio RTSP/1.";
+            MemoryStream stream = new MemoryStream(ASCIIEncoding.UTF8.GetBytes(message));
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+            // Run
+            testedListener.Start();
+
+            System.Threading.Thread.Sleep(100);
+
+            // No exception should be generate.
+            stream.Close();
+            
+            // Check the transport was closed.
+            _mockTransport.Received().Close();
+            //Check the message recevied
+            Assert.AreEqual(0, _receivedMessage.Count);
+            Assert.AreEqual(0, _receivedData.Count);
+        }
+
+
 
     }
 }
