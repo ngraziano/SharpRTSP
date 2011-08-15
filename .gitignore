@@ -7,6 +7,8 @@ packages/
 *.suo
 *.Cache
 *.g.cs
+*.VisualState.xml
+TestResult.xml
 RTSP.Tests/cover.xml
 RTSP.Tests/TestResult.xml
 RTSP.Tests/Coverage/
