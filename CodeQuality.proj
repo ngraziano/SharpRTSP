@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Tests" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\ExtensionPack\4.0\MSBuild.ExtensionPack.tasks"/>
+
+  <PropertyGroup>
+    <NUnitPath>$(ProgramFiles)\NUnit 2.5.9\bin\net-2.0</NUnitPath>
+  </PropertyGroup>
+
+  <Target Name="Tests">
+    <MSBuild.ExtensionPack.CodeQuality.NUnit 
+      Assemblies=".\RTSP.Tests\RTSPTests.nunit"
+      ToolPath="$(NUnitPath)">
+    
+    </MSBuild.ExtensionPack.CodeQuality.NUnit>
+
+  </Target>
+</Project>
