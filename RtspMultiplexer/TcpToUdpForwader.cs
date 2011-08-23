@@ -47,7 +47,7 @@ namespace ProxyRTSP
         public override void Start()
         {
             _logger.Debug("Forward from TCP channel:{0} => {1}:{2}", SourceInterleavedVideo, ForwardHostVideo, ForwardPortVideo);
-            _forwarVUdpPort.Connect(ForwardHostVideo, ForwardPortVideo);
+            ForwardVUdpPort.Connect(ForwardHostVideo, ForwardPortVideo);
 
             ForwardCommand.DataReceived += this.HandleDataReceive;
 
@@ -66,13 +66,13 @@ namespace ProxyRTSP
             if (this.ToMulticast && ForwardInterleavedCommand >= 0)
             {
                 IPAddress multicastAdress = IPAddress.Parse(this.ForwardHostVideo);
-                _listenCUdpPort.DropMulticastGroup(multicastAdress);
+                ListenCUdpPort.DropMulticastGroup(multicastAdress);
             }
 
             ForwardCommand.DataReceived -= this.HandleDataReceive;
 
-            _listenCUdpPort.Close();
-            _forwarVUdpPort.Close();
+            ListenCUdpPort.Close();
+            ForwardVUdpPort.Close();
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace ProxyRTSP
             if (this.ToMulticast)
             {
                 IPAddress multicastAdress = IPAddress.Parse(this.ForwardHostVideo);
-                _listenCUdpPort.JoinMulticastGroup(multicastAdress);
+                ListenCUdpPort.JoinMulticastGroup(multicastAdress);
                 _logger.Debug("Forward Command from multicast  {0}:{1} => TCP interleaved {2}", this.ForwardHostVideo, ListenCommandPort, ForwardInterleavedCommand);
 
             }
@@ -98,7 +98,7 @@ namespace ProxyRTSP
             {
                 do
                 {
-                    frame = _listenCUdpPort.Receive(ref udpEndPoint);
+                    frame = ListenCUdpPort.Receive(ref udpEndPoint);
                     ForwardCommand.BeginSendData(ForwardInterleavedCommand, frame, new AsyncCallback(EndSendCommand),frame);
                 }
                 while (true);
@@ -151,7 +151,7 @@ namespace ProxyRTSP
                     byte[] frame = data.Data;
                     if (data.Channel == this.SourceInterleavedVideo)
                     {
-                        _forwarVUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendVideo), frame);
+                        ForwardVUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendVideo), frame);
                     }
                 }
             }
@@ -170,7 +170,7 @@ namespace ProxyRTSP
         {
             try
             {
-                int nbOfByteSend = _forwarVUdpPort.EndSend(result);
+                int nbOfByteSend = ForwardVUdpPort.EndSend(result);
                 byte[] frame = (byte[])result.AsyncState;
                 VideoFrameSended(nbOfByteSend, frame);
             }

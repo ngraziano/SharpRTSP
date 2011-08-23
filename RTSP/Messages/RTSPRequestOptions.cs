@@ -13,9 +13,9 @@ namespace Rtsp.Messages
         /// <returns>
         /// an Rtsp response corresponding to request.
         /// </returns>
-        public override RtspResponse GetResponse()
+        public override RtspResponse CreateResponse()
         {
-            RtspResponse response = base.GetResponse();
+            RtspResponse response = base.CreateResponse();
             // Add genric suported operations.
             response.Headers.Add(RtspHeaderNames.Public, "OPTIONS,DESCRIBE,ANNOUNCE,SETUP,PLAY,PAUSE,TEARDOWN,GET_PARAMETER,SET_PARAMETER,REDIRECT");
 

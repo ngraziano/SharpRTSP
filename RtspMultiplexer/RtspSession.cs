@@ -9,12 +9,12 @@ using System.Runtime.Serialization;
 
 namespace ProxyRTSP
 {
-    public class RTSPSession
+    public class RtspSession
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
 
-        public RTSPSession()
+        public RtspSession()
         {
             State = SessionState.Init;
         }

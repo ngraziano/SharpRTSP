@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Net.NetworkInformation;
@@ -95,12 +96,12 @@ namespace ProxyRTSP
             {
                 IPAddress multicastAdress;
                 if (IPAddress.TryParse(this.ForwardHostVideo, out multicastAdress))
-                    _listenCUdpPort.DropMulticastGroup(multicastAdress);
+                    ListenCUdpPort.DropMulticastGroup(multicastAdress);
             }
 
             _listenVUdpPort.Close();
-            _listenCUdpPort.Close();
-            _forwarVUdpPort.Close();
+            ListenCUdpPort.Close();
+            ForwardVUdpPort.Close();
             _forwarCUdpPort.Close();
         }
 
@@ -155,7 +156,7 @@ namespace ProxyRTSP
             // TODO think if we must set ip address to something else than Any
             IPEndPoint orginalIPEndPoint = new IPEndPoint(IPAddress.Any, SourcePortVideo);
             _logger.Debug("Forward from {0} => {1}:{2}", ListenVideoPort, ForwardHostVideo, ForwardPortVideo);
-            _forwarVUdpPort.Connect(ForwardHostVideo, ForwardPortVideo);
+            ForwardVUdpPort.Connect(ForwardHostVideo, ForwardPortVideo);
             byte[] frame;
             try
             {
@@ -163,7 +164,7 @@ namespace ProxyRTSP
                 {
                     IPEndPoint ipEndPoint = orginalIPEndPoint;
                     frame = _listenVUdpPort.Receive(ref ipEndPoint);
-                    _forwarVUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendVideo), frame);
+                    ForwardVUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendVideo), frame);
                 }
                 while (true);
             }
@@ -186,7 +187,7 @@ namespace ProxyRTSP
         {
             try
             {
-                int nbOfByteSend = _forwarVUdpPort.EndSend(result);
+                int nbOfByteSend = ForwardVUdpPort.EndSend(result);
                 byte[] frame = (byte[])result.AsyncState;
                 VideoFrameSended(nbOfByteSend, frame);
             }
@@ -209,13 +210,13 @@ namespace ProxyRTSP
             if (this.ToMulticast)
             {
                 IPAddress multicastAdress = IPAddress.Parse(this.ForwardHostVideo);
-                _listenCUdpPort.JoinMulticastGroup(multicastAdress);
+                ListenCUdpPort.JoinMulticastGroup(multicastAdress);
                 _logger.Debug("Forward Command from multicast  {0}:{1} => {2}:{3}", this.ForwardHostVideo, ListenCommandPort, ForwardHostCommand, ForwardPortCommand);
 
             }
             else
             {
-                _logger.Debug("Forward Command from {0} => {1}:{2}", ListenCommandPort, ForwardHostCommand, ForwardPortCommand);
+                _logger.Debug(CultureInfo.InvariantCulture,"Forward Command from {0} => {1}:{2}", ListenCommandPort, ForwardHostCommand, ForwardPortCommand);
             }
 
             byte[] frame;
@@ -224,7 +225,7 @@ namespace ProxyRTSP
                 do
                 {
                     IPEndPoint udpEndPoint = originalUdpEndPoint;
-                    frame = _listenCUdpPort.Receive(ref udpEndPoint);
+                    frame = ListenCUdpPort.Receive(ref udpEndPoint);
                     _forwarCUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendCommand), frame);
                 }
                 while (true);

@@ -31,7 +31,7 @@ namespace ProxyRTSP
         /// <summary>
         /// List of the active sessions
         /// </summary>
-        private Dictionary<string, RTSPSession> _activesSession = new Dictionary<string, RTSPSession>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, RtspSession> _activesSession = new Dictionary<string, RtspSession>(StringComparer.OrdinalIgnoreCase);
 
 
         Thread _jobQueue;
@@ -192,7 +192,7 @@ namespace ProxyRTSP
                     if (message is RtspRequest && message.SourcePort != null)
                     {
                         RtspRequest request = message as RtspRequest;
-                        RtspResponse theDirectResponse = request.GetResponse();
+                        RtspResponse theDirectResponse = request.CreateResponse();
                         _logger.Warn("Error during forward : {0}. So sending back a direct error response", message.Command);
                         theDirectResponse.ReturnCode = 500;
                         request.SourcePort.SendMessage(theDirectResponse);
@@ -258,7 +258,7 @@ namespace ProxyRTSP
             if (request.RtspUri == null || request.RtspUri.AbsolutePath.Split(new char[] { '/' }, 3).Length < 3)
             {
                 destination = aMessage.SourcePort;
-                RtspResponse theDirectResponse = request.GetResponse();
+                RtspResponse theDirectResponse = request.CreateResponse();
                 if (request.RequestTyped == RtspRequest.RequestType.OPTIONS)
                 {
                     // We know what to do...
@@ -291,7 +291,7 @@ namespace ProxyRTSP
                     //Update session state and handle special message
                     if (request.Session != null && request.RtspUri != null)
                     {
-                        string sessionKey = RTSPSession.GetSessionName(request.RtspUri, request.Session);
+                        string sessionKey = RtspSession.GetSessionName(request.RtspUri, request.Session);
                         if (_activesSession.ContainsKey(sessionKey))
                         {
 
@@ -311,7 +311,7 @@ namespace ProxyRTSP
                                         // system still need the server to send data do not send him the message.
                                         // reponds to client directly.
                                         destination = request.SourcePort;
-                                        aMessage = request.GetResponse();
+                                        aMessage = request.CreateResponse();
                                     }
                                     break;
 
@@ -328,7 +328,7 @@ namespace ProxyRTSP
                 {
                     _logger.Error("Error during handle of request", error);
                     destination = request.SourcePort;
-                    RtspResponse theDirectResponse = request.GetResponse();
+                    RtspResponse theDirectResponse = request.CreateResponse();
                     theDirectResponse.ReturnCode = 500;
                     aMessage = theDirectResponse;
                 }
@@ -387,12 +387,12 @@ namespace ProxyRTSP
             // look if we already have a multicast streaming playing for this URI.
             foreach (var session in _activesSession.Values)
             {
-                if (session.State == RTSPSession.SessionState.Playing && session.ListOfForwader.ContainsKey(requestSetup.RtspUri))
+                if (session.State == RtspSession.SessionState.Playing && session.ListOfForwader.ContainsKey(requestSetup.RtspUri))
                 {
                     Forwarder existingForwarder = session.ListOfForwader[requestSetup.RtspUri];
                     if (existingForwarder != null && existingForwarder.ToMulticast)
                     {
-                        RtspResponse returnValue = requestSetup.GetResponse();
+                        RtspResponse returnValue = requestSetup.CreateResponse();
                         returnValue.Headers[RtspHeaderNames.Transport] = new RtspTransport()
                         {
                             IsMulticast = true,
@@ -416,7 +416,7 @@ namespace ProxyRTSP
             if (selectedTransport == null)
             {
                 _logger.Info("No transport asked are supported, sorry");
-                RtspResponse returnValue = requestSetup.GetResponse();
+                RtspResponse returnValue = requestSetup.CreateResponse();
                 // Unsupported transport;
                 returnValue.ReturnCode = 461;
                 destination = requestSetup.SourcePort;
@@ -548,34 +548,34 @@ namespace ProxyRTSP
                 return;
 
             //Update session state and handle special message
-            string sessionKey = RTSPSession.GetSessionName(aMessage.OriginalRequest.RtspUri, aMessage.Session);
+            string sessionKey = RtspSession.GetSessionName(aMessage.OriginalRequest.RtspUri, aMessage.Session);
             if (_activesSession.ContainsKey(sessionKey))
             {
                 if (aMessage.ReturnCode >= 300 && aMessage.ReturnCode < 400)
-                    _activesSession[sessionKey].State = RTSPSession.SessionState.Init;
+                    _activesSession[sessionKey].State = RtspSession.SessionState.Init;
                 else if (aMessage.ReturnCode < 300)
                 {
                     switch (aMessage.OriginalRequest.RequestTyped)
                     {
                         case RtspRequest.RequestType.SETUP:
-                            if (_activesSession[sessionKey].State == RTSPSession.SessionState.Init)
-                                _activesSession[sessionKey].State = RTSPSession.SessionState.Ready;
+                            if (_activesSession[sessionKey].State == RtspSession.SessionState.Init)
+                                _activesSession[sessionKey].State = RtspSession.SessionState.Ready;
                             break;
                         case RtspRequest.RequestType.PLAY:
-                            if (_activesSession[sessionKey].State == RTSPSession.SessionState.Ready)
-                                _activesSession[sessionKey].State = RTSPSession.SessionState.Playing;
+                            if (_activesSession[sessionKey].State == RtspSession.SessionState.Ready)
+                                _activesSession[sessionKey].State = RtspSession.SessionState.Playing;
                             break;
                         case RtspRequest.RequestType.RECORD:
-                            if (_activesSession[sessionKey].State == RTSPSession.SessionState.Ready)
-                                _activesSession[sessionKey].State = RTSPSession.SessionState.Recording;
+                            if (_activesSession[sessionKey].State == RtspSession.SessionState.Ready)
+                                _activesSession[sessionKey].State = RtspSession.SessionState.Recording;
                             break;
                         case RtspRequest.RequestType.PAUSE:
-                            if (_activesSession[sessionKey].State == RTSPSession.SessionState.Playing ||
-                                _activesSession[sessionKey].State == RTSPSession.SessionState.Recording)
-                                _activesSession[sessionKey].State = RTSPSession.SessionState.Ready;
+                            if (_activesSession[sessionKey].State == RtspSession.SessionState.Playing ||
+                                _activesSession[sessionKey].State == RtspSession.SessionState.Recording)
+                                _activesSession[sessionKey].State = RtspSession.SessionState.Ready;
                             break;
                         case RtspRequest.RequestType.TEARDOWN:
-                            _activesSession[sessionKey].State = RTSPSession.SessionState.Init;
+                            _activesSession[sessionKey].State = RtspSession.SessionState.Init;
 
                             break;
                     }
@@ -596,12 +596,12 @@ namespace ProxyRTSP
             RtspRequest original = aMessage.OriginalRequest;
             string setupKey = original.SourcePort.RemoteAdress + "SEQ" + aMessage.CSeq.ToString();
 
-            if (aMessage.IsOK)
+            if (aMessage.IsOk)
             {
                 Forwarder forwarder = ConfigureTransportAndForwarder(aMessage, _setupForwarder[setupKey]);
 
-                RTSPSession newSession;
-                string sessionKey = RTSPSession.GetSessionName(original.RtspUri, aMessage.Session);
+                RtspSession newSession;
+                string sessionKey = RtspSession.GetSessionName(original.RtspUri, aMessage.Session);
                 if (_activesSession.ContainsKey(sessionKey))
                 {
                     newSession = _activesSession[sessionKey];
@@ -610,7 +610,7 @@ namespace ProxyRTSP
                 else
                 {
                     _logger.Info("Create a new session with the ID {0}", sessionKey);
-                    newSession = new RTSPSession();
+                    newSession = new RtspSession();
                     newSession.Name = aMessage.Session;
                     newSession.Destination = original.RtspUri.Authority;
                     _activesSession.Add(sessionKey, newSession);

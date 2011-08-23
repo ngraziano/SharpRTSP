@@ -222,65 +222,64 @@ mode                =    <"> *Method <"> | Method
             {
                 string[] subPart = part.Split('=');
 
-                switch (subPart[0].ToLowerInvariant())
+                switch (subPart[0].ToUpperInvariant())
                 {
-                    case "unicast":
+                    case "UNICAST":
                         returnValue.IsMulticast = false;
                         break;
-                    case "multicast":
+                    case "MULTICAST":
                         returnValue.IsMulticast = true;
                         break;
-                    case "destination":
+                    case "DESTINATION":
                         if (subPart.Length == 2)
                             returnValue.Destination = subPart[1];
                         break;
-                    case "source":
+                    case "SOURCE":
                         if (subPart.Length == 2)
                             returnValue.Source = subPart[1];
                         break;
-
-                    case "interleaved":
+                    case "INTERLEAVED":
                         if (subPart.Length < 2)
                             throw new ArgumentException("interleaved value invalid", "aTransportString");
 
                         returnValue.Interleaved = ParseIntValues(subPart[1]);
                         break;
-                    case "append":
+                    case "APPEND":
                         returnValue.IsAppend = true;
                         break;
-                    case "ttl":
+                    case "TTL":
                         int ttl = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out ttl))
                             throw new ArgumentException("TTL value invalid", "aTransportString");
                         returnValue.TTL = ttl;
                         break;
-                    case "layers":
+                    case "LAYERS":
                         int layers = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out layers))
                             throw new ArgumentException("Layers value invalid", "aTransportString");
                         returnValue.TTL = layers;
                         break;
-                    case "port":
+                    case "PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("Port value invalid", "aTransportString");
                         returnValue.Port = ParseIntValues(subPart[1]);
                         break;
-                    case "client_port":
+                    case "CLIENT_PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("client_port value invalid", "aTransportString");
                         returnValue.ClientPort = ParseIntValues(subPart[1]);
                         break;
-                    case "server_port":
+                    case "SERVER_PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("server_port value invalid", "aTransportString");
                         returnValue.ServerPort = ParseIntValues(subPart[1]);
                         break;
-                    case "ssrc":
+                    case "SSRC":
                         if (subPart.Length < 2)
                             throw new ArgumentException("ssrc value invalid", "aTransportString");
                         returnValue.SSrc = subPart[1];
                         break;
-                    case "mode":
+                    case "MODE":
                         if (subPart.Length < 2)
                             throw new ArgumentException("mode value invalid", "aTransportString");
                         returnValue.SSrc = subPart[1];
@@ -306,7 +305,7 @@ mode                =    <"> *Method <"> | Method
             if (ports.Length < 2 || ports[1] == 0)
                 return ports[0].ToString(CultureInfo.InvariantCulture);
             else
-                return ports[0].ToString(CultureInfo.InvariantCulture) + '-' + ports[1].ToString(CultureInfo.InvariantCulture);
+                return ports[0].ToString(CultureInfo.InvariantCulture) + "-" + ports[1].ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>

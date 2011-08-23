@@ -1,14 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Text.RegularExpressions;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-
-namespace Rtsp.Messages
+﻿namespace Rtsp.Messages
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
+    using System.Globalization;
+    using System.IO;
+    using System.Text;
+    using System.Text.RegularExpressions;
+
     public class RtspMessage : RtspChunk
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
@@ -46,7 +45,7 @@ namespace Rtsp.Messages
             }
             else
             {
-                _logger.Warn("Got a strange message {0}", aRequestLine);
+                _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                 returnValue = new RtspMessage();
             }
             returnValue.Command = aRequestLine;
@@ -131,27 +130,24 @@ namespace Rtsp.Messages
 
         /// <summary>
         /// Gets or sets the Ccommande Seqquence number.
-        /// <remarks>If the header is not define it return 0</remarks>
+        /// <remarks>If the header is not define or not a valid number it return 0</remarks>
         /// </summary>
-        /// <value>The seqquence number.</value>
+        /// <value>The sequence number.</value>
         public int CSeq
         {
             get
             {
                 string returnStringValue;
-                int returnValue = 0;
-                if (_headers.TryGetValue("CSeq", out returnStringValue))
-                {
-                    int.TryParse(returnStringValue, out returnValue);
-                }
-                else
+                int returnValue;
+                if (!(_headers.TryGetValue("CSeq", out returnStringValue) &&
+                    int.TryParse(returnStringValue, out returnValue)))
                     returnValue = 0;
 
                 return returnValue;
             }
             set
             {
-                _headers["CSeq"] = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                _headers["CSeq"] = value.ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -191,7 +187,7 @@ namespace Rtsp.Messages
                     {
                         string[] subParts = parts[1].Split('=');
                         if (subParts.Length > 1 &&
-                            subParts[0].ToLowerInvariant() == "timeout")
+                            subParts[0].ToUpperInvariant() == "TIMEOUT")
                             if (!int.TryParse(subParts[1], out returnValue))
                                 returnValue = 60;
                     }
@@ -206,10 +202,11 @@ namespace Rtsp.Messages
         /// </summary>
         public void InitialiseDataFromContentLength()
         {
-            int dataLength = 0;
-            if (_headers.ContainsKey("Content-Length"))
+            int dataLength;
+            if (!(_headers.ContainsKey("Content-Length")
+                && int.TryParse(_headers["Content-Length"], out dataLength)))
             {
-                int.TryParse(_headers["Content-Length"], out dataLength);
+                dataLength = 0;
             }
             this.Data = new byte[dataLength];
         }

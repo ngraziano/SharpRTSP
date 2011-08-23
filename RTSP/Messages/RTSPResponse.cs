@@ -141,7 +141,7 @@ namespace Rtsp.Messages
         /// Gets a value indicating whether this instance correspond to an OK response.
         /// </summary>
         /// <value><c>true</c> if this instance is OK; otherwise, <c>false</c>.</value>
-        public bool IsOK
+        public bool IsOk
         {
             get
             {

@@ -139,7 +139,7 @@ namespace Rtsp.Messages
             }
         }
 
-        Uri _RtspUri = null;
+        Uri _RtspUri;
         /// <summary>
         /// Gets or sets the Rtsp asked URI.
         /// </summary>
@@ -170,7 +170,7 @@ namespace Rtsp.Messages
         /// Gets the assiociate OK response with the request.
         /// </summary>
         /// <returns>an Rtsp response correcponding to request.</returns>
-        public virtual RtspResponse GetResponse()
+        public virtual RtspResponse CreateResponse()
         {
             RtspResponse returnValue = new RtspResponse();
             returnValue.ReturnCode = 200;

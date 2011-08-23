@@ -43,11 +43,13 @@ namespace ProxyRTSP
         /// <summary>
         /// Forward UDP port (send data from this port)
         /// </summary>
-        protected UdpClient _forwarVUdpPort;
+        protected UdpClient ForwardVUdpPort
+            { get; private set; }
         /// <summary>
         /// Listen UDP port (receive data on this port)
         /// </summary>
-        protected UdpClient _listenCUdpPort;
+        protected UdpClient ListenCUdpPort
+            { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Forwarder"/> class.
@@ -62,25 +64,25 @@ namespace ProxyRTSP
                 try
                 {
                     int testPort = GetNextPort();
-                    _forwarVUdpPort = new UdpClient(testPort);
-                    _listenCUdpPort = new UdpClient(testPort + 1);
+                    ForwardVUdpPort = new UdpClient(testPort);
+                    ListenCUdpPort = new UdpClient(testPort + 1);
                     ok = true;
                 }
                 catch (SocketException)
                 {
                     _logger.Debug("Fail to allocate port, try again");
 
-                    if (_forwarVUdpPort != null)
-                        _forwarVUdpPort.Close();
+                    if (ForwardVUdpPort != null)
+                        ForwardVUdpPort.Close();
 
-                    if (_listenCUdpPort != null)
-                        _listenCUdpPort.Close();
+                    if (ListenCUdpPort != null)
+                        ListenCUdpPort.Close();
                 }
             }
             // Not sure it is usefull
-            _forwarVUdpPort.DontFragment = false;
-            _forwarVUdpPort.Client.SendBufferSize = 100 * 1024;
-            _listenCUdpPort.Client.ReceiveBufferSize = 8 * 1024;
+            ForwardVUdpPort.DontFragment = false;
+            ForwardVUdpPort.Client.SendBufferSize = 100 * 1024;
+            ListenCUdpPort.Client.ReceiveBufferSize = 8 * 1024;
         }
 
         /// <summary>
@@ -112,7 +114,7 @@ namespace ProxyRTSP
         {
             get
             {
-                return ((IPEndPoint)_forwarVUdpPort.Client.LocalEndPoint).Port;
+                return ((IPEndPoint)ForwardVUdpPort.Client.LocalEndPoint).Port;
             }
         }
 
@@ -124,7 +126,7 @@ namespace ProxyRTSP
         {
             get
             {
-                return ((IPEndPoint)_listenCUdpPort.Client.LocalEndPoint).Port;
+                return ((IPEndPoint)ListenCUdpPort.Client.LocalEndPoint).Port;
             }
         }
 
@@ -174,7 +176,7 @@ namespace ProxyRTSP
         /// <param name="frame">The video frame.</param>
         protected void VideoFrameSended(int nbOfByteSend, byte[] frame)
         {
-            lock (_forwarVUdpPort)
+            lock (ForwardVUdpPort)
             {
                 if (_logger.IsDebugEnabled)
                 {
@@ -246,7 +248,7 @@ namespace ProxyRTSP
             // this job is only usefull if it log something
             if (_logger.IsDebugEnabled)
             {
-                lock (_listenCUdpPort)
+                lock (ListenCUdpPort)
                 {
                     // decode the RTCP sended command
                     int packetIndex = 0;
