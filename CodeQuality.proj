@@ -3,7 +3,8 @@
   <Import Project="$(MSBuildExtensionsPath)\ExtensionPack\4.0\MSBuild.ExtensionPack.tasks"/>
 
   <PropertyGroup>
-    <NUnitPath>$(ProgramFiles)\NUnit 2.5.9\bin\net-2.0</NUnitPath>
+    <!-- Put a default value to NUnit Path. -->
+    <NUnitPath Condition="'$(NUnitPath)'==''" >$(ProgramFiles)\NUnit 2.5.9\bin\net-2.0</NUnitPath>
   </PropertyGroup>
 
   <Target Name="Tests">
@@ -12,6 +13,5 @@
       ToolPath="$(NUnitPath)">
     
     </MSBuild.ExtensionPack.CodeQuality.NUnit>
-
   </Target>
 </Project>
