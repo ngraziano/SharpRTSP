@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Net;
-using System.Threading;
-using System.Diagnostics.Contracts;
-
-namespace ProxyRTSP
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Diagnostics.Contracts;
+    using System.Globalization;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Threading;
+    
     public class UDPForwarder : Forwarder
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();

@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using ProxyRTSP;
-
-
-namespace RtspMultiplexer
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Text;
+
     class Program
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();

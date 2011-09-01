@@ -1,13 +1,12 @@
-﻿using System;
-using System.Diagnostics.Contracts;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using ProxyRTSP;
-using Rtsp;
-
-namespace RtspMultiplexer
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Diagnostics.Contracts;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Threading;
+    using Rtsp;
+
     public class RtspServer
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();

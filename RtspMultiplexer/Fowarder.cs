@@ -1,10 +1,10 @@
-﻿using System;
-using System.Net.Sockets;
-using System.Threading;
-using System.Net;
-
-namespace ProxyRTSP
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Net.Sockets;
+    using System.Threading;
+    using System.Net;
+
     /// <summary>
     /// This class is the base class for video and control packet fowarder
     /// </summary>
@@ -143,7 +143,7 @@ namespace ProxyRTSP
         /// <summary>
         /// Number of byte sent
         /// </summary>
-        int _byteVideoCounter = 0;
+        int _byteVideoCounter;
         /// <summary>
         /// Is it the fis time we forward a packet
         /// </summary>

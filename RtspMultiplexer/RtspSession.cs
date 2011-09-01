@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using Rtsp.Messages;
-using System.Diagnostics.Contracts;
-using System.Runtime.Serialization;
-
-namespace ProxyRTSP
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
+    using System.Threading;
+    using Rtsp.Messages;
+
     public class RtspSession
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
@@ -28,7 +25,7 @@ namespace ProxyRTSP
         /// <summary>
         /// Server State
         /// </summary>
-        public enum SessionState
+        internal enum SessionState
         {
             /// <summary>
             /// The initial state, no valid SETUP has been received yet.
@@ -50,7 +47,7 @@ namespace ProxyRTSP
             Recording,
         }
 
-        public SessionState State
+        internal SessionState State
         {
             get;
             set;

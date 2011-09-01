@@ -24,7 +24,7 @@ namespace Rtsp
         private Thread _ListenTread;
         Stream _stream;
 
-        private int _sequenceNumber = 0;
+        private int _sequenceNumber;
 
         private Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
 

@@ -80,7 +80,7 @@ namespace Rtsp.Messages
             Command = "RTSP/1.0 200 OK";
         }
 
-        private int _returnCode = 0;
+        private int _returnCode;
         /// <summary>
         /// Gets or sets the return code of the response.
         /// </summary>

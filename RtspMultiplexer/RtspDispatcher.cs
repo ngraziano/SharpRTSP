@@ -1,18 +1,17 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Net;
-using System.Net.Sockets;
-using System.IO;
-using Rtsp.Messages;
-using Rtsp;
-using System.Diagnostics.Contracts;
-
-namespace ProxyRTSP
+﻿namespace RtspMulticaster
 {
+    using System;
+    using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
+    using System.Globalization;
+    using System.IO;
+    using System.Net;
+    using System.Text;
+    using System.Threading;
+    using Rtsp;
+    using Rtsp.Messages;
+
     /// <summary>
     /// This class handle the rewrite and dispatchin of RTSP messages
     /// </summary>
@@ -334,7 +333,7 @@ namespace ProxyRTSP
             return destination;
         }
 
-        private Uri RewriteUri(Uri originalUri)
+        private static Uri RewriteUri(Uri originalUri)
         {
             Contract.Requires(originalUri != null);
 
@@ -404,7 +403,7 @@ namespace ProxyRTSP
             }
 
 
-            string setupKey = requestSetup.SourcePort.RemoteAdress + "SEQ" + requestSetup.CSeq.ToString();
+            string setupKey = requestSetup.SourcePort.RemoteAdress + "SEQ" + requestSetup.CSeq.ToString(CultureInfo.InvariantCulture);
 
             RtspTransport selectedTransport = SelectTransport(requestSetup);
 
@@ -590,7 +589,7 @@ namespace ProxyRTSP
         private void HandleResponseToSetup(RtspResponse aMessage)
         {
             RtspRequest original = aMessage.OriginalRequest;
-            string setupKey = original.SourcePort.RemoteAdress + "SEQ" + aMessage.CSeq.ToString();
+            string setupKey = original.SourcePort.RemoteAdress + "SEQ" + aMessage.CSeq.ToString(CultureInfo.InvariantCulture);
 
             if (aMessage.IsOk)
             {
@@ -625,7 +624,7 @@ namespace ProxyRTSP
         /// <param name="aMessage">A message.</param>
         /// <param name="forwarder">The preset forwarder.</param>
         /// <returns>The configured forwarder.</returns>
-        private static Forwarder ConfigureTransportAndForwarder(RtspResponse aMessage, UDPForwarder forwarder)
+        private static Forwarder ConfigureTransportAndForwarder(RtspMessage aMessage, UDPForwarder forwarder)
         {
             RtspTransport transport = RtspTransport.Parse(aMessage.Headers[RtspHeaderNames.Transport]);
 
@@ -702,7 +701,7 @@ namespace ProxyRTSP
         private static string GetMulticastAddress()
         {
             _multicastAddress++;
-            return String.Format("{0}.{1}.{2}.{3}",
+            return String.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2}.{3}",
                 (_multicastAddress >> 24) & 0xFF,
                 (_multicastAddress >> 16) & 0xFF,
                 (_multicastAddress >> 8) & 0xFF,
@@ -749,7 +748,7 @@ namespace ProxyRTSP
                     {
                         string[] lineElement = line.Split(new char[] { ':' }, 2);
                         UriBuilder temp = new UriBuilder(lineElement[1]);
-                        temp.Path = temp.Host + ":" + temp.Port.ToString() + temp.Path;
+                        temp.Path = temp.Host + ":" + temp.Port.ToString(CultureInfo.InvariantCulture) + temp.Path;
 
                         string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
                         string hostName = Dns.GetHostName();
@@ -765,7 +764,7 @@ namespace ProxyRTSP
                     }
                     if (line.Contains("c=IN IP4 "))
                     {
-                        line = string.Format("c=IN IP4 {0}", GetMulticastAddress());
+                        line = string.Format(CultureInfo.InvariantCulture, "c=IN IP4 {0}", GetMulticastAddress());
                     }
                     newsdp.Append(line);
                     newsdp.Append("\r\n");
