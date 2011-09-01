@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,7 +25,7 @@ namespace ProxyRTSP
         static RTSPDispatcher _instance = new RTSPDispatcher();
 
         private Dictionary<string, RtspListener> _serverListener = new Dictionary<string, RtspListener>(StringComparer.OrdinalIgnoreCase);
-        private Queue<RtspMessage> _queue = new Queue<RtspMessage>();
+        private ConcurrentQueue<RtspMessage> _queue = new ConcurrentQueue<RtspMessage>();
 
         private Dictionary<string, UDPForwarder> _setupForwarder = new Dictionary<string, UDPForwarder>(StringComparer.OrdinalIgnoreCase);
 
@@ -58,11 +59,9 @@ namespace ProxyRTSP
         public void Enqueue(RtspMessage message)
         {
             _logger.Debug("One message enqueued");
-            lock (_queue)
-            {
-                _queue.Enqueue(message);
-                _newMessage.Set();
-            }
+            _queue.Enqueue(message);
+            _newMessage.Set();
+            
         }
 
         /// <summary>
@@ -106,12 +105,9 @@ namespace ProxyRTSP
             {
                 _newMessage.WaitOne();
                 RtspMessage message;
-                while (_queue.Count > 0)
+
+                while (_queue.TryDequeue(out message))
                 {
-                    lock (_queue)
-                    {
-                        message = _queue.Dequeue();
-                    }
                     //try
                     //{
                     HandleOneMessage(message);
