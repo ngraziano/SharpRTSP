@@ -80,10 +80,13 @@
     <Compile Include="RTSPMessageEventArgs.cs" />
     <Compile Include="RTSPTCPTransport.cs" />
     <Compile Include="RTSPUtils.cs" />
+    <Compile Include="Sdp\Origin.cs" />
+    <Compile Include="Sdp\SdpFile.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>"$(SolutionDir)Tools\nuget" install "$(ProjectDir)packages.config" -o "$(SolutionDir)packages"</PreBuildEvent>
