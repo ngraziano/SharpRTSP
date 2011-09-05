@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Rtsp.Sdp
 {
-    public class Connection
+    public class Bandwidth
     {
         private string p;
 
-        public Connection(string p)
+        public Bandwidth(string p)
         {
             // TODO: Complete member initialization
             this.p = p;

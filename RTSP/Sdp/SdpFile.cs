@@ -8,15 +8,15 @@ namespace Rtsp.Sdp
 {
     public class SdpFile
     {
-        private static KeyValuePair<string,string> GetKeyValue(TextReader sdpStream)
+        private static KeyValuePair<string, string> GetKeyValue(TextReader sdpStream)
         {
             string line = sdpStream.ReadLine();
-            string[] parts = line.Split(new char[]{'='},2);
-            if(parts.Length != 2)
+            string[] parts = line.Split(new char[] { '=' }, 2);
+            if (parts.Length != 2)
                 throw new InvalidDataException();
-            if(parts[0].Length != 1)
+            if (parts[0].Length != 1)
                 throw new InvalidDataException();
-            if(parts[1].Length != 1)
+            if (parts[1].Length != 1)
                 throw new InvalidDataException();
 
 
@@ -37,7 +37,7 @@ namespace Rtsp.Sdp
             else
                 throw new InvalidDataException();
             value = GetKeyValue(sdpStream);
-            
+
             // Origin mandatory
             if (value.Key == "o")
             {
@@ -91,6 +91,36 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
+            // bandwidth optional
+            if (value.Key == "b")
+            {
+                returnValue.Bandwidth = new Bandwidth(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+            //Timing
+            while (value.Key == "t")
+            {
+                string timing = value.Value;
+                string repeat = string.Empty;
+                value = GetKeyValue(sdpStream);
+                if (value.Key == "r")
+                {
+                    repeat = value.Value;
+                    value = GetKeyValue(sdpStream);
+                }
+                returnValue.Timings.Add(new Timing(timing, repeat));
+            }
+
+            // timezone optional
+            if (value.Key == "z")
+            {
+                
+                returnValue.TimeZone = new SdpTimeZone(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+
             return returnValue;
         }
 
@@ -110,6 +140,20 @@ namespace Rtsp.Sdp
 
         public string Phone { get; set; }
 
-        internal Connection Connection { get; set; }
+        public Connection Connection { get; set; }
+
+        public Bandwidth Bandwidth { get; set; }
+
+        private readonly List<Timing> timingList = new List<Timing>();
+
+        public IList<Timing> Timings
+        {
+            get
+            {
+                return timingList;
+            }
+        }
+
+        public SdpTimeZone TimeZone { get; set; }
     }
 }
