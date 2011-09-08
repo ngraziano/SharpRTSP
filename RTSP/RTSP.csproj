@@ -80,8 +80,10 @@
     <Compile Include="RTSPMessageEventArgs.cs" />
     <Compile Include="RTSPTCPTransport.cs" />
     <Compile Include="RTSPUtils.cs" />
+    <Compile Include="Sdp\Attribut.cs" />
     <Compile Include="Sdp\Bandwidth.cs" />
     <Compile Include="Sdp\Connection.cs" />
+    <Compile Include="Sdp\EncriptionKey.cs" />
     <Compile Include="Sdp\Origin.cs" />
     <Compile Include="Sdp\SdpFile.cs" />
     <Compile Include="Sdp\SdpTimeZone.cs" />

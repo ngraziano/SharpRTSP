@@ -24,6 +24,12 @@ namespace Rtsp.Sdp
             return value;
         }
 
+        /// <summary>
+        /// Reads the specified SDP stream.
+        /// As define in RFC 4566
+        /// </summary>
+        /// <param name="sdpStream">The SDP stream.</param>
+        /// <returns></returns>
         public static SdpFile Read(TextReader sdpStream)
         {
             SdpFile returnValue = new SdpFile();
@@ -41,7 +47,7 @@ namespace Rtsp.Sdp
             // Origin mandatory
             if (value.Key == "o")
             {
-                returnValue.Origin = new Origin(value.Value);
+                returnValue.Origin = Origin.Parse(value.Value);
             }
             else
                 throw new InvalidDataException();
@@ -70,7 +76,7 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // Eamil optional
+            // Email optional
             if (value.Key == "e")
             {
                 returnValue.Email = value.Value;
@@ -84,7 +90,7 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // Phone optional
+            // Connexion optional
             if (value.Key == "c")
             {
                 returnValue.Connection = new Connection(value.Value);
@@ -120,6 +126,20 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
+            // enkription key optional
+            if (value.Key == "k")
+            {
+
+                returnValue.EncriptionKey = new EncriptionKey(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+            //Attribut optional multiple
+            while (value.Key == "a")
+            {
+                returnValue.Attributs.Add(new Attribut(value.Value));
+                value = GetKeyValue(sdpStream);
+            }
 
             return returnValue;
         }
@@ -155,5 +175,18 @@ namespace Rtsp.Sdp
         }
 
         public SdpTimeZone TimeZone { get; set; }
+
+        public EncriptionKey EncriptionKey { get; set; }
+
+        private readonly List<Attribut> attributs = new List<Attribut>();
+
+        public IList<Attribut> Attributs
+        {
+            get
+            {
+                return attributs;
+            }
+        }
+    
     }
 }
