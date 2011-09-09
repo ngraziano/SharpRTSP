@@ -127,7 +127,7 @@
         public void AddListener(RtspListener listener)
         {
             if (listener == null)
-                throw new ArgumentNullException("aListener");
+                throw new ArgumentNullException("listener");
             Contract.EndContractBlock();
 
             listener.MessageReceived += new EventHandler<RtspChunkEventArgs>(Listener_MessageReceived);

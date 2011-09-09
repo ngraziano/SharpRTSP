@@ -210,7 +210,7 @@
         public bool SendMessage(RtspMessage message)
         {
             if (message == null)
-                throw new ArgumentNullException("aMessage");
+                throw new ArgumentNullException("message");
             Contract.EndContractBlock();
 
             if (!_transport.Connected)
