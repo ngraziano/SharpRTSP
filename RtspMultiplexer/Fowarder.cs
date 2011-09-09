@@ -18,11 +18,11 @@
         /// <summary>
         /// First port number to use
         /// </summary>
-        const int FIRST_PORT = 6300;
+        private const int FIRST_PORT = 6300;
         /// <summary>
         /// Last port number to use
         /// </summary>
-        const int LAST_PORT = 65534;
+        private const int LAST_PORT = 65534;
         /// <summary>
         /// Last used port for a forwarder
         /// </summary>
@@ -143,15 +143,15 @@
         /// <summary>
         /// Number of byte sent
         /// </summary>
-        int _byteVideoCounter;
+        private int _byteVideoCounter;
         /// <summary>
-        /// Is it the fis time we forward a packet
+        /// Is it the first time we forward a packet
         /// </summary>
-        bool _firstTime = true;
+        private bool _firstTime = true;
         /// <summary>
         /// Table containing forwarded packet
         /// </summary>
-        bool[] _receiveRtspFrameIndex;
+        private bool[] _receiveRtspFrameIndex;
 
         /// <summary>
         /// Inits the received frame table.

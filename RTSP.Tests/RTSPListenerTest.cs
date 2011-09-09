@@ -35,7 +35,7 @@ namespace Rtsp.Tests
             _connected = true;
             _mockTransport.Connected.Returns(x => { return _connected; });
             _mockTransport.When(x => x.Close()).Do(x => { _connected = false; });
-            _mockTransport.When(x => x.ReConnect()).Do(x => { _connected = true; });
+            _mockTransport.When(x => x.Reconnect()).Do(x => { _connected = true; });
 
             _receivedData = new List<RtspChunk>();
             _receivedMessage = new List<RtspChunk>();

@@ -21,7 +21,7 @@
         { }
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
-        static RTSPDispatcher _instance = new RTSPDispatcher();
+        private static RTSPDispatcher _instance = new RTSPDispatcher();
 
         private Dictionary<string, RtspListener> _serverListener = new Dictionary<string, RtspListener>(StringComparer.OrdinalIgnoreCase);
         private ConcurrentQueue<RtspMessage> _queue = new ConcurrentQueue<RtspMessage>();
@@ -34,9 +34,9 @@
         private Dictionary<string, RtspSession> _activesSession = new Dictionary<string, RtspSession>(StringComparer.OrdinalIgnoreCase);
 
 
-        Thread _jobQueue;
-        ManualResetEvent _stopping = new ManualResetEvent(false);
-        AutoResetEvent _newMessage = new AutoResetEvent(false);
+        private Thread _jobQueue;
+        private ManualResetEvent _stopping = new ManualResetEvent(false);
+        private AutoResetEvent _newMessage = new AutoResetEvent(false);
 
 
         /// <summary>
@@ -123,15 +123,15 @@
         /// <summary>
         /// Add a listener.
         /// </summary>
-        /// <param name="aListener">A listener.</param>
-        public void AddListener(RtspListener aListener)
+        /// <param name="listener">A listener.</param>
+        public void AddListener(RtspListener listener)
         {
-            if (aListener == null)
+            if (listener == null)
                 throw new ArgumentNullException("aListener");
             Contract.EndContractBlock();
 
-            aListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(Listener_MessageReceived);
-            _serverListener.Add(aListener.RemoteAdress, aListener);
+            listener.MessageReceived += new EventHandler<RtspChunkEventArgs>(Listener_MessageReceived);
+            _serverListener.Add(listener.RemoteAdress, listener);
 
         }
 
@@ -140,7 +140,7 @@
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RTSP.RTSPChunkEventArgs"/> instance containing the event data.</param>
-        void Listener_MessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
+        private void Listener_MessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
             Contract.Requires(e.Message != null);
             this.Enqueue(e.Message as RtspMessage);
@@ -237,50 +237,37 @@
         /// <summary>
         /// Handles request message.
         /// </summary>
-        /// <param name="aMessage">A message, can be rewriten.</param>
+        /// <param name="message">A message, can be rewriten.</param>
         /// <returns>The destination</returns>
-        private RtspListener HandleRequest(ref RtspMessage aMessage)
+        private RtspListener HandleRequest(ref RtspMessage message)
         {
-            Contract.Requires(aMessage != null);
+            Contract.Requires(message != null);
+            Contract.Requires(message is RtspRequest);
             Contract.Ensures(Contract.Result<RtspListener>() != null);
-            Contract.Ensures(Contract.ValueAtReturn(out aMessage) != null);
+            Contract.Ensures(Contract.ValueAtReturn(out message) != null);
 
 
-            RtspRequest request = aMessage as RtspRequest;
+            RtspRequest request = message as RtspRequest;
 
             RtspListener destination;
             // Do not forward, direct respond because we do not know where to send.
             if (request.RtspUri == null || request.RtspUri.AbsolutePath.Split(new char[] { '/' }, 3).Length < 3)
             {
-                destination = aMessage.SourcePort;
-                RtspResponse theDirectResponse = request.CreateResponse();
-                if (request.RequestTyped == RtspRequest.RequestType.OPTIONS)
-                {
-                    // We know what to do...
-                    theDirectResponse.ReturnCode = 200;
-                    // But perhaps it is to prevent timeout !!
-                    // ARG .....
-                    _logger.Info("I got an OPTION * message, I reply but I do not forward! The end session may timeout.");
-                    request.LogMessage();
-                }
-                else
-                {
-                    _logger.Warn("Do not know how to handle : {0}", aMessage.Command);
-                    theDirectResponse.ReturnCode = 400;
-                }
-                aMessage = theDirectResponse;
+                destination = HandleRequestWithoutUrl(ref message);
             }
             else
             {
-
                 try
                 {
                     // get the real destination
                     request.RtspUri = RewriteUri(request.RtspUri);
                     destination = GetRtspListenerForDestination(request.RtspUri);
-                    if (request is RtspRequestSetup)
+
+                    // Handle setup
+                    RtspRequestSetup requestSetup = request as RtspRequestSetup;
+                    if (requestSetup != null)
                     {
-                        aMessage = HandleRequestSetup(ref destination, request as RtspRequestSetup);
+                        message = HandleRequestSetup(ref destination, requestSetup);
                     }
 
                     //Update session state and handle special message
@@ -306,7 +293,7 @@
                                         // system still need the server to send data do not send him the message.
                                         // reponds to client directly.
                                         destination = request.SourcePort;
-                                        aMessage = request.CreateResponse();
+                                        message = request.CreateResponse();
                                     }
                                     break;
 
@@ -325,11 +312,41 @@
                     destination = request.SourcePort;
                     RtspResponse theDirectResponse = request.CreateResponse();
                     theDirectResponse.ReturnCode = 500;
-                    aMessage = theDirectResponse;
+                    message = theDirectResponse;
                 }
 
             }
 
+            return destination;
+        }
+
+        private static RtspListener HandleRequestWithoutUrl(ref RtspMessage message)
+        {
+            Contract.Requires(message != null);
+            Contract.Requires(message is RtspRequest);
+            Contract.Ensures(Contract.Result<RtspListener>() != null);
+            Contract.Ensures(Contract.ValueAtReturn(out message) != null);
+
+
+            RtspListener destination;
+            destination = message.SourcePort;
+            RtspRequest request = message as RtspRequest;
+            RtspResponse theDirectResponse = request.CreateResponse();
+            if (request.RequestTyped == RtspRequest.RequestType.OPTIONS)
+            {
+                // We know what to do...
+                theDirectResponse.ReturnCode = 200;
+                // But perhaps it is to prevent timeout !!
+                // ARG .....
+                _logger.Info("I got an OPTION * message, I reply but I do not forward! The end session may timeout.");
+                request.LogMessage();
+            }
+            else
+            {
+                _logger.Warn("Do not know how to handle : {0}", message.Command);
+                theDirectResponse.ReturnCode = 400;
+            }
+            message = theDirectResponse;
             return destination;
         }
 
@@ -340,7 +357,7 @@
             string[] pathPart = originalUri.AbsolutePath.Split(new char[] { '/' }, 3);
 
             if (pathPart.Length < 3)
-                throw new ArgumentException(String.Format("The url {0} do not contain forward part ", originalUri), "originalUri");
+                throw new ArgumentException(String.Format(CultureInfo.InvariantCulture, "The url {0} do not contain forward part ", originalUri), "originalUri");
 
             string destination = Uri.UnescapeDataString(pathPart[1]);
 
@@ -504,27 +521,27 @@
         /// <summary>
         /// Handles the response.
         /// </summary>
-        /// <param name="aMessage">A message.</param>
-        private void HandleResponse(RtspResponse aMessage)
+        /// <param name="message">A message.</param>
+        private void HandleResponse(RtspResponse message)
         {
-            Contract.Requires(aMessage != null);
+            Contract.Requires(message != null);
 
-            if (aMessage.OriginalRequest != null && aMessage.OriginalRequest is RtspRequestSetup)
+            if (message.OriginalRequest != null && message.OriginalRequest is RtspRequestSetup)
             {
-                HandleResponseToSetup(aMessage);
+                HandleResponseToSetup(message);
             }
 
-            UpdateSessionState(aMessage);
+            UpdateSessionState(message);
 
 
             //TODO rewrite instead of remove
-            if (aMessage.Headers.ContainsKey(RtspHeaderNames.ContentBase))
-                aMessage.Headers.Remove(RtspHeaderNames.ContentBase);
+            if (message.Headers.ContainsKey(RtspHeaderNames.ContentBase))
+                message.Headers.Remove(RtspHeaderNames.ContentBase);
 
-            if (aMessage.Headers.ContainsKey(RtspHeaderNames.ContentType) &&
-                aMessage.Headers[RtspHeaderNames.ContentType] == "application/sdp")
+            if (message.Headers.ContainsKey(RtspHeaderNames.ContentType) &&
+                message.Headers[RtspHeaderNames.ContentType] == "application/sdp")
             {
-                RewriteSDPMessage(aMessage);
+                RewriteSDPMessage(message);
             }
 
 
@@ -533,24 +550,24 @@
         /// <summary>
         /// Updates the state of the session.
         /// </summary>
-        /// <param name="aMessage">A response message.</param>
-        private void UpdateSessionState(RtspResponse aMessage)
+        /// <param name="message">A response message.</param>
+        private void UpdateSessionState(RtspResponse message)
         {
             // if no session can be found
-            if (aMessage.OriginalRequest == null ||
-                aMessage.Session == null ||
-                aMessage.OriginalRequest.RtspUri == null)
+            if (message.OriginalRequest == null ||
+                message.Session == null ||
+                message.OriginalRequest.RtspUri == null)
                 return;
 
             //Update session state and handle special message
-            string sessionKey = RtspSession.GetSessionName(aMessage.OriginalRequest.RtspUri, aMessage.Session);
+            string sessionKey = RtspSession.GetSessionName(message.OriginalRequest.RtspUri, message.Session);
             if (_activesSession.ContainsKey(sessionKey))
             {
-                if (aMessage.ReturnCode >= 300 && aMessage.ReturnCode < 400)
+                if (message.ReturnCode >= 300 && message.ReturnCode < 400)
                     _activesSession[sessionKey].State = RtspSession.SessionState.Init;
-                else if (aMessage.ReturnCode < 300)
+                else if (message.ReturnCode < 300)
                 {
-                    switch (aMessage.OriginalRequest.RequestTyped)
+                    switch (message.OriginalRequest.RequestTyped)
                     {
                         case RtspRequest.RequestType.SETUP:
                             if (_activesSession[sessionKey].State == RtspSession.SessionState.Init)
@@ -578,25 +595,25 @@
             }
             else
             {
-                _logger.Warn("Command {0} for session {1} which was not found", aMessage.OriginalRequest.RequestTyped, sessionKey);
+                _logger.Warn("Command {0} for session {1} which was not found", message.OriginalRequest.RequestTyped, sessionKey);
             }
         }
 
         /// <summary>
         /// Handles the response to a setup message.
         /// </summary>
-        /// <param name="aMessage">A response message.</param>
-        private void HandleResponseToSetup(RtspResponse aMessage)
+        /// <param name="message">A response message.</param>
+        private void HandleResponseToSetup(RtspResponse message)
         {
-            RtspRequest original = aMessage.OriginalRequest;
-            string setupKey = original.SourcePort.RemoteAdress + "SEQ" + aMessage.CSeq.ToString(CultureInfo.InvariantCulture);
+            RtspRequest original = message.OriginalRequest;
+            string setupKey = original.SourcePort.RemoteAdress + "SEQ" + message.CSeq.ToString(CultureInfo.InvariantCulture);
 
-            if (aMessage.IsOk)
+            if (message.IsOk)
             {
-                Forwarder forwarder = ConfigureTransportAndForwarder(aMessage, _setupForwarder[setupKey]);
+                Forwarder forwarder = ConfigureTransportAndForwarder(message, _setupForwarder[setupKey]);
 
                 RtspSession newSession;
-                string sessionKey = RtspSession.GetSessionName(original.RtspUri, aMessage.Session);
+                string sessionKey = RtspSession.GetSessionName(original.RtspUri, message.Session);
                 if (_activesSession.ContainsKey(sessionKey))
                 {
                     newSession = _activesSession[sessionKey];
@@ -606,13 +623,13 @@
                 {
                     _logger.Info("Create a new session with the ID {0}", sessionKey);
                     newSession = new RtspSession();
-                    newSession.Name = aMessage.Session;
+                    newSession.Name = message.Session;
                     newSession.Destination = original.RtspUri.Authority;
                     _activesSession.Add(sessionKey, newSession);
                 }
 
                 newSession.AddForwarder(original.RtspUri, forwarder);
-                newSession.Timeout = aMessage.Timeout;
+                newSession.Timeout = message.Timeout;
             }
             // No needed here anymore.
             _setupForwarder.Remove(setupKey);
@@ -656,7 +673,7 @@
             if (resultForwarder.ToMulticast)
             {
                 // Setup port and destination multicast.
-                resultForwarder.ForwardHostVideo = GetMulticastAddress();
+                resultForwarder.ForwardHostVideo = CreateNextMulticastAddress();
                 resultForwarder.ForwardPortVideo = forwarder.FromForwardVideoPort;
 
                 RtspTransport newTransport = new RtspTransport()
@@ -695,10 +712,10 @@
 
         private static uint _multicastAddress = ((uint)225 << 24) + 10;
         /// <summary>
-        /// Gets the multicast address.
+        /// Create next available multicast address.
         /// </summary>
         /// <returns>a string representing a multicast address.</returns>
-        private static string GetMulticastAddress()
+        private static string CreateNextMulticastAddress()
         {
             _multicastAddress++;
             return String.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2}.{3}",
@@ -764,7 +781,7 @@
                     }
                     if (line.Contains("c=IN IP4 "))
                     {
-                        line = string.Format(CultureInfo.InvariantCulture, "c=IN IP4 {0}", GetMulticastAddress());
+                        line = string.Format(CultureInfo.InvariantCulture, "c=IN IP4 {0}", CreateNextMulticastAddress());
                     }
                     newsdp.Append(line);
                     newsdp.Append("\r\n");

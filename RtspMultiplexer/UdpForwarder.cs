@@ -12,10 +12,10 @@
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
 
-        UdpClient _listenVUdpPort;
-        UdpClient _forwarCUdpPort;
-        Thread _forwardVThread;
-        Thread _forwardCThread;
+        private UdpClient _listenVUdpPort;
+        private UdpClient _forwarCUdpPort;
+        private Thread _forwardVThread;
+        private Thread _forwardCThread;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UDPForwarder"/> class.

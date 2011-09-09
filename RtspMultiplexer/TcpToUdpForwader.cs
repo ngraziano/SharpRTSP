@@ -8,11 +8,11 @@
     using Rtsp;
     using Rtsp.Messages;
 
-    class TCPtoUDPForwader : Forwarder
+    public class TCPtoUDPForwader : Forwarder
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
-        Thread _forwardCThread;
+        private Thread _forwardCThread;
 
         public TCPtoUDPForwader() : base()
         {

@@ -61,7 +61,7 @@
             Creation = DateTime.Now;
         }
 
-        Dictionary<string, string> _headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, string> _headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         internal protected string[] commandArray;
 

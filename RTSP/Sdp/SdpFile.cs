@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Globalization;
 
 namespace Rtsp.Sdp
 {
@@ -38,7 +39,7 @@ namespace Rtsp.Sdp
             // Version mandatory
             if (value.Key == "v")
             {
-                returnValue.Version = int.Parse(value.Value);
+                returnValue.Version = int.Parse(value.Value, CultureInfo.InvariantCulture);
             }
             else
                 throw new InvalidDataException();

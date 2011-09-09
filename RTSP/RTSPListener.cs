@@ -1,17 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net.Sockets;
-using System.Threading;
-using System.IO;
-using System.Net;
-using Rtsp.Messages;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-
-namespace Rtsp
+﻿namespace Rtsp
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
+    using System.Globalization;
+    using System.IO;
+    using System.Net.Sockets;
+    using System.Text;
+    using System.Threading;
+    using Rtsp.Messages;
+
     /// <summary>
     /// Rtsp lister
     /// </summary>
@@ -19,10 +17,10 @@ namespace Rtsp
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
-        IRtspTransport _transport;
+        private IRtspTransport _transport;
 
-        private Thread _ListenTread;
-        Stream _stream;
+        private Thread _listenTread;
+        private Stream _stream;
 
         private int _sequenceNumber;
 
@@ -59,8 +57,8 @@ namespace Rtsp
         /// </summary>
         public void Start()
         {
-            _ListenTread = new Thread(new ThreadStart(DoJob));
-            _ListenTread.Start();
+            _listenTread = new Thread(new ThreadStart(DoJob));
+            _listenTread.Start();
         }
 
         /// <summary>
@@ -99,13 +97,13 @@ namespace Rtsp
         /// <summary>
         /// Raises the <see cref="E:DataReceived"/> event.
         /// </summary>
-        /// <param name="aRtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
-        protected void OnDataReceived(RtspChunkEventArgs aRtspChunkEventArgs)
+        /// <param name="rtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
+        protected void OnDataReceived(RtspChunkEventArgs rtspChunkEventArgs)
         {
             EventHandler<RtspChunkEventArgs> handler = DataReceived;
 
             if (handler != null)
-                handler(this, aRtspChunkEventArgs);
+                handler(this, rtspChunkEventArgs);
         }
 
         /// <summary>
@@ -207,11 +205,11 @@ namespace Rtsp
         /// <summary>
         /// Sends the message.
         /// </summary>
-        /// <param name="aMessage">A message.</param>
+        /// <param name="message">A message.</param>
         /// <returns><see cref="true"/> if it is Ok, otherwise <see cref="false"/></returns>
-        public bool SendMessage(RtspMessage aMessage)
+        public bool SendMessage(RtspMessage message)
         {
-            if (aMessage == null)
+            if (message == null)
                 throw new ArgumentNullException("aMessage");
             Contract.EndContractBlock();
 
@@ -220,7 +218,7 @@ namespace Rtsp
                 _logger.Warn("Reconnect to a client, strange !!");
                 try
                 {
-                    ReConnect();
+                    Reconnect();
                 }
                 catch (Exception)
                 {
@@ -232,44 +230,44 @@ namespace Rtsp
             // if it it a request  we store the original message
             // and we renumber it.
             //TODO handle lost message (for example every minute cleanup old message)
-            if (aMessage is RtspRequest)
+            if (message is RtspRequest)
             {
-                RtspMessage originalMessage = aMessage;
+                RtspMessage originalMessage = message;
                 // Do not modify original message
-                aMessage = aMessage.Clone() as RtspMessage;
+                message = message.Clone() as RtspMessage;
                 _sequenceNumber++;
-                aMessage.CSeq = _sequenceNumber;
+                message.CSeq = _sequenceNumber;
                 lock (_sentMessage)
                 {
-                    _sentMessage.Add(aMessage.CSeq, originalMessage as RtspRequest);
+                    _sentMessage.Add(message.CSeq, originalMessage as RtspRequest);
                 }
             }
 
             _logger.Debug("Send Message");
-            aMessage.LogMessage();
-            aMessage.SendTo(_stream);
+            message.LogMessage();
+            message.SendTo(_stream);
             return true;
         }
 
         /// <summary>
         /// Reconnect this instance of RtspListener.
         /// </summary>
-        public void ReConnect()
+        public void Reconnect()
         {
             //if it is already connected do not reconnect
             if (_transport.Connected)
                 return;
 
             // If it is not connected listenthread should have die.
-            if (_ListenTread != null && _ListenTread.IsAlive)
-                _ListenTread.Join();
+            if (_listenTread != null && _listenTread.IsAlive)
+                _listenTread.Join();
 
             // reconnect 
-            _transport.ReConnect();
+            _transport.Reconnect();
             _stream = _transport.GetStream();
 
             // If listen thread exist restart it
-            if (_ListenTread != null)
+            if (_listenTread != null)
                 Start();
         }
 
@@ -421,7 +419,7 @@ namespace Rtsp
             if (!_transport.Connected)
             {
                 _logger.Warn("Reconnect to a client, strange !!");
-                ReConnect();
+                Reconnect();
             }
 
             // $ in byte => 36

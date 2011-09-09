@@ -84,7 +84,7 @@ namespace Rtsp
         /// Reconnect this instance.
         /// <remarks>Must do nothing if already connected.</remarks>
         /// </summary>
-        public void ReConnect()
+        public void Reconnect()
         {
             if (_RtspServerClient.Connected)
                 return;

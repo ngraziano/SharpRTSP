@@ -139,7 +139,7 @@ namespace Rtsp.Messages
             }
         }
 
-        Uri _RtspUri;
+        private Uri _RtspUri;
         /// <summary>
         /// Gets or sets the Rtsp asked URI.
         /// </summary>

@@ -18,9 +18,9 @@
 
         public string Name { get; set; }
 
-        Thread _timeoutThread;
-        AutoResetEvent _dataReceive = new AutoResetEvent(false);
-        bool _stoping = false;
+        private Thread _timeoutThread;
+        private AutoResetEvent _dataReceive = new AutoResetEvent(false);
+        private bool _stoping = false;
 
         /// <summary>
         /// Server State
@@ -159,7 +159,7 @@
             _dataReceive.Set();
         }
 
-        void CommandReceive(object sender, EventArgs e)
+        private void CommandReceive(object sender, EventArgs e)
         {
             _dataReceive.Set();
         }

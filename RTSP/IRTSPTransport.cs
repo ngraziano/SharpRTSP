@@ -37,6 +37,6 @@ namespace Rtsp
         /// Reconnect this instance.
         /// <remarks>Must do nothing if already connected.</remarks>
         /// </summary>
-        void ReConnect();
+        void Reconnect();
     }
 }
