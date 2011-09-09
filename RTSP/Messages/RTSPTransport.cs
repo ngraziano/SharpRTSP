@@ -47,6 +47,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// List of transport
         /// </summary>
+        [Serializable]
         public enum TransportType
         {
             /// <summary>
@@ -58,6 +59,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// Profile type
         /// </summary>
+        [Serializable]
         public enum ProfileType
         {
             /// <summary>
@@ -69,6 +71,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// Transport type.
         /// </summary>
+        [Serializable]
         public enum LowerTransportType
         {
             /// <summary>
@@ -118,7 +121,7 @@ mode                =    <"> *Method <"> | Method
         /// Gets or sets the interleaved.
         /// </summary>
         /// <value>The interleaved.</value>
-        public int[] Interleaved { get; set; }
+        public PortCouple Interleaved { get; set; }
         /// <summary>
         /// Gets or sets a value indicating whether this instance is append.
         /// </summary>
@@ -138,17 +141,17 @@ mode                =    <"> *Method <"> | Method
         /// Gets or sets the port.
         /// </summary>
         /// <value>The port.</value>
-        public int[] Port { get; set; }
+        public PortCouple Port { get; set; }
         /// <summary>
         /// Gets or sets the client port.
         /// </summary>
         /// <value>The client port.</value>
-        public int[] ClientPort { get; set; }
+        public PortCouple ClientPort { get; set; }
         /// <summary>
         /// Gets or sets the server port.
         /// </summary>
         /// <value>The server port.</value>
-        public int[] ServerPort { get; set; }
+        public PortCouple ServerPort { get; set; }
         /// <summary>
         /// Gets or sets the S SRC.
         /// </summary>
@@ -159,30 +162,7 @@ mode                =    <"> *Method <"> | Method
         /// </summary>
         /// <value>The mode.</value>
         public string Mode { get; set; }
-
-
-        /// <summary>
-        /// Parses the int values of port.
-        /// </summary>
-        /// <param name="aStringValue">A string value.</param>
-        /// <returns>an array containg port</returns>
-        private static int[] ParseIntValues(string aStringValue)
-        {
-            Contract.Requires(!string.IsNullOrEmpty(aStringValue));
-
-            string[] values;
-            int[] returnValues = new int[2];
-            returnValues[0] = 0;
-            returnValues[1] = 0;
-
-            values = aStringValue.Split('-');
-            int.TryParse(values[0], out returnValues[0]);
-            if (values.Length > 1)
-                int.TryParse(values[1], out returnValues[1]);
-            return returnValues;
-
-        }
-
+        
         /// <summary>
         /// Parses the specified transport string.
         /// </summary>
@@ -242,7 +222,7 @@ mode                =    <"> *Method <"> | Method
                         if (subPart.Length < 2)
                             throw new ArgumentException("interleaved value invalid", "aTransportString");
 
-                        returnValue.Interleaved = ParseIntValues(subPart[1]);
+                        returnValue.Interleaved =  PortCouple.Parse(subPart[1]);
                         break;
                     case "APPEND":
                         returnValue.IsAppend = true;
@@ -262,17 +242,17 @@ mode                =    <"> *Method <"> | Method
                     case "PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("Port value invalid", "aTransportString");
-                        returnValue.Port = ParseIntValues(subPart[1]);
+                        returnValue.Port = PortCouple.Parse(subPart[1]);
                         break;
                     case "CLIENT_PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("client_port value invalid", "aTransportString");
-                        returnValue.ClientPort = ParseIntValues(subPart[1]);
+                        returnValue.ClientPort = PortCouple.Parse(subPart[1]);
                         break;
                     case "SERVER_PORT":
                         if (subPart.Length < 2)
                             throw new ArgumentException("server_port value invalid", "aTransportString");
-                        returnValue.ServerPort = ParseIntValues(subPart[1]);
+                        returnValue.ServerPort = PortCouple.Parse(subPart[1]);
                         break;
                     case "SSRC":
                         if (subPart.Length < 2)
@@ -290,22 +270,6 @@ mode                =    <"> *Method <"> | Method
                 }
             }
             return returnValue;
-        }
-
-        /// <summary>
-        /// Ports to string.
-        /// </summary>
-        /// <param name="ports">The ports.</param>
-        /// <returns>a string representing the ports</returns>
-        private static string PortsToString(int[] ports)
-        {
-            Contract.Requires(ports != null);
-            Contract.Requires(ports.Length > 0);
-
-            if (ports.Length < 2 || ports[1] == 0)
-                return ports[0].ToString(CultureInfo.InvariantCulture);
-            else
-                return ports[0].ToString(CultureInfo.InvariantCulture) + "-" + ports[1].ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -334,10 +298,10 @@ mode                =    <"> *Method <"> | Method
                 transportString.Append(";source=");
                 transportString.Append(Source);
             }
-            if (Interleaved != null && Interleaved.Length > 0)
+            if (Interleaved != null)
             {
                 transportString.Append(";interleaved=");
-                transportString.Append(PortsToString(Interleaved));
+                transportString.Append(Interleaved.ToString());
             }
             if (IsAppend)
             {
@@ -353,20 +317,20 @@ mode                =    <"> *Method <"> | Method
                 transportString.Append(";layers=");
                 transportString.Append(Layers);
             }
-            if (Port != null && Port.Length > 0)
+            if (Port != null)
             {
                 transportString.Append(";port=");
-                transportString.Append(PortsToString(Port));
+                transportString.Append(Port.ToString());
             }
-            if (ClientPort != null && ClientPort.Length > 0)
+            if (ClientPort != null)
             {
                 transportString.Append(";client_port=");
-                transportString.Append(PortsToString(ClientPort));
+                transportString.Append(ClientPort.ToString());
             }
-            if (ServerPort != null && ServerPort.Length > 0)
+            if (ServerPort != null)
             {
                 transportString.Append(";server_port=");
-                transportString.Append(PortsToString(ServerPort));
+                transportString.Append(ServerPort.ToString());
             }
             if (SSrc != null)
             {

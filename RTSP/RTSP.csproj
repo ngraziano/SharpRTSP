@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IRTSPTransport.cs" />
+    <Compile Include="Messages\PortCouple.cs" />
     <Compile Include="Messages\RTSPChunk.cs" />
     <Compile Include="Messages\RTSPData.cs" />
     <Compile Include="Messages\RTSPHeaderNames.cs" />

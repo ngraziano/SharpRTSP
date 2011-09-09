@@ -60,7 +60,7 @@
             _logger.Debug("One message enqueued");
             _queue.Enqueue(message);
             _newMessage.Set();
-            
+
         }
 
         /// <summary>
@@ -409,7 +409,7 @@
                         {
                             IsMulticast = true,
                             Destination = existingForwarder.ForwardHostVideo,
-                            Port = new int[] { existingForwarder.ForwardPortVideo, existingForwarder.ListenCommandPort },
+                            Port = new PortCouple(existingForwarder.ForwardPortVideo, existingForwarder.ListenCommandPort),
 
                         }.ToString();
                         returnValue.Session = session.Name;
@@ -441,8 +441,8 @@
             // this part of config is only valid in unicast.
             if (!selectedTransport.IsMulticast)
             {
-                forwarder.ForwardPortVideo = selectedTransport.ClientPort[0];
-                forwarder.SourcePortCommand = selectedTransport.ClientPort[1];
+                forwarder.ForwardPortVideo = selectedTransport.ClientPort.First;
+                forwarder.SourcePortCommand = selectedTransport.ClientPort.Second;
 
                 // If the client did not set the destination.. get it from TCP source
                 if (!string.IsNullOrEmpty(selectedTransport.Destination))
@@ -461,7 +461,7 @@
             RtspTransport firstNewTransport = new RtspTransport()
                 {
                     IsMulticast = false,
-                    ClientPort = new int[] { forwarder.ListenVideoPort, forwarder.FromForwardCommandPort },
+                    ClientPort = new PortCouple(forwarder.ListenVideoPort, forwarder.FromForwardCommandPort),
                 };
 
             RtspTransport secondTransport = new RtspTransport()
@@ -648,10 +648,10 @@
             Forwarder resultForwarder;
             if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP)
             {
-                if (transport.ServerPort != null && transport.ServerPort.Length > 0)
+                if (transport.ServerPort != null)
                 {
-                    forwarder.SourcePortVideo = transport.ServerPort[0];
-                    forwarder.ForwardPortCommand = transport.ServerPort[1];
+                    forwarder.SourcePortVideo = transport.ServerPort.First;
+                    forwarder.ForwardPortCommand = transport.ServerPort.Second;
                 }
                 resultForwarder = forwarder;
             }
@@ -659,8 +659,8 @@
             {
                 TCPtoUDPForwader TCPForwarder = new TCPtoUDPForwader();
                 TCPForwarder.ForwardCommand = aMessage.SourcePort;
-                TCPForwarder.SourceInterleavedVideo = transport.Interleaved[0];
-                TCPForwarder.ForwardInterleavedCommand = transport.Interleaved[1];
+                TCPForwarder.SourceInterleavedVideo = transport.Interleaved.First;
+                TCPForwarder.ForwardInterleavedCommand = transport.Interleaved.Second;
                 // we need to transfer already getted values
                 TCPForwarder.ForwardHostVideo = forwarder.ForwardHostVideo;
                 TCPForwarder.ForwardPortVideo = forwarder.ForwardPortVideo;
@@ -680,12 +680,12 @@
                 {
                     IsMulticast = true,
                     Destination = resultForwarder.ForwardHostVideo,
-                    Port = new int[] { resultForwarder.ForwardPortVideo, resultForwarder.ListenCommandPort }
+                    Port = new PortCouple(resultForwarder.ForwardPortVideo, resultForwarder.ListenCommandPort)
                 };
                 if ((resultForwarder is UDPForwarder && forwarder.ForwardPortCommand == 0)
                   || (resultForwarder is TCPtoUDPForwader && (resultForwarder as TCPtoUDPForwader).ForwardInterleavedCommand == 0))
                 {
-                    newTransport.Port[1] = 0;
+                    newTransport.Port = null;
                 }
                 aMessage.Headers[RtspHeaderNames.Transport] = newTransport.ToString();
             }
@@ -695,13 +695,13 @@
                 {
                     IsMulticast = false,
                     Destination = forwarder.ForwardHostVideo,
-                    ClientPort = new int[] { resultForwarder.ForwardPortVideo, resultForwarder.SourcePortCommand, },
-                    ServerPort = new int[] { resultForwarder.FromForwardVideoPort, resultForwarder.ListenCommandPort }
+                    ClientPort = new PortCouple(resultForwarder.ForwardPortVideo, resultForwarder.SourcePortCommand),
+                    ServerPort = new PortCouple(resultForwarder.FromForwardVideoPort, resultForwarder.ListenCommandPort)
                 };
                 if ((resultForwarder is UDPForwarder && forwarder.ForwardPortCommand == 0)
                   || (resultForwarder is TCPtoUDPForwader && (resultForwarder as TCPtoUDPForwader).ForwardInterleavedCommand == 0))
                 {
-                    newTransport.ServerPort[1] = 0;
+                    newTransport.ServerPort = null;
                 }
                 aMessage.Headers[RtspHeaderNames.Transport] = newTransport.ToString();
             }
