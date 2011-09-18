@@ -94,14 +94,14 @@ namespace Rtsp.Sdp
             // Connexion optional
             if (value.Key == "c")
             {
-                returnValue.Connection = new Connection(value.Value);
+                returnValue.Connection = Connection.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             // bandwidth optional
             if (value.Key == "b")
             {
-                returnValue.Bandwidth = new Bandwidth(value.Value);
+                returnValue.Bandwidth = Bandwidth.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 

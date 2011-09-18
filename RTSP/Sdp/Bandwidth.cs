@@ -7,12 +7,14 @@ namespace Rtsp.Sdp
 {
     public class Bandwidth
     {
-        private string p;
-
-        public Bandwidth(string p)
+        public Bandwidth()
         {
-            // TODO: Complete member initialization
-            this.p = p;
+        }
+
+        internal static Bandwidth Parse(string value)
+        {
+            //TODO really parse.
+            return new Bandwidth();
         }
     }
 }
