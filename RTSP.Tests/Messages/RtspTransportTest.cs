@@ -49,7 +49,7 @@ namespace Rtsp.Messages.Tests
         [Test]
         public void ParseMinimal()
         {
-            RtspTransport testValue = RtspTransport.Parse("RTSP/AVP");
+            RtspTransport testValue = RtspTransport.Parse("RTP/AVP");
             Assert.IsTrue(testValue.IsMulticast);
             Assert.AreEqual(RtspTransport.LowerTransportType.UDP, testValue.LowerTransport);
             Assert.AreEqual("PLAY", testValue.Mode);
@@ -58,7 +58,7 @@ namespace Rtsp.Messages.Tests
         [Test]
         public void Parse1()
         {
-            RtspTransport testValue = RtspTransport.Parse("RTSP/AVP/UDP;destination");
+            RtspTransport testValue = RtspTransport.Parse("RTP/AVP/UDP;destination");
             Assert.IsTrue(testValue.IsMulticast);
             Assert.AreEqual(RtspTransport.LowerTransportType.UDP, testValue.LowerTransport);
             Assert.AreEqual("PLAY", testValue.Mode);
@@ -67,7 +67,7 @@ namespace Rtsp.Messages.Tests
         [Test]
         public void Parse2()
         {
-            RtspTransport testValue = RtspTransport.Parse("RTSP/AVP/TCP;multicast;destination=test.example.com;ttl=234;ssrc=cd3b20a5");
+            RtspTransport testValue = RtspTransport.Parse("RTP/AVP/TCP;multicast;destination=test.example.com;ttl=234;ssrc=cd3b20a5");
             Assert.IsTrue(testValue.IsMulticast);
             Assert.AreEqual(RtspTransport.LowerTransportType.TCP, testValue.LowerTransport);
             Assert.AreEqual("test.example.com", testValue.Destination);
