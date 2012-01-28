@@ -181,7 +181,7 @@ mode                =    <"> *Method <"> | Method
             string[] transportProtocolPart = transportPart[0].Split('/');
 
             ReadTransport(returnValue, transportProtocolPart);
-            ReadProfile(returnValue, transportPart, transportProtocolPart);
+            ReadProfile(returnValue, transportProtocolPart);
             ReadLowerTransport(returnValue, transportProtocolPart);
 
             foreach (string part in transportPart)
@@ -269,10 +269,10 @@ mode                =    <"> *Method <"> | Method
             }
         }
 
-        private static void ReadProfile(RtspTransport returnValue, string[] transportPart, string[] transportProtocolPart)
+        private static void ReadProfile(RtspTransport returnValue, string[] transportProtocolPart)
         {
             ProfileType profile;
-            if (transportPart.Length < 2 || !Enum.TryParse<ProfileType>(transportProtocolPart[1], out profile))
+            if (transportProtocolPart.Length < 2 || !Enum.TryParse<ProfileType>(transportProtocolPart[1], out profile))
                 throw new ArgumentException("Transport profile type invalid", "aTransportString");
             returnValue.Profile = profile;
         }
