@@ -1,14 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rtsp", "RTSP\Rtsp.csproj", "{0AD96152-EB0C-4F31-B4F4-583CE88A5046}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RTSP", "RTSP\RTSP.csproj", "{0AD96152-EB0C-4F31-B4F4-583CE88A5046}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rtsp.Tests", "RTSP.Tests\Rtsp.Tests.csproj", "{823924AE-1792-4F94-8FF1-D58A958EA5F4}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1AE9B417-F7B6-4A69-B1CF-D42470A7878B}"
-	ProjectSection(SolutionItems) = preProject
-		CodeQuality.proj = CodeQuality.proj
-	EndProjectSection
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RTSP.Tests", "RTSP.Tests\RTSP.Tests.csproj", "{823924AE-1792-4F94-8FF1-D58A958EA5F4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtspMultiplexer", "RtspMultiplexer\RtspMultiplexer.csproj", "{A6A683BF-B8A4-4E62-85D2-08F4304F6CBB}"
 EndProject
