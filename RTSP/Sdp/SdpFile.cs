@@ -17,9 +17,6 @@ namespace Rtsp.Sdp
                 throw new InvalidDataException();
             if (parts[0].Length != 1)
                 throw new InvalidDataException();
-            if (parts[1].Length != 1)
-                throw new InvalidDataException();
-
 
             KeyValuePair<string, string> value = new KeyValuePair<string, string>(parts[0], parts[1]);
             return value;
