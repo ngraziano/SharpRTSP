@@ -6,9 +6,10 @@
     using System.Net.Sockets;
     using System.Threading;
     using Rtsp;
-
-    public class RtspServer
+    
+    public class RtspServer : IDisposable
     {
+        
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
 
@@ -21,16 +22,14 @@
         /// Initializes a new instance of the <see cref="RTSPServer"/> class.
         /// </summary>
         /// <param name="aPortNumber">A numero port.</param>
-        public RtspServer(int aPortNumber)
+        public RtspServer(int portNumber)
         {
-            if (aPortNumber <= 0)
-                throw new ArgumentException("Port number must be positive", "aPortNumber");
-            if (aPortNumber > 65535)
-                throw new ArgumentException("Port number smaller than 65535", "aPortNumber");
+            if (portNumber < System.Net.IPEndPoint.MinPort || portNumber > System.Net.IPEndPoint.MaxPort)
+                throw new ArgumentOutOfRangeException("aPortNumber", portNumber, "Port number must be between System.Net.IPEndPoint.MinPort and System.Net.IPEndPoint.MaxPort");
             Contract.EndContractBlock();
 
             RtspUtils.RegisterUri();
-            _RTSPServerListener = new TcpListener(IPAddress.Any, aPortNumber);
+            _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
         }
 
         /// <summary>
@@ -39,7 +38,7 @@
         public void StartListen()
         {
             _RTSPServerListener.Start();
-
+            
             _Stopping = new ManualResetEvent(false);
             _ListenTread = new Thread(new ThreadStart(AcceptConnection));
             _ListenTread.Start();
@@ -80,5 +79,24 @@
             _Stopping.Set();
             _ListenTread.Join();
         }
+
+        #region IDisposable Membres
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                StopListen();
+                _Stopping.Dispose();
+            }
+        }
+
+        #endregion
     }
 }

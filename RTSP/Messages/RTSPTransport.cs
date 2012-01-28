@@ -180,23 +180,9 @@ mode                =    <"> *Method <"> | Method
             string[] transportPart = aTransportString.Split(';');
             string[] transportProtocolPart = transportPart[0].Split('/');
 
-            TransportType transport;
-            if (!Enum.TryParse<TransportType>(transportProtocolPart[0], out transport))
-                throw new ArgumentException("Transport type invalid", "aTransportString");
-            returnValue.Transport = transport;
-
-            ProfileType profile;
-            if (transportPart.Length < 2 || !Enum.TryParse<ProfileType>(transportProtocolPart[1], out profile))
-                throw new ArgumentException("Transport profile type invalid", "aTransportString");
-            returnValue.Profile = profile;
-
-            if (transportProtocolPart.Length == 3)
-            {
-                LowerTransportType lowerTransport;
-                if (!Enum.TryParse<LowerTransportType>(transportProtocolPart[2], out lowerTransport))
-                    throw new ArgumentException("Lower transport type invalid", "aTransportString");
-                returnValue.LowerTransport = lowerTransport;
-            }
+            ReadTransport(returnValue, transportProtocolPart);
+            ReadProfile(returnValue, transportPart, transportProtocolPart);
+            ReadLowerTransport(returnValue, transportProtocolPart);
 
             foreach (string part in transportPart)
             {
@@ -270,6 +256,33 @@ mode                =    <"> *Method <"> | Method
                 }
             }
             return returnValue;
+        }
+
+        private static void ReadLowerTransport(RtspTransport returnValue, string[] transportProtocolPart)
+        {
+            if (transportProtocolPart.Length == 3)
+            {
+                LowerTransportType lowerTransport;
+                if (!Enum.TryParse<LowerTransportType>(transportProtocolPart[2], out lowerTransport))
+                    throw new ArgumentException("Lower transport type invalid", "aTransportString");
+                returnValue.LowerTransport = lowerTransport;
+            }
+        }
+
+        private static void ReadProfile(RtspTransport returnValue, string[] transportPart, string[] transportProtocolPart)
+        {
+            ProfileType profile;
+            if (transportPart.Length < 2 || !Enum.TryParse<ProfileType>(transportProtocolPart[1], out profile))
+                throw new ArgumentException("Transport profile type invalid", "aTransportString");
+            returnValue.Profile = profile;
+        }
+
+        private static void ReadTransport(RtspTransport returnValue, string[] transportProtocolPart)
+        {
+            TransportType transport;
+            if (!Enum.TryParse<TransportType>(transportProtocolPart[0], out transport))
+                throw new ArgumentException("Transport type invalid", "aTransportString");
+            returnValue.Transport = transport;
         }
 
         /// <summary>

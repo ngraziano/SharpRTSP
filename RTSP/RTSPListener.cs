@@ -13,7 +13,7 @@
     /// <summary>
     /// Rtsp lister
     /// </summary>
-    public class RtspListener
+    public class RtspListener : IDisposable
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
@@ -189,9 +189,11 @@
             catch (Exception error)
             {
                 _logger.Warn("Unknow Error", error);
+                throw;
             }
         }
 
+        [Serializable]
         private enum ReadingState
         {
             NewCommand,
@@ -220,7 +222,7 @@
                 {
                     Reconnect();
                 }
-                catch (Exception)
+                catch (SocketException)
                 {
                     // on a pas put se connecter on dit au manager de plus compter sur nous
                     return false;
@@ -238,7 +240,7 @@
                 _sequenceNumber++;
                 message.CSeq = _sequenceNumber;
                 lock (_sentMessage)
-                {
+                {  
                     _sentMessage.Add(message.CSeq, originalMessage as RtspRequest);
                 }
             }
@@ -252,6 +254,7 @@
         /// <summary>
         /// Reconnect this instance of RtspListener.
         /// </summary>
+        /// <exception cref="System.Net.Sockets.SocketException">Error during socket </exception>
         public void Reconnect()
         {
             //if it is already connected do not reconnect
@@ -261,6 +264,9 @@
             // If it is not connected listenthread should have die.
             if (_listenTread != null && _listenTread.IsAlive)
                 _listenTread.Join();
+
+            if (_stream != null)
+                _stream.Dispose();
 
             // reconnect 
             _transport.Reconnect();
@@ -394,13 +400,13 @@
         /// <param name="aRtspData">A Rtsp data.</param>
         /// <param name="asyncCallback">The async callback.</param>
         /// <param name="aState">A state.</param>
-        public IAsyncResult BeginSendData(RtspData aRtspData, AsyncCallback asyncCallback, object aState)
+        public IAsyncResult BeginSendData(RtspData aRtspData, AsyncCallback asyncCallback, object state)
         {
             if (aRtspData == null)
                 throw new ArgumentNullException("aRtspData");
             Contract.EndContractBlock();
 
-            return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, aState);
+            return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, state);
         }
 
         /// <summary>
@@ -410,7 +416,7 @@
         /// <param name="frame">The frame.</param>
         /// <param name="asyncCallback">The async callback.</param>
         /// <param name="aState">A state.</param>
-        public IAsyncResult BeginSendData(int channel, byte[] frame, AsyncCallback asyncCallback, object aState)
+        public IAsyncResult BeginSendData(int channel, byte[] frame, AsyncCallback asyncCallback, object state)
         {
             if (frame == null)
                 throw new ArgumentNullException("frame");
@@ -428,7 +434,7 @@
             int size = frame.Length;
             _stream.WriteByte((byte)((size & 0xFF00) >> 8));
             _stream.WriteByte((byte)(size & 0x00FF));
-            return _stream.BeginWrite(frame, 0, size, asyncCallback, aState);
+            return _stream.BeginWrite(frame, 0, size, asyncCallback, state);
         }
 
         /// <summary>
@@ -439,5 +445,26 @@
         {
             _stream.EndWrite(result);
         }
+
+        #region IDisposable Membres
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Stop();
+                if (_stream != null)
+                    _stream.Dispose();
+
+            }
+        }
+
+        #endregion
     }
 }
