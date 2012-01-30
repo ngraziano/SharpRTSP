@@ -1,0 +1,11 @@
+v=0
+o=Teleste 3072471296 2857058560 IN IP4 172.18.200.200
+s=COD_9003-P3-0
+i=Teleste MPH H.264 Encoder - HK01121135
+c=IN IP4 232.16.200.209/16
+t=0 0
+r=0 0
+a=x-plgroup:COD_9003
+m=video 5008 RTP/AVP 26
+a=rtpmap:26 JPEG/90000
+a=control:trackID=0

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Globalization;
 
 namespace Rtsp.Sdp
 {
@@ -32,7 +33,7 @@ namespace Rtsp.Sdp
             Origin result = new Origin();
             result.Username = parts[0];
             result.SessionId = parts[1];
-            result.SessionVersion = parts[2];
+            result.SessionVersion = long.Parse(parts[2]);
             result.NetType = parts[3];
             result.AddressType = parts[4];
             result.UnicastAddress = parts[5];
@@ -65,7 +66,7 @@ namespace Rtsp.Sdp
         /// Gets or sets the session version.
         /// </summary>
         /// <value>The session version.</value>
-        public string SessionVersion { get; set; }
+        public long SessionVersion { get; set; }
 
         /// <summary>
         /// Gets or sets the type of the net.
@@ -92,7 +93,7 @@ namespace Rtsp.Sdp
                 {
                     Username,
                     SessionId,
-                    SessionVersion,
+                    SessionVersion.ToString(CultureInfo.InvariantCulture),
                     NetType,
                     AddressType,
                     UnicastAddress,

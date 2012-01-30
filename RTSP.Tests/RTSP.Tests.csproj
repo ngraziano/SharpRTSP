@@ -9,7 +9,7 @@
     <ProjectGuid>{823924AE-1792-4F94-8FF1-D58A958EA5F4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RTSP.Tests</RootNamespace>
+    <RootNamespace>Rtsp.Tests</RootNamespace>
     <AssemblyName>RTSP.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -69,6 +69,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <EmbeddedResource Include="Sdp\Data\test1.sdp" />
+    <EmbeddedResource Include="Sdp\Data\test2.sdp" />
+    <EmbeddedResource Include="Sdp\Data\test3.sdp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RTSP\Rtsp.csproj">

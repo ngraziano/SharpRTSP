@@ -11,6 +11,8 @@ namespace Rtsp.Sdp
     {
         public Connection()
         {
+            //Default value from spec
+            NumberOfAddress = 1;
         }
 
         public IPAddress IP { get; set; }
