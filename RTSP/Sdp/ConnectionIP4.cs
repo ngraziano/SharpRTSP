@@ -19,7 +19,7 @@
 
             ConnectionIP4 result = new ConnectionIP4();
 
-            result.IP = IPAddress.Parse(parts[0]);
+            result.Host = parts[0];
 
             int ttl;
             if (parts.Length > 1)

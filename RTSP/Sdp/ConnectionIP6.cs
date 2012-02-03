@@ -16,7 +16,7 @@
 
             ConnectionIP6 result = new ConnectionIP6();
 
-            result.IP = IPAddress.Parse(parts[0]);
+            result.Host = parts[0];
 
             int numberOfAddress;
             if (parts.Length > 1)

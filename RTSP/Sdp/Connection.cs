@@ -15,7 +15,7 @@ namespace Rtsp.Sdp
             NumberOfAddress = 1;
         }
 
-        public IPAddress IP { get; set; }
+        public string Host { get; set; }
 
         /// <summary>
         /// Gets or sets the number of address specifed in connection.
