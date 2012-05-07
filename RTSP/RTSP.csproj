@@ -88,6 +88,7 @@
     <Compile Include="Sdp\ConnectionIP4.cs" />
     <Compile Include="Sdp\ConnectionIP6.cs" />
     <Compile Include="Sdp\EncriptionKey.cs" />
+    <Compile Include="Sdp\Media.cs" />
     <Compile Include="Sdp\Origin.cs" />
     <Compile Include="Sdp\SdpFile.cs" />
     <Compile Include="Sdp\SdpTimeZone.cs" />

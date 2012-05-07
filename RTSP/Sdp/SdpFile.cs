@@ -12,6 +12,12 @@ namespace Rtsp.Sdp
         private static KeyValuePair<string, string> GetKeyValue(TextReader sdpStream)
         {
             string line = sdpStream.ReadLine();
+
+            // end of file ?
+            if(string.IsNullOrEmpty(line))
+                return new KeyValuePair<string, string>(null, null);
+
+            
             string[] parts = line.Split(new char[] { '=' }, 2);
             if (parts.Length != 2)
                 throw new InvalidDataException();
@@ -139,6 +145,56 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
+            while (value.Key == "m")
+            {
+                Media newMedia = ReadMedia(sdpStream, ref value);
+                returnValue.Medias.Add(newMedia);
+            }
+
+
+            return returnValue;
+        }
+
+        private static Media ReadMedia(TextReader sdpStream, ref KeyValuePair<string, string> value)
+        {
+            Media returnValue = new Media(value.Value);
+            value = GetKeyValue(sdpStream);
+
+            // Media title
+            if (value.Key == "i")
+            {
+                value = GetKeyValue(sdpStream);
+            }
+
+            // Connexion optional
+            if (value.Key == "c")
+            {
+                returnValue.Connection = Connection.Parse(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+            // bandwidth optional
+            if (value.Key == "b")
+            {
+                returnValue.Bandwidth = Bandwidth.Parse(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+            // enkription key optional
+            if (value.Key == "k")
+            {
+
+                returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
+                value = GetKeyValue(sdpStream);
+            }
+
+            //Attribut optional multiple
+            while (value.Key == "a")
+            {
+                returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
+                value = GetKeyValue(sdpStream);
+            }
+
             return returnValue;
         }
 
@@ -184,6 +240,17 @@ namespace Rtsp.Sdp
             {
                 return attributs;
             }
+        }
+
+        private readonly List<Media> medias = new List<Media>();
+
+        public IList<Media> Medias
+        {
+            get
+            {
+                return medias;
+            }
+
         }
     
     }
