@@ -51,7 +51,10 @@ namespace Rtsp.Sdp.Tests
                 Assert.IsInstanceOf<ConnectionIP4>(readenSDP.Connection);
                 Assert.AreEqual(16,(readenSDP.Connection as ConnectionIP4).Ttl);
                 Assert.AreEqual(1, readenSDP.Timings.Count);
-                Assert.Fail("Timing not well implemented...");
+                //Assert.Fail("Timing not well implemented...");
+                Assert.AreEqual(1, readenSDP.Medias.Count);
+                Media media = readenSDP.Medias[0];
+                Assert.AreEqual(3, media.Attributs.Count);
                 // Check the reader have read everything
                 Assert.AreEqual(string.Empty, testReader.ReadToEnd());
             }
