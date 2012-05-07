@@ -2,17 +2,28 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics.Contracts;
 
 namespace Rtsp.Sdp
 {
     public class SdpTimeZone
     {
-        private string p;
-
-        public SdpTimeZone(string p)
+        public SdpTimeZone()
         {
-            // TODO: Complete member initialization
-            this.p = p;
+        }
+
+        public static SdpTimeZone ParseInvariant(string value)
+        {
+            if (value == null)
+                throw new ArgumentNullException("value");
+            Contract.EndContractBlock();
+
+            SdpTimeZone returnValue = new SdpTimeZone();
+
+            throw new NotImplementedException();
+     
+
+            return returnValue;
         }
     }
 }

@@ -119,8 +119,8 @@ namespace Rtsp.Sdp
             // timezone optional
             if (value.Key == "z")
             {
-                
-                returnValue.TimeZone = new SdpTimeZone(value.Value);
+
+                returnValue.TimeZone = SdpTimeZone.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
@@ -128,14 +128,14 @@ namespace Rtsp.Sdp
             if (value.Key == "k")
             {
 
-                returnValue.EncriptionKey = new EncriptionKey(value.Value);
+                returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             //Attribut optional multiple
             while (value.Key == "a")
             {
-                returnValue.Attributs.Add(new Attribut(value.Value));
+                returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
                 value = GetKeyValue(sdpStream);
             }
 

@@ -82,6 +82,7 @@
     <Compile Include="RTSPTCPTransport.cs" />
     <Compile Include="RTSPUtils.cs" />
     <Compile Include="Sdp\Attribut.cs" />
+    <Compile Include="Sdp\AttributRtpMap.cs" />
     <Compile Include="Sdp\Bandwidth.cs" />
     <Compile Include="Sdp\Connection.cs" />
     <Compile Include="Sdp\ConnectionIP4.cs" />
