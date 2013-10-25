@@ -81,6 +81,7 @@
             }
             // Not sure it is usefull
             ForwardVUdpPort.DontFragment = false;
+            ForwardVUdpPort.MulticastLoopback = true;
             ForwardVUdpPort.Client.SendBufferSize = 100 * 1024;
             ListenCUdpPort.Client.ReceiveBufferSize = 8 * 1024;
         }
