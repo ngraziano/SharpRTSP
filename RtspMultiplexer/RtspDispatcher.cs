@@ -600,12 +600,17 @@
         {
             // if no session can be found
             if (message.OriginalRequest == null ||
-                message.Session == null ||
+                (message.Session == null && message.OriginalRequest.Session == null) ||
                 message.OriginalRequest.RtspUri == null)
                 return;
 
+            // voir a mettre dans la message....
+            string curentSession = message.Session != null ? message.Session : message.OriginalRequest.Session;
+            
+                
+
             //Update session state and handle special message
-            string sessionKey = RtspSession.GetSessionName(message.OriginalRequest.RtspUri, message.Session);
+            string sessionKey = RtspSession.GetSessionName(message.OriginalRequest.RtspUri, curentSession);
             if (_activesSession.ContainsKey(sessionKey))
             {
                 if (message.ReturnCode >= 300 && message.ReturnCode < 400)
