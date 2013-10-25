@@ -269,6 +269,15 @@
                     {
                         message = HandleRequestSetup(ref destination, requestSetup);
                     }
+                    
+                    //Handle Play Reques
+                    RtspRequestPlay requestPlay = request as RtspRequestPlay;
+                    if (requestPlay != null)
+                    {
+                        message = HandleRequestPlay(ref destination, requestPlay);
+                    }
+                    
+                    
 
                     //Update session state and handle special message
                     if (request.Session != null && request.RtspUri != null)
@@ -281,9 +290,9 @@
                             switch (request.RequestTyped)
                             {
                                 // start here to start early
-                                case RtspRequest.RequestType.PLAY:
-                                    _activesSession[sessionKey].Start(request.SourcePort.RemoteAdress);
-                                    break;
+                                //case RtspRequest.RequestType.PLAY:
+                                  // _activesSession[sessionKey].Start(request.SourcePort.RemoteAdress); 
+                                 //   break;
                                 case RtspRequest.RequestType.TEARDOWN:
                                     _activesSession[sessionKey].Stop(request.SourcePort.RemoteAdress);
                                     if (!_activesSession[sessionKey].IsNeeded)
@@ -471,12 +480,48 @@
                 };
 
             requestSetup.Headers[RtspHeaderNames.Transport] = firstNewTransport.ToString() + ", " + secondTransport.ToString();
+            requestSetup.Headers[RtspHeaderNames.Transport] = firstNewTransport.ToString();// +", " + secondTransport.ToString();
             _setupForwarder.Add(setupKey, forwarder);
 
             return requestSetup;
 
         }
+        /// <summary>
+        /// Handles the request play.
+        /// Do not forward message if already playing
+        /// </summary>
+        /// <param name="destination">The destination.</param>
+        /// <param name="requestPlay">The request play.</param>
+        /// <returns>The message to transmit</returns>
+        private RtspMessage HandleRequestPlay(ref RtspListener destination, RtspRequestPlay requestPlay)
+        {
+            Contract.Requires(requestPlay != null);
+            Contract.Requires(destination != null);
+            Contract.Ensures(Contract.Result<RtspMessage>() != null);
+            Contract.Ensures(Contract.ValueAtReturn(out destination) != null);
 
+
+            string sessionKey = RtspSession.GetSessionName(requestPlay.RtspUri, requestPlay.Session);
+            if (_activesSession.ContainsKey(sessionKey))
+            {
+
+                RtspSession session = _activesSession[sessionKey];
+                
+                // si on est dèjà en play on n'envoie pas la commande a la source.
+                if (session.State == RtspSession.SessionState.Playing)
+                {
+                    session.Start(requestPlay.SourcePort.RemoteAdress);
+                    RtspResponse returnValue = requestPlay.CreateResponse();
+                    destination = requestPlay.SourcePort;
+                    return returnValue;
+                }
+
+                // ajoute un client
+                session.Start(requestPlay.SourcePort.RemoteAdress);
+            }
+            return requestPlay;
+
+        }
         /// <summary>
         /// Selects the transport based on the configuration of the system..
         /// </summary>
