@@ -77,7 +77,7 @@ namespace Rtsp
         /// <value><c>true</c> if connected; otherwise, <c>false</c>.</value>
         public bool Connected
         {
-            get { return _RtspServerClient.Connected; }
+            get { return _RtspServerClient.Client != null && _RtspServerClient.Connected; }
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace Rtsp
         /// <exception cref="System.Net.Sockets.SocketException">Error during socket </exception>
         public void Reconnect()
         {
-            if (_RtspServerClient.Connected)
+            if (Connected)
                 return;
             _RtspServerClient = new TcpClient();
             _RtspServerClient.Connect(_currentEndPoint);
