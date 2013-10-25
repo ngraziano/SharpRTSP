@@ -160,7 +160,7 @@
             {
                 destination = HandleRequest(ref message);
                 _logger.Debug("Dispatch message from {0} to {1}",
-                    message.SourcePort != null ? message.SourcePort.RemoteAdress : "UNKNOWN", destination.RemoteAdress);
+                    message.SourcePort != null ? message.SourcePort.RemoteAdress : "UNKNOWN",destination != null ? destination.RemoteAdress : "UNKNOWN" );
             }
             else if (message is RtspResponse)
             {
