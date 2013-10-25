@@ -65,6 +65,9 @@ namespace Rtsp.Messages
                 case RequestType.SETUP:
                     returnValue = new RtspRequestSetup();
                     break;
+                case RequestType.PLAY:
+                    returnValue = new RtspRequestPlay();
+                    break;
                     /*
                 case RequestType.DESCRIBE:
                     break;
@@ -75,8 +78,7 @@ namespace Rtsp.Messages
 
                 case RequestType.PAUSE:
                     break;
-                case RequestType.PLAY:
-                    break;
+
                 case RequestType.RECORD:
                     break;
                 case RequestType.REDIRECT:
