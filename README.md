@@ -38,9 +38,9 @@ RTSP Client Example
             rtsp_client.Start(); // start reading messages from the server
   ```
 
-  The RTSP Listener class lets you SEND messages to the RTSP Server (see below). \
-  The RTSP Listner class has a worker thread that listens for replies from the RTSP Server. \
-  When replies are received the MessageReceived Event is fired. \
+  The RTSP Listener class lets you SEND messages to the RTSP Server (see below).  
+  The RTSP Listner class has a worker thread that listens for replies from the RTSP Server.  
+  When replies are received the MessageReceived Event is fired.  
   When RTP packets are received the DataReceived Event is fired.
 
 
@@ -89,10 +89,10 @@ RTSP Client Example
 
 * STEP 4 - Handle Replies when the MessageReceived event is fired
   
-  This example assumes the main program sends an OPTIONS Command. \
-  It looks for a reply from the server for OPTIONS and then sends DESCRIBE. \
-  It looks for a reply from the server for DESCRIBE and then sends SETUP (for the video stream) \
-  It looks for a reply from the server for SETUP and then sends PLAY. \
+  This example assumes the main program sends an OPTIONS Command.  
+  It looks for a reply from the server for OPTIONS and then sends DESCRIBE.  
+  It looks for a reply from the server for DESCRIBE and then sends SETUP (for the video stream)  
+  It looks for a reply from the server for SETUP and then sends PLAY.  
   Once PLAY has been sent the video, in the form of RTP packets, will be received.
 
   ```C#
@@ -259,9 +259,9 @@ RTSP Client Example
 
 * STEP 6 - Process RTP frame
 
-  An RTP frame consists of 1 or more RTP packets \
+  An RTP frame consists of 1 or more RTP packets  
   H264 video is packed into one or more RTP packets and this sample extracts Normal Packing and
-  Fragmented Unit ype A packing (the common two) \
+  Fragmented Unit ype A packing (the common two)  
   This example writes the video to a .264 file which can be played with FFPLAY
 
   ```C#
