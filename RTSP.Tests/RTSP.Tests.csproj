@@ -74,7 +74,7 @@
     <EmbeddedResource Include="Sdp\Data\test3.sdp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RTSP\Rtsp.csproj">
+    <ProjectReference Include="..\RTSP\RTSP.csproj">
       <Project>{0AD96152-EB0C-4F31-B4F4-583CE88A5046}</Project>
       <Name>Rtsp</Name>
     </ProjectReference>
