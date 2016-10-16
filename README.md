@@ -10,8 +10,9 @@ A C# library to handle RTSP connections.
 RTSP Client Example
 ===================
 
-STEP 1 - Open TCP Socket connection to the RTSP Server
+* STEP 1 - Open TCP Socket connection to the RTSP Server
 
+  ```C#
             // Connect to a RTSP Server
             tcp_socket = new Rtsp.RtspTcpTransport(host,port);
 
@@ -20,14 +21,14 @@ STEP 1 - Open TCP Socket connection to the RTSP Server
                 Console.WriteLine("Error - did not connect");
                 return;
             }
+  ```
 
-This opens a connection for a 'TCP' mode RTSP/RTP session where RTP packets are set in the RTSP socket.
+  This opens a connection for a 'TCP' mode RTSP/RTP session where RTP packets are set in the RTSP socket.
 
 
+* STEP 2 - Create a RTSP Listener and attach it to the RTSP TCP Socket
 
-
-STEP 2 - Create a RTSP Listener and attach it to the RTSP TCP Socket
-
+  ```C#
             // Connect a RTSP Listener to the TCP Socket to send messages and listen for replies
             rtsp_client = new Rtsp.RtspListener(tcp_socket);
 
@@ -35,51 +36,66 @@ STEP 2 - Create a RTSP Listener and attach it to the RTSP TCP Socket
             rtsp_client.DataReceived += Rtsp_client_DataReceived;
 
             rtsp_client.Start(); // start reading messages from the server
+  ```
 
-The RTSP Listener class lets you SEND messages to the RTSP Server (see below)
-The RTSP Listner class has a worker thread that listens for replies from the RTSP Server.
-When replies are received the MessageReceived Event is fired.
-When RTP packets are received the DataReceived Event is fired.
+  The RTSP Listener class lets you SEND messages to the RTSP Server (see below). \
+  The RTSP Listner class has a worker thread that listens for replies from the RTSP Server. \
+  When replies are received the MessageReceived Event is fired. \
+  When RTP packets are received the DataReceived Event is fired.
 
 
-STEP 3 - Send Messages to the RTSP Server
-The samples below show how to send messages.
+* STEP 3 - Send Messages to the RTSP Server
 
-Send OPTIONS with this code :-
-            Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
+  The samples below show how to send messages.
+
+  Send OPTIONS with this code :
+
+  ```C#
+            Rtsp.Messages.RtspRequest options_message = new Rtsp. Messages.RtspRequestOptions();
             options_message.RtspUri = new Uri(url);
             rtsp_client.SendMessage(options_message);
+```
 
-Send DESCRIBE with this code :-
+  Send DESCRIBE with this code :
+
+  ```C#
             // send the Describe
             Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
             describe_message.RtspUri = new Uri(url);
             rtsp_client.SendMessage(describe_message);
             // The reply will include the SDP data
+  ```
 
-Send SETUP with this code :-
+  Send SETUP with this code :
+
+  ```C#
             // the value of 'control' comes from parsing the SDP for the desired video or audio sub-stream
             Rtsp.Messages.RtspRequest setup_message = new Rtsp.Messages.RtspRequestSetup();
             setup_message.RtspUri = new Uri(url + "/" + control);
             setup_message.AddHeader("Transport: RTP/AVP/TCP;interleaved=0");
             rtsp_client.SendMessage(setup_message);
             // The reply will include the Session
+  ```
 
-Send PLAY with this code :-
+  Send PLAY with this code :
+
+  ```C#
             // the value of 'session' comes from the reply of the SETUP command
             Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
             play_message.RtspUri = new Uri(url);
             play_message.Session = session;
             rtsp_client.SendMessage(play_message);
+  ```
 
+* STEP 4 - Handle Replies when the MessageReceived event is fired
+  
+  This example assumes the main program sends an OPTIONS Command. \
+  It looks for a reply from the server for OPTIONS and then sends DESCRIBE. \
+  It looks for a reply from the server for DESCRIBE and then sends SETUP (for the video stream) \
+  It looks for a reply from the server for SETUP and then sends PLAY. \
+  Once PLAY has been sent the video, in the form of RTP packets, will be received.
 
-STEP 4 - Handle Replies when the MessageReceived event is fired
-This example assumes the main program sends an OPTIONS Command.
-It looks for a reply from the server for OPTIONS and then sends DESCRIBE.
-It looks for a reply from the server for DESCRIBE and then sends SETUP (for the video stream)
-It looks for a reply from the server for SETUP and then sends PLAY.
-Once PLAY has been sent the video, in the form of RTP packets, will be received.
-
+  ```C#
         private void Rtsp_client_MessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
             Rtsp.Messages.RtspResponse message = e.Message as Rtsp.Messages.RtspResponse;
@@ -158,12 +174,14 @@ Once PLAY has been sent the video, in the form of RTP packets, will be received.
                 Console.WriteLine("Got reply from Play  " + message.Command);
             }
         }
+  ```
 
+* STEP 5 - Handle RTP Video
 
-STEP 5 - Handle RTP Video
-This code handles each incoming RTP packet, combining RTP packets that are all part of the same frame of vdeo (using the Marker Bit)
-Once a full frame is received it can be passed to a De-packetiser to get the compressed video data
+  This code handles each incoming RTP packet, combining RTP packets that are all part of the same frame of vdeo (using the Marker Bit).
+  Once a full frame is received it can be passed to a De-packetiser to get the compressed video data
 
+  ```C#
         List<byte[]> temporary_rtp_payloads = new List<byte[]>();
 
         private void Rtsp_client_DataReceived(object sender, Rtsp.RtspChunkEventArgs e)
@@ -237,15 +255,16 @@ Once a full frame is received it can be passed to a De-packetiser to get the com
                 temporary_rtp_payloads.Clear();
             }
         }
+  ```
 
+* STEP 6 - Process RTP frame
 
-STEP 6 - Process RTP frame
-An RTP frame consists of 1 or more RTP packets
-H264 video is packed into one or more RTP packets and this sample extracts Normal Packing and
-Fragmented Unit ype A packing (the common two)
-This example writes the video to a .264 file which can be played with FFPLAY
+  An RTP frame consists of 1 or more RTP packets \
+  H264 video is packed into one or more RTP packets and this sample extracts Normal Packing and
+  Fragmented Unit ype A packing (the common two) \
+  This example writes the video to a .264 file which can be played with FFPLAY
 
-
+  ```C#
         FileStream fs = null;
         byte[] nal_header = new byte[]{ 0x00, 0x00, 0x00, 0x01 };
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // stats counters
@@ -355,7 +374,7 @@ This example writes the video to a .264 file which can be played with FFPLAY
             // Print totals
             Console.WriteLine("Norm=" + norm + " ST-A=" + stap_a + " ST-B=" + stap_b + " M16=" + mtap16 + " M24=" + mtap24 + " FU-A=" + fu_a + " FU-B=" + fu_b);
         }
-
+  ```
 
 
 
