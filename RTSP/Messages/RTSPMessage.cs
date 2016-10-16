@@ -166,7 +166,8 @@
             }
             set
             {
-                _headers["Session"] = value + "; Timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
+//                _headers["Session"] = value + ";timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
+                _headers["Session"] = value;
             }
         }
 

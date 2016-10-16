@@ -7,6 +7,14 @@ namespace Rtsp.Messages
 {
     public class RtspRequestSetup : RtspRequest
     {
+
+        // Constructor
+        public RtspRequestSetup()
+        {
+            Command = "SETUP * RTSP/1.0";
+        }
+
+
         /// <summary>
         /// Gets the transports associate with the request.
         /// </summary>

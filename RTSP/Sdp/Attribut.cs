@@ -61,7 +61,9 @@ namespace Rtsp.Sdp
             {
                 returnValue = new Attribut(listValues[0]);
             }
-            returnValue.ParseValue(listValues[1]);
+            // Parse the value. Note most attributes have a value but recvonly does not have a value
+            if (listValues.Count() > 1) returnValue.ParseValue(listValues[1]);
+
             return returnValue;
         }
 

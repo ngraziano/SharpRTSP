@@ -62,6 +62,9 @@ namespace Rtsp.Messages
                 case RequestType.OPTIONS:
                     returnValue = new RtspRequestOptions();
                     break;
+                case RequestType.DESCRIBE:
+                    returnValue = new RtspRequestDescribe();
+                    break;
                 case RequestType.SETUP:
                     returnValue = new RtspRequestSetup();
                     break;
@@ -69,8 +72,6 @@ namespace Rtsp.Messages
                     returnValue = new RtspRequestPlay();
                     break;
                     /*
-                case RequestType.DESCRIBE:
-                    break;
                 case RequestType.ANNOUNCE:
                     break;
                 case RequestType.GET_PARAMETER:
