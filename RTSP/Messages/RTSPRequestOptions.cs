@@ -7,6 +7,13 @@ namespace Rtsp.Messages
 {
     public class RtspRequestOptions : RtspRequest
     {
+
+        // Constructor
+        public RtspRequestOptions()
+        {
+            Command = "OPTIONS * RTSP/1.0";
+        }
+
         /// <summary>
         /// Gets the assiociate OK response with the request.
         /// </summary>

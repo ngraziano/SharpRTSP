@@ -73,6 +73,7 @@
     <Compile Include="Messages\RTSPHeaderNames.cs" />
     <Compile Include="Messages\RTSPMessage.cs" />
     <Compile Include="Messages\RTSPRequest.cs" />
+    <Compile Include="Messages\RTSPRequestDescribe.cs" />
     <Compile Include="Messages\RTSPRequestOptions.cs" />
     <Compile Include="Messages\RTSPRequestPlay.cs" />
     <Compile Include="Messages\RTSPRequestSetup.cs" />
