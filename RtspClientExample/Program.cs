@@ -19,7 +19,11 @@ namespace RtspClientExample
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
 
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
-            String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
+            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
+            //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
+            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
+            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+
 
             // Create a RTSP Client
             RTSPClient c = new RTSPClient(url, RTSPClient.RTP_TRANSPORT.TCP);
@@ -254,8 +258,26 @@ namespace RtspClientExample
                 // There are 4 types of Aggregation Packet (split over RTP payloads)
                 else if (nal_header_type == 24)
                 {
-                    Console.WriteLine("Agg STAP-A not supported");
+                    Console.WriteLine("Agg STAP-A");
                     stap_a++;
+                    
+                    // RTP packet contains multiple NALs, each with a 16 bit header
+                    //   Read 16 byte size
+                    //   Read NAL
+                    try {
+                    	int ptr = 1; // start after the nal_header_type which was '24'
+                    	// if we have at least 2 more bytes (the 16 bit size) then consume more data
+                    	while (ptr + 2 < (rtp_payloads[payload_index].Length-1)) {
+	                    	int size = (rtp_payloads[payload_index][ptr] << 8) + (rtp_payloads[payload_index][ptr+1] << 0);
+	                    	ptr = ptr + 2;
+	                    	byte[] nal = new byte[size];
+                            System.Array.Copy(rtp_payloads[payload_index],ptr,nal,0,size); // copy the NAL
+	                    	nal_units.Add(nal); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
+    	                	ptr = ptr + size;
+        	            }
+        	        } catch {
+        	        	// do nothing
+					}
                 }
                 else if (nal_header_type == 25)
                 {
