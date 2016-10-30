@@ -71,13 +71,17 @@ namespace Rtsp.Messages
                 case RequestType.PLAY:
                     returnValue = new RtspRequestPlay();
                     break;
+                case RequestType.PAUSE:
+                    returnValue = new RtspRequestPause();
+                    break;
+                case RequestType.TEARDOWN:
+                    returnValue = new RtspRequestTeardown();
+                    break;
+
                     /*
                 case RequestType.ANNOUNCE:
                     break;
                 case RequestType.GET_PARAMETER:
-                    break;
-
-                case RequestType.PAUSE:
                     break;
 
                 case RequestType.RECORD:
@@ -86,8 +90,6 @@ namespace Rtsp.Messages
                     break;
                 
                 case RequestType.SET_PARAMETER:
-                    break;
-                case RequestType.TEARDOWN:
                     break;
                      */
                 case RequestType.UNKNOWN:
