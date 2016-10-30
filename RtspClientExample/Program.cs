@@ -372,15 +372,26 @@ namespace RtspClientExample
 
             Console.WriteLine("Received " + message.OriginalRequest.ToString());
 
-            // If we get a reply to OPTIONS (which was our first command), then send the DESCRIBE
+            // If we get a reply to OPTIONS and CSEQ is 1 (which was our first command), then send the DESCRIBE
+            // If we fer a reply to OPTIONS and CSEQ is not 1, it must have been a keepalive command
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestOptions)
             {
-                // send the Describe
-                Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
-                describe_message.RtspUri = new Uri(url);
-                rtsp_client.SendMessage(describe_message);
+            	if (message.CSeq == 1) {
+            		// Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
+	                System.Timers.Timer timer = new System.Timers.Timer();
+	                timer.Elapsed += Timer_Elapsed;
+	    			timer.Interval = 20 * 1000;
+	    			timer.Enabled = true;
 
-            }
+                	// send the Describe
+                	Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
+                	describe_message.RtspUri = new Uri(url);
+                	rtsp_client.SendMessage(describe_message);
+                } else {
+                	// do nothing
+        	    }
+			}            
+            
 
             // If we get a reply to DESCRIBE (which was our second command), then prosess SDP and send the SETUP
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestDescribe)
@@ -497,6 +508,14 @@ namespace RtspClientExample
 
         }
 
+		void Timer_Elapsed (object sender, System.Timers.ElapsedEventArgs e)
+		{
+			// Send Keepalive message
+        	Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
+			options_message.RtspUri = new Uri(url);
+			rtsp_client.SendMessage(options_message);
+
+		}
 
 
         // Output an array of NAL Units.
