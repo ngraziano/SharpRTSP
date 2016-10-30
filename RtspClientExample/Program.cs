@@ -420,9 +420,11 @@ namespace RtspClientExample
                             }
 
                             // Split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
+                            // Then trim each item to remove whitespace after the semi colon
                             String[] split_fmtp = fmtp.Split(';');
-                            foreach (String item in split_fmtp)
+                            foreach (String raw_item in split_fmtp)
                             {
+                            	String item = raw_item.Trim();
                                 if (item.StartsWith("sprop-parameter-sets="))
                                 {
                                     List<byte[]> sps_pps = new List<byte[]>();
