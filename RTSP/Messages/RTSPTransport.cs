@@ -299,8 +299,11 @@ mode                =    <"> *Method <"> | Method
             transportString.Append(Profile.ToString());
             transportString.Append('/');
             transportString.Append(LowerTransport.ToString());
-            transportString.Append(';');
-            transportString.Append(IsMulticast ? "multicast" : "unicast");
+            if(LowerTransport != LowerTransportType.TCP)
+            {
+                transportString.Append(';');
+                transportString.Append(IsMulticast ? "multicast" : "unicast");
+            }
             if (Destination != null)
             {
                 transportString.Append(";destination=");

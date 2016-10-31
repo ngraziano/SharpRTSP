@@ -63,7 +63,7 @@ namespace Rtsp.Messages.Tests
             Assert.AreEqual(RtspTransport.LowerTransportType.UDP, testValue.LowerTransport);
             Assert.AreEqual("PLAY", testValue.Mode);
         }
-        
+
         [Test]
         public void Parse2()
         {
@@ -73,6 +73,19 @@ namespace Rtsp.Messages.Tests
             Assert.AreEqual("test.example.com", testValue.Destination);
             Assert.AreEqual("cd3b20a5", testValue.SSrc);
             Assert.AreEqual("PLAY", testValue.Mode);
+        }
+
+
+        [Test]
+        public void ToStringTCP()
+        {
+            RtspTransport transport = new RtspTransport()
+            {
+                LowerTransport = RtspTransport.LowerTransportType.TCP,
+                Interleaved = new PortCouple(0, 1),
+
+            };
+            Assert.AreEqual("RTP/AVP/TCP;interleaved=0-1", transport.ToString());
         }
     }
 }
