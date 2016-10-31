@@ -32,6 +32,9 @@ namespace RtspClientExample
             // Wait for user to terminate programme
             Console.WriteLine("Press ENTER to exit");
             String dummy = Console.ReadLine();
+
+            c.Stop();
+            
         }
     }
 
@@ -124,6 +127,16 @@ namespace RtspClientExample
             Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
             options_message.RtspUri = new Uri(url);
             rtsp_client.SendMessage(options_message);
+        }
+
+        public void Stop()
+        {
+            Rtsp.Messages.RtspRequest tearwdown_massage = new Rtsp.Messages.RtspRequestTeardown();
+            tearwdown_massage.RtspUri = new Uri(url);
+            tearwdown_massage.Session = session;
+            //                play_message.Timeout = 65;
+            rtsp_client.SendMessage(tearwdown_massage);
+
         }
 
 
@@ -237,6 +250,7 @@ namespace RtspClientExample
         }
 
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // used for diagnostics stats
+        private string session;
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
         public void Process_RTP_Frame(List<byte[]>rtp_payloads)
@@ -497,7 +511,7 @@ namespace RtspClientExample
                 // Got Reply to SETUP
                 Console.WriteLine("Got reply from Setup. Session is " + message.Session);
 
-                String session = message.Session; // Session value used with Play, Pause, Teardown
+                session = message.Session; // Session value used with Play, Pause, Teardown
 
                 Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
                 play_message.RtspUri = new Uri(url);
