@@ -145,13 +145,6 @@
                                 {
                                     _sentMessage.Remove(response.CSeq);
                                     response.OriginalRequest = originalRequest;
-                                    // restore the original sequence number.
-                                    /*
-                                    // Restoring the original CSeq sqeuence number was used on the original RTSP Multiplexer project
-		                            // For a normal RTSP Client example this is not needed and is currently commented out
-
-                                    response.CSeq = originalRequest.CSeq;
-                                    */
                                 }
                                 else
                                 {
