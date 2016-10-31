@@ -58,6 +58,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RTSPListenerTest.cs" />
     <Compile Include="RTSPUtilsTest.cs" />
+    <Compile Include="Sdp\H264ParametersTests.cs" />
     <Compile Include="Sdp\SdpFileTest.cs" />
   </ItemGroup>
   <ItemGroup>

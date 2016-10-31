@@ -10,7 +10,8 @@ namespace Rtsp.Sdp
     {
         private static readonly Dictionary<string, Type> attributMap = new Dictionary<string, Type>()
         {
-            {"rtpmap",typeof(AttributRtpMap)},
+            {AttributRtpMap.NAME,typeof(AttributRtpMap)},
+            {AttributFmtp.NAME,typeof(AttributFmtp)},
         };
 
 

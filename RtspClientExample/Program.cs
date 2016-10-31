@@ -425,42 +425,33 @@ namespace RtspClientExample
                         {
                             // seach the atributes for control, fmtp and rtpmap
                             String control = "";  // the "track" or "stream id"
-                            String fmtp = ""; // holds SPS and PPS in base64
-                            String rtpmap = ""; // holds Payload format, eg 96 often used with H264 as first dynamic payload value
+                            Rtsp.Sdp.AttributFmtp fmtp = null; // holds SPS and PPS in base64
+                            Rtsp.Sdp.AttributRtpMap rtpmap = null; // holds Payload format, eg 96 often used with H264 as first dynamic payload value
                             foreach (Rtsp.Sdp.Attribut attrib in sdp_data.Medias[x].Attributs)
                             {
                                 if (attrib.Key.Equals("control")) control = attrib.Value;
-                                if (attrib.Key.Equals("fmtp")) fmtp = attrib.Value;
-                                if (attrib.Key.Equals("rtpmap")) rtpmap = attrib.Value;
+                                if (attrib.Key.Equals("fmtp")) fmtp = attrib as Rtsp.Sdp.AttributFmtp;
+                                if (attrib.Key.Equals("rtpmap")) rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
                             }
 
                             // Split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
-                            // Then trim each item to remove whitespace after the semi colon
-                            String[] split_fmtp = fmtp.Split(';');
-                            foreach (String raw_item in split_fmtp)
+                            if(fmtp != null)
                             {
-                            	String item = raw_item.Trim();
-                                if (item.StartsWith("sprop-parameter-sets="))
-                                {
-                                    List<byte[]> sps_pps = new List<byte[]>();
-
-                                    String sps_pps_base64 = item.Substring(21); // remove "sprop-paremeter-sets="
-                                    String[] sps_pps_split = sps_pps_base64.Split(',');
-                                    if (sps_pps_split.Length > 0) video_sps = Convert.FromBase64String(sps_pps_split[0]);
-                                    if (sps_pps_split.Length > 1) video_pps = Convert.FromBase64String(sps_pps_split[1]);
-
-                                    sps_pps.Add(video_sps);
-                                    sps_pps.Add(video_pps);
-                                    Output_NAL(sps_pps); // output SPS and PPS
-                                }
+                                var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
+                                var sps_pps = param.SpropParameterSets;
+                                if (sps_pps.Count > 0) video_sps = sps_pps[0];
+                                if (sps_pps.Count > 1) video_pps = sps_pps[1];
+                                Output_NAL(sps_pps); // output SPS and PPS
                             }
 
 
-                            // Split the rtpmap to get the Payload Type
-                            String[] split_rtpmap = rtpmap.Split(' ');
-                            video_payload = 0;
-                            bool result = Int32.TryParse(split_rtpmap[0], out video_payload);
 
+
+                            // Split the rtpmap to get the Payload Type
+                            video_payload = 0;
+                            if (rtpmap != null)
+                                video_payload = rtpmap.PayloadNumber;
+                            
 
                             Rtsp.Messages.RtspRequest setup_message = new Rtsp.Messages.RtspRequestSetup();
                             setup_message.RtspUri = new Uri(url + "/" + control);

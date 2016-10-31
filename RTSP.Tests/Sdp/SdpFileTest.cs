@@ -55,6 +55,21 @@ namespace Rtsp.Sdp.Tests
                 Assert.AreEqual(1, readenSDP.Medias.Count);
                 Media media = readenSDP.Medias[0];
                 Assert.AreEqual(3, media.Attributs.Count);
+
+                var rtpmaps = media.Attributs.Where(x => x.Key == AttributRtpMap.NAME).ToList();
+                Assert.AreEqual(1, rtpmaps.Count);
+                Assert.AreEqual("98 H264/90000", rtpmaps[0].Value);
+                Assert.IsInstanceOf<AttributRtpMap>(rtpmaps[0]);
+                Assert.AreEqual(98, (rtpmaps[0] as AttributRtpMap).PayloadNumber);
+
+                var fmtps = media.Attributs.Where(x => x.Key == AttributFmtp.NAME).ToList();
+                Assert.AreEqual(1, rtpmaps.Count);
+                Assert.AreEqual("98 profile-level-id=42A01E; sprop-parameter-sets=Z01AH/QFgJP6,aP48gA==; packetization-mode=1;", fmtps[0].Value);
+                Assert.IsInstanceOf<AttributFmtp>(fmtps[0]);
+                Assert.AreEqual(98, (fmtps[0] as AttributFmtp).PayloadNumber);
+                Assert.AreEqual("profile-level-id=42A01E; sprop-parameter-sets=Z01AH/QFgJP6,aP48gA==; packetization-mode=1;", (fmtps[0] as AttributFmtp).FormatParameter);
+
+
                 // Check the reader have read everything
                 Assert.AreEqual(string.Empty, testReader.ReadToEnd());
             }

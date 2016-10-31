@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Rtsp.Sdp
 {
-    public class AttributRtpMap : Attribut
+    public class AttributFmtp : Attribut
     {
-        public const string NAME = "rtpmap";
+        public const string NAME = "fmtp";
 
-        public AttributRtpMap()
+        public AttributFmtp()
         {
         }
 
@@ -25,7 +25,7 @@ namespace Rtsp.Sdp
         {
             get
             {
-                return string.Format("{0} {1}", PayloadNumber, Remaning);
+                return string.Format("{0} {1}", PayloadNumber, FormatParameter);
             }
             protected set
             {
@@ -36,7 +36,7 @@ namespace Rtsp.Sdp
         public int PayloadNumber { get; set; }
 
         // temporary aatibute to store remaning data not parsed
-        public string Remaning { get; set; }
+        public string FormatParameter { get; set; }
 
         protected override void ParseValue(string value)
         {
@@ -49,7 +49,7 @@ namespace Rtsp.Sdp
             }
             if(parts.Length > 1)
             {
-                Remaning = parts[1];
+                FormatParameter = parts[1];
             }
 
 
