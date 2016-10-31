@@ -31,5 +31,16 @@ namespace Rtsp.Messages
 
         }
 
+        public void AddTransport(RtspTransport newTransport)
+        {
+            string actualTransport = string.Empty;
+            if(Headers.ContainsKey(RtspHeaderNames.Transport))
+                actualTransport = Headers[RtspHeaderNames.Transport] + ",";
+            Headers[RtspHeaderNames.Transport] = actualTransport + newTransport.ToString();
+
+
+
+        }
+
     }
 }

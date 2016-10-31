@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -461,13 +462,19 @@ namespace RtspClientExample
                             Rtsp.Messages.RtspRequest setup_message = new Rtsp.Messages.RtspRequestSetup();
                             setup_message.RtspUri = new Uri(url + "/" + control);
 
+                            RtspTransport transport = null;
                             if (rtp_transport == RTP_TRANSPORT.TCP)
                             {
+                              
                                 // Interleaves the RTP packets over the RTSP connection
                                 // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
                                 video_data_channel = 0;  // Used in DataReceived event handler
                                 video_rtcp_channel = 1;  // Used in DataReceived event handler
-                                setup_message.AddHeader("Transport: RTP/AVP/TCP;interleaved=" + video_data_channel + "-" + video_rtcp_channel); // Channel 0 for video. Channel 1 for RTCP status reports
+                                transport = new RtspTransport()
+                                {
+                                    LowerTransport = RtspTransport.LowerTransportType.TCP,
+                                    Interleaved = new PortCouple(video_data_channel, video_data_channel), // Channel 0 for video. Channel 1 for RTCP status reports
+                                };
                             }
                             if (rtp_transport == RTP_TRANSPORT.UDP)
                             {
@@ -475,8 +482,14 @@ namespace RtspClientExample
                                 // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
                                 video_data_channel = udp_pair.data_port;     // Used in DataReceived event handler
                                 video_rtcp_channel = udp_pair.control_port;  // Used in DataReceived event handler
-                                setup_message.AddHeader("Transport: RTP/AVP;unicast;client_port=" + video_data_channel + "-" + video_rtcp_channel); // a Channel for video. a Channel for RTCP status reports
+                                transport = new RtspTransport()
+                                {
+                                    LowerTransport = RtspTransport.LowerTransportType.UDP,
+                                    IsMulticast = false,
+                                    ClientPort = new PortCouple(video_data_channel, video_data_channel), // a Channel for video. a Channel for RTCP status reports
+                                };
                             }
+                            (setup_message as RtspRequestSetup).AddTransport(transport);
                             rtsp_client.SendMessage(setup_message);
                         }
                     }
