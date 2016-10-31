@@ -188,5 +188,6 @@ namespace Rtsp.Messages
             return returnValue;
         }
 
+        public Object ContextData { get; set; }
     }
 }

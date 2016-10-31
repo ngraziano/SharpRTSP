@@ -161,16 +161,36 @@
                 destination = HandleRequest(ref message);
                 _logger.Debug("Dispatch message from {0} to {1}",
                     message.SourcePort != null ? message.SourcePort.RemoteAdress : "UNKNOWN",destination != null ? destination.RemoteAdress : "UNKNOWN" );
+
+                // HandleRequest can change message type.
+                if(message is RtspRequest)
+                {
+                    var context = new OriginContext();
+                    context.OriginCSeq = message.CSeq;
+                    context.OriginSourcePort = message.SourcePort;
+                    (message as RtspRequest).ContextData = context;
+                }
+
+
             }
             else if (message is RtspResponse)
             {
                 RtspResponse response = message as RtspResponse;
-                HandleResponse(response);
+
                 if (response.OriginalRequest != null)
                 {
-                    destination = response.OriginalRequest.SourcePort;
-                    _logger.Debug("Dispatch response back to {0}", destination.RemoteAdress);
+                    var context = response.OriginalRequest.ContextData as OriginContext;
+                    if (context != null)
+                    {
+                        destination = context.OriginSourcePort;
+                        response.CSeq = context.OriginCSeq;
+                        _logger.Debug("Dispatch response back to {0}", destination.RemoteAdress);
+                    }
+
                 }
+
+                HandleResponse(response);
+                
             }
 
             if (destination != null)
