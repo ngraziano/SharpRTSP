@@ -58,6 +58,9 @@ namespace RtspClientExample
         // Constructor
         public RTSPClient(String url, RTP_TRANSPORT rtp_transport)
         {
+
+            Rtsp.RtspUtils.RegisterUri();
+
             if (fs == null)
             {
                 String filename = "rtsp_capture_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".264";
@@ -77,7 +80,7 @@ namespace RtspClientExample
             // Connect to a RTSP Server. The RTSP session is a TCP connection
             try
             {
-                rtsp_socket = new Rtsp.RtspTcpTransport(uri.Host, (uri.IsDefaultPort ? 554 : uri.Port));
+                rtsp_socket = new Rtsp.RtspTcpTransport(uri.Host, uri.Port);
             }
             catch
             {
