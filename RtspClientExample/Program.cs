@@ -467,7 +467,7 @@ namespace RtspClientExample
                                 transport = new RtspTransport()
                                 {
                                     LowerTransport = RtspTransport.LowerTransportType.TCP,
-                                    Interleaved = new PortCouple(video_data_channel, video_data_channel), // Channel 0 for video. Channel 1 for RTCP status reports
+                                    Interleaved = new PortCouple(video_data_channel, video_rtcp_channel), // Channel 0 for video. Channel 1 for RTCP status reports
                                 };
                             }
                             if (rtp_transport == RTP_TRANSPORT.UDP)
@@ -480,7 +480,7 @@ namespace RtspClientExample
                                 {
                                     LowerTransport = RtspTransport.LowerTransportType.UDP,
                                     IsMulticast = false,
-                                    ClientPort = new PortCouple(video_data_channel, video_data_channel), // a Channel for video. a Channel for RTCP status reports
+                                    ClientPort = new PortCouple(video_data_channel, video_rtcp_channel), // a Channel for video. a Channel for RTCP status reports
                                 };
                             }
                             (setup_message as RtspRequestSetup).AddTransport(transport);
