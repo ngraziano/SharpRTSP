@@ -44,7 +44,7 @@ namespace Rtsp.Sdp
                 case "IP6":
                     return ConnectionIP6.Parse(parts[2]);
                 default:
-                    throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Address type {1} not suported", parts[1]));
+                    throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Address type {0} not suported", parts[1]));
             }
             
         }
