@@ -131,12 +131,10 @@ namespace RtspClientExample
 
         public void Stop()
         {
-            Rtsp.Messages.RtspRequest tearwdown_massage = new Rtsp.Messages.RtspRequestTeardown();
-            tearwdown_massage.RtspUri = new Uri(url);
-            tearwdown_massage.Session = session;
-            //                play_message.Timeout = 65;
-            rtsp_client.SendMessage(tearwdown_massage);
-
+            Rtsp.Messages.RtspRequest teardown_message = new Rtsp.Messages.RtspRequestTeardown();
+            teardown_message.RtspUri = new Uri(url);
+            teardown_message.Session = session;
+            rtsp_client.SendMessage(teardown_message);
         }
 
 
