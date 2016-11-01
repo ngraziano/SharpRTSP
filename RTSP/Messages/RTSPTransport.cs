@@ -205,6 +205,7 @@ mode                =    <"> *Method <"> | Method
                             returnValue.Source = subPart[1];
                         break;
                     case "INTERLEAVED":
+                    	returnValue.IsMulticast = false;
                         if (subPart.Length < 2)
                             throw new ArgumentException("interleaved value invalid", "aTransportString");
 
