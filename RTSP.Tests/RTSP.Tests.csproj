@@ -52,6 +52,7 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\PortCoupleTests.cs" />
     <Compile Include="Messages\RtspDataTest.cs" />
     <Compile Include="Messages\RTSPMessageTest.cs" />
     <Compile Include="Messages\RtspTransportTest.cs" />
