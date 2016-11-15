@@ -77,11 +77,12 @@ namespace Rtsp.Messages
                 case RequestType.TEARDOWN:
                     returnValue = new RtspRequestTeardown();
                     break;
+                case RequestType.GET_PARAMETER:
+                    returnValue = new RtspRequestGetParameter();
+                    break;
 
                     /*
                 case RequestType.ANNOUNCE:
-                    break;
-                case RequestType.GET_PARAMETER:
                     break;
 
                 case RequestType.RECORD:
