@@ -186,11 +186,18 @@ using System.Collections.Generic;
             // Handle SETUP message
             if (message is Rtsp.Messages.RtspRequestSetup)
             {
+                // Check the RTSP transport
+                // If it is UDP or Multicast, create the sockets
+                // If it is RTP over RTSP we send data via the RTSP Listener
+                String transport = message.Headers["Transport"];
+                // TODO - process the Transport string including the Channel values
+
                 // Create a 'Session' and add it to the Session List
+                // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
                 RTPSession new_session = new RTPSession();
                 new_session.session_id = session_count.ToString();
                 new_session.listener = listener;
-                new_session.sequence_number = rnd.Next(); // start with a random sequence number
+                new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
                 new_session.ssrc = 1;
                 rtp_list.Add(new_session);
                 session_count++;
@@ -200,8 +207,6 @@ using System.Collections.Generic;
                 setup_response.AddHeader("Transport: RTP/AVP/TCP;interleaved=0-1");
                 setup_response.Session = new_session.session_id;
                 listener.SendMessage(setup_response);
-
-
             }
 
             // Handle PLAY message
@@ -258,7 +263,7 @@ using System.Collections.Generic;
 
         }
 
-        void video_source_ReceivedYUVFrame(uint timestamp, int width, int height, byte[] yuv_data)
+        void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
         {
 
             // Take the YUV image and encode it into a H264 NAL
@@ -277,7 +282,7 @@ using System.Collections.Generic;
 
                 // RTP Packet Header
                 // 0 - Version, P, X, CC, M, PT and Sequence Number
-                //32 - Timestamp
+                //32 - Timestamp. H264 uses a 90kHz clock
                 //64 - SSRC
                 //96 - CSRCs (optional)
                 //nn - Extension ID and Length
@@ -301,10 +306,12 @@ using System.Collections.Generic;
 
                 session.sequence_number++;
 
-                rtp_packet.Add((byte)((timestamp >> 24) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 16) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 8) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 0) & 0xFF));
+                UInt32 ts = timestamp_ms * 90; // 90kHZ clock
+
+                rtp_packet.Add((byte)((ts >> 24) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 16) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 8) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 0) & 0xFF));
             
                 rtp_packet.Add((byte)((session.ssrc >> 24) & 0xFF));
                 rtp_packet.Add((byte)((session.ssrc >> 16) & 0xFF));
@@ -334,7 +341,7 @@ using System.Collections.Generic;
         public class RTPSession
         {
             public Rtsp.RtspListener listener = null;  // The RTSP client connection
-            public int sequence_number = 1;            // RTP packet sequence number used with this client connection
+            public UInt16 sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
             public String session_id = "";             // RTSP Session ID used with this client connection
             public int ssrc = 1;                       // SSRC value used with this client connection
             public bool play = false;                         // set to true when Session is in Play mode
