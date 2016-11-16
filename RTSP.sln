@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtspMultiplexer", "RtspMult
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtspClientExample", "RtspClientExample\RtspClientExample.csproj", "{5708B80A-8A16-4145-B0CA-3A317237DAC5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtspCameraExample", "RtspCameraExample\RtspCameraExample.csproj", "{DA8B426A-92A8-4944-B061-EC642EB0A4DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,18 @@ Global
 		{5708B80A-8A16-4145-B0CA-3A317237DAC5}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{5708B80A-8A16-4145-B0CA-3A317237DAC5}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{5708B80A-8A16-4145-B0CA-3A317237DAC5}.Release|x86.ActiveCfg = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|x86.Build.0 = Debug|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|x86.ActiveCfg = Release|Any CPU
+		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
