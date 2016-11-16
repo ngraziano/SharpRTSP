@@ -23,9 +23,9 @@ namespace RtspClientExample
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
 
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
+            String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
 
             // Create a RTSP Client
@@ -217,7 +217,7 @@ namespace RtspClientExample
                                    + " M=" + rtp_marker
                                    + " PT=" + rtp_payload_type
                                    + " Seq=" + rtp_sequence_number
-                                   + " Time=" + rtp_timestamp
+                                   + " Time (MS)=" + rtp_timestamp / 90 // convert from 90kHZ clock to ms
                                    + " SSRC=" + rtp_ssrc
                                    + " Size=" + e.Message.Data.Length);
 
@@ -527,7 +527,7 @@ namespace RtspClientExample
                                 // using Multicast Address and Ports that are in the reply to the SETUP message
                                 // Example for MULTICAST mode     Transport: RTP/AVP;multicast
                                 video_data_channel = 0; // we get this information in the SETUP message reply
-                                video_data_channel = 0; // we get this information in the SETUP message reply
+                                video_rtcp_channel = 0; // we get this information in the SETUP message reply
                                 transport = new RtspTransport()
                                 {
                                     LowerTransport = RtspTransport.LowerTransportType.UDP,
