@@ -203,40 +203,40 @@ using System.Collections.Generic;
                 new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
                 new_session.ssrc = 1;
 
-				// Construct the Transport: reply from the Server to the client
-				Rtsp.Messages.RtspTransport transport_reply = new Rtsp.Messages.RtspTransport();
+                // Construct the Transport: reply from the Server to the client
+                Rtsp.Messages.RtspTransport transport_reply = new Rtsp.Messages.RtspTransport();
 
-				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
-					// RTP over RTSP mode}
-					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.TCP;
-					transport_reply.Interleaved = new Rtsp.Messages.PortCouple(transport.Interleaved.First,transport.Interleaved.Second);
-				}
+                if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
+                    // RTP over RTSP mode}
+                    transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.TCP;
+                    transport_reply.Interleaved = new Rtsp.Messages.PortCouple(transport.Interleaved.First,transport.Interleaved.Second);
+                }
 
-				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
-					&& transport.IsMulticast == false) {
-					// RTP over UDP mode}
-					// Create a pair of UDP sockets
-					// Pass the Port of the two sockets back in the reply
-					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
-					transport_reply.IsMulticast = false;
-					transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
-				}
+                if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && transport.IsMulticast == false) {
+                    // RTP over UDP mode}
+                    // Create a pair of UDP sockets
+                    // Pass the Port of the two sockets back in the reply
+                    transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
+                    transport_reply.IsMulticast = false;
+                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+                }
 
-				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
-					&& transport.IsMulticast == true) {
-					// RTP over Multicast UDP mode}
-					// Create a pair of UDP sockets in Multicast Mode
-					// Pass the Ports of the two sockets back in the reply
-					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
-					transport_reply.IsMulticast = true;
-					transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
-				}
+                if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && transport.IsMulticast == true) {
+                    // RTP over Multicast UDP mode}
+                    // Create a pair of UDP sockets in Multicast Mode
+                    // Pass the Ports of the two sockets back in the reply
+                    transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
+                    transport_reply.IsMulticast = true;
+                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+                }
 
-				// Add the transports to the Session
-				new_session.client_transport = transport;
-				new_session.transport_reply = transport_reply;
-				
-				// Add the new session to the Sessions List
+                // Add the transports to the Session
+                new_session.client_transport = transport;
+                new_session.transport_reply = transport_reply;
+                
+                // Add the new session to the Sessions List
                 rtp_list.Add(new_session);
                 session_count++;
 
@@ -362,24 +362,24 @@ using System.Collections.Generic;
 
                 // Send as RTP over RTSP
 
-				if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
-					int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
-	                object state = new object();
-	                try
-	                {
-	                    // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
-	                    session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
-	                }
-	                catch
-	                {
-	                    Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
-	                    // Todo - could clean up the RTSP Listener
-	                    session.play = false; // stop sending data
-	                }
-	            }
-	            
-	            // TODO. Add UDP and Multicast
-	            
+                if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
+                    int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
+                    object state = new object();
+                    try
+                    {
+                        // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
+                        session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
+                        // Todo - could clean up the RTSP Listener
+                        session.play = false; // stop sending data
+                    }
+                }
+                
+                // TODO. Add UDP and Multicast
+                
             }
         }
 
