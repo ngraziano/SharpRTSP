@@ -186,22 +186,65 @@ using System.Collections.Generic;
             // Handle SETUP message
             if (message is Rtsp.Messages.RtspRequestSetup)
             {
+                // Check the RTSP transport
+                // If it is UDP or Multicast, create the sockets
+                // If it is RTP over RTSP we send data via the RTSP Listener
+                String transport_str = message.Headers["Transport"];
+                
+                Rtsp.Messages.RtspTransport transport = Rtsp.Messages.RtspTransport.Parse(transport_str);
+                
+
+
                 // Create a 'Session' and add it to the Session List
+                // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
                 RTPSession new_session = new RTPSession();
                 new_session.session_id = session_count.ToString();
                 new_session.listener = listener;
-                new_session.sequence_number = rnd.Next(); // start with a random sequence number
+                new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
                 new_session.ssrc = 1;
+
+				// Construct the Transport: reply from the Server to the client
+				Rtsp.Messages.RtspTransport transport_reply = new Rtsp.Messages.RtspTransport();
+
+				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
+					// RTP over RTSP mode}
+					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.TCP;
+					transport_reply.Interleaved = new Rtsp.Messages.PortCouple(transport.Interleaved.First,transport.Interleaved.Second);
+				}
+
+				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+					&& transport.IsMulticast == false) {
+					// RTP over UDP mode}
+					// Create a pair of UDP sockets
+					// Pass the Port of the two sockets back in the reply
+					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
+					transport_reply.IsMulticast = false;
+					transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+				}
+
+				if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+					&& transport.IsMulticast == true) {
+					// RTP over Multicast UDP mode}
+					// Create a pair of UDP sockets in Multicast Mode
+					// Pass the Ports of the two sockets back in the reply
+					transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
+					transport_reply.IsMulticast = true;
+					transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+				}
+
+				// Add the transports to the Session
+				new_session.client_transport = transport;
+				new_session.transport_reply = transport_reply;
+				
+				// Add the new session to the Sessions List
                 rtp_list.Add(new_session);
                 session_count++;
 
+
                 Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
-//                setup_response.AddHeader("Transport: RTP/AVP;unicast;client_port=8000-8001");
-                setup_response.AddHeader("Transport: RTP/AVP/TCP;interleaved=0-1");
+                setup_response.Headers[Rtsp.Messages.RtspHeaderNames.Transport] = transport_reply.ToString();
                 setup_response.Session = new_session.session_id;
                 listener.SendMessage(setup_response);
-
-
             }
 
             // Handle PLAY message
@@ -258,11 +301,12 @@ using System.Collections.Generic;
 
         }
 
-        void video_source_ReceivedYUVFrame(uint timestamp, int width, int height, byte[] yuv_data)
+        void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
         {
 
             // Take the YUV image and encode it into a H264 NAL
             // This returns a NAL with no headers (no 00 00 00 01 header and no 32 bit sizes)
+            Console.WriteLine("Compressing video at time(ms) " + timestamp_ms);
             byte[] raw_nal = h264_encoder.CompressFrame(yuv_data);
 
             // Go through each RTSP session and output the NAL
@@ -277,7 +321,7 @@ using System.Collections.Generic;
 
                 // RTP Packet Header
                 // 0 - Version, P, X, CC, M, PT and Sequence Number
-                //32 - Timestamp
+                //32 - Timestamp. H264 uses a 90kHz clock
                 //64 - SSRC
                 //96 - CSRCs (optional)
                 //nn - Extension ID and Length
@@ -301,10 +345,12 @@ using System.Collections.Generic;
 
                 session.sequence_number++;
 
-                rtp_packet.Add((byte)((timestamp >> 24) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 16) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 8) & 0xFF));
-                rtp_packet.Add((byte)((timestamp >> 0) & 0xFF));
+                UInt32 ts = timestamp_ms * 90; // 90kHZ clock
+
+                rtp_packet.Add((byte)((ts >> 24) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 16) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 8) & 0xFF));
+                rtp_packet.Add((byte)((ts >> 0) & 0xFF));
             
                 rtp_packet.Add((byte)((session.ssrc >> 24) & 0xFF));
                 rtp_packet.Add((byte)((session.ssrc >> 16) & 0xFF));
@@ -315,29 +361,38 @@ using System.Collections.Generic;
                 foreach (byte b in raw_nal) rtp_packet.Add(b);
 
                 // Send as RTP over RTSP
-                int video_channel = 0;
-                object state = new object();
 
-                try
-                {
-                    // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
-                    session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
-                }
-                catch
-                {
-                    Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
-                    // Todo - could clean up the RTSP Listener
-                }
+				if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
+					int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
+	                object state = new object();
+	                try
+	                {
+	                    // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
+	                    session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
+	                }
+	                catch
+	                {
+	                    Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
+	                    // Todo - could clean up the RTSP Listener
+	                    session.play = false; // stop sending data
+	                }
+	            }
+	            
+	            // TODO. Add UDP and Multicast
+	            
             }
         }
 
         public class RTPSession
         {
             public Rtsp.RtspListener listener = null;  // The RTSP client connection
-            public int sequence_number = 1;            // RTP packet sequence number used with this client connection
+            public UInt16 sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
             public String session_id = "";             // RTSP Session ID used with this client connection
             public int ssrc = 1;                       // SSRC value used with this client connection
-            public bool play = false;                         // set to true when Session is in Play mode
+            public bool play = false;                  // set to true when Session is in Play mode
+            public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
+            public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
+            
         }
     }
 

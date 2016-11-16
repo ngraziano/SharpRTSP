@@ -426,13 +426,13 @@
                 Reconnect();
             }
 
-            // $ in byte => 36
-            _stream.WriteByte(36);
-            _stream.WriteByte((byte)channel);
-            int size = frame.Length;
-            _stream.WriteByte((byte)((size & 0xFF00) >> 8));
-            _stream.WriteByte((byte)(size & 0x00FF));
-            return _stream.BeginWrite(frame, 0, size, asyncCallback, state);
+            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            data[0] = 36; // '$' character
+            data[1] = (byte)channel;
+            data[2] = (byte)((frame.Length & 0xFF00) >> 8);
+            data[3] = (byte)((frame.Length & 0x00FF));
+            System.Array.Copy(frame,0,data,4,frame.Length);
+            return _stream.BeginWrite(data, 0, data.Length, asyncCallback, state);
         }
 
         /// <summary>
