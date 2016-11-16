@@ -21,7 +21,7 @@ namespace RtspClientExample
 
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
-            
+
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
@@ -36,7 +36,7 @@ namespace RtspClientExample
             String dummy = Console.ReadLine();
 
             c.Stop();
-            
+
         }
     }
 
@@ -76,7 +76,7 @@ namespace RtspClientExample
                 fs2 = new StreamWriter(filename2);
             }
 
-            
+
             Console.WriteLine("Connecting to " + url);
             this.url = url;
 
@@ -126,8 +126,8 @@ namespace RtspClientExample
             }
             if (rtp_transport == RTP_TRANSPORT.MULTICAST)
             {
-				// Nothing to do. Will open Multicast UDP sockets after the SETUP command
-			}
+                // Nothing to do. Will open Multicast UDP sockets after the SETUP command
+            }
 
 
             // Send OPTIONS
@@ -143,16 +143,16 @@ namespace RtspClientExample
             teardown_message.RtspUri = new Uri(url);
             teardown_message.Session = session;
             rtsp_client.SendMessage(teardown_message);
-            
+
             // clear up any UDP sockets
             if (udp_pair != null) udp_pair.Stop();
-            
+
             // Stop the keepalive timer
             if (keepalive_timer != null) keepalive_timer.Stop();
-            
+
             // Drop the RTSP session
             rtsp_client.Stop();
-            
+
         }
 
 
@@ -169,7 +169,7 @@ namespace RtspClientExample
 
             if (data_received.Channel == video_rtcp_channel)
             {
-                Console.WriteLine("Received a RTCP message on channel "+ data_received.Channel);
+                Console.WriteLine("Received a RTCP message on channel " + data_received.Channel);
                 return;
             }
 
@@ -228,9 +228,9 @@ namespace RtspClientExample
                                    + " CC=" + rtp_csrc_count
                                    + " M=" + rtp_marker
                                    + " PT=" + rtp_payload_type
-                    //             + " Seq=" + rtp_sequence_number
-                    //             + " Time=" + rtp_timestamp
-                    //             + " SSRC=" + rtp_ssrc
+                                   //             + " Seq=" + rtp_sequence_number
+                                   //             + " Time=" + rtp_timestamp
+                                   //             + " SSRC=" + rtp_ssrc
                                    + " Size=" + e.Message.Data.Length;
                 fs2.WriteLine(msg);
                 fs2.Flush();
@@ -269,13 +269,14 @@ namespace RtspClientExample
         private string session;
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
-        public void Process_RTP_Frame(List<byte[]>rtp_payloads)
+        public void Process_RTP_Frame(List<byte[]> rtp_payloads)
         {
             Console.WriteLine("RTP Data comprised of " + rtp_payloads.Count + " rtp packets");
 
             List<byte[]> nal_units = new List<byte[]>(); // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
 
-            for (int payload_index = 0; payload_index < rtp_payloads.Count; payload_index++) {
+            for (int payload_index = 0; payload_index < rtp_payloads.Count; payload_index++)
+            {
                 // Examine the first rtp_payload and the first byte (the NAL header)
                 int nal_header_f_bit = (rtp_payloads[payload_index][0] >> 7) & 0x01;
                 int nal_header_nri = (rtp_payloads[payload_index][0] >> 5) & 0x03;
@@ -294,24 +295,28 @@ namespace RtspClientExample
                 {
                     Console.WriteLine("Agg STAP-A");
                     stap_a++;
-                    
+
                     // RTP packet contains multiple NALs, each with a 16 bit header
                     //   Read 16 byte size
                     //   Read NAL
-                    try {
-                    	int ptr = 1; // start after the nal_header_type which was '24'
-                    	// if we have at least 2 more bytes (the 16 bit size) then consume more data
-                    	while (ptr + 2 < (rtp_payloads[payload_index].Length-1)) {
-	                    	int size = (rtp_payloads[payload_index][ptr] << 8) + (rtp_payloads[payload_index][ptr+1] << 0);
-	                    	ptr = ptr + 2;
-	                    	byte[] nal = new byte[size];
-                            System.Array.Copy(rtp_payloads[payload_index],ptr,nal,0,size); // copy the NAL
-	                    	nal_units.Add(nal); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-    	                	ptr = ptr + size;
-        	            }
-        	        } catch {
-        	        	// do nothing
-					}
+                    try
+                    {
+                        int ptr = 1; // start after the nal_header_type which was '24'
+                        // if we have at least 2 more bytes (the 16 bit size) then consume more data
+                        while (ptr + 2 < (rtp_payloads[payload_index].Length - 1))
+                        {
+                            int size = (rtp_payloads[payload_index][ptr] << 8) + (rtp_payloads[payload_index][ptr + 1] << 0);
+                            ptr = ptr + 2;
+                            byte[] nal = new byte[size];
+                            System.Array.Copy(rtp_payloads[payload_index], ptr, nal, 0, size); // copy the NAL
+                            nal_units.Add(nal); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
+                            ptr = ptr + size;
+                        }
+                    }
+                    catch
+                    {
+                        // do nothing
+                    }
                 }
                 else if (nal_header_type == 25)
                 {
@@ -339,7 +344,7 @@ namespace RtspClientExample
                     int fu_header_r = (rtp_payloads[payload_index][1] >> 5) & 0x01;  // reserved. should be 0
                     int fu_header_type = (rtp_payloads[payload_index][1] >> 0) & 0x1F; // Original NAL unit header
 
-                    Console.WriteLine("Frag FU-A s="+fu_header_s + "e="+fu_header_e);
+                    Console.WriteLine("Frag FU-A s=" + fu_header_s + "e=" + fu_header_e);
 
                     // Check Start and End flags
                     if (fu_header_s == 1 && fu_header_e == 0)
@@ -355,7 +360,7 @@ namespace RtspClientExample
                         // Add reconstructed_nal_type byte to the memory stream
                         fragmented_nal.WriteByte(reconstructed_nal_type);
 
-                         // copy the rest of the RTP payload to the memory stream
+                        // copy the rest of the RTP payload to the memory stream
                         fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length - 2);
                     }
 
@@ -364,7 +369,7 @@ namespace RtspClientExample
                         // Middle part of Fragment
                         // Append this payload to the fragmented_nal
                         // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length-2);
+                        fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length - 2);
                     }
 
                     if (fu_header_s == 0 && fu_header_e == 1)
@@ -410,22 +415,25 @@ namespace RtspClientExample
             // If we fer a reply to OPTIONS and CSEQ is not 1, it must have been a keepalive command
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestOptions)
             {
-            	if (message.CSeq == 1) {
-            		// Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
-	                keepalive_timer = new System.Timers.Timer();
-	                keepalive_timer.Elapsed += Timer_Elapsed;
-	    			keepalive_timer.Interval = 20 * 1000;
-	    			keepalive_timer.Enabled = true;
+                if (message.CSeq == 1)
+                {
+                    // Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
+                    keepalive_timer = new System.Timers.Timer();
+                    keepalive_timer.Elapsed += Timer_Elapsed;
+                    keepalive_timer.Interval = 20 * 1000;
+                    keepalive_timer.Enabled = true;
 
-                	// send the Describe
-                	Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
-                	describe_message.RtspUri = new Uri(url);
-                	rtsp_client.SendMessage(describe_message);
-                } else {
-                	// do nothing
-        	    }
-			}            
-            
+                    // send the Describe
+                    Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
+                    describe_message.RtspUri = new Uri(url);
+                    rtsp_client.SendMessage(describe_message);
+                }
+                else
+                {
+                    // do nothing
+                }
+            }
+
 
             // If we get a reply to DESCRIBE (which was our second command), then prosess SDP and send the SETUP
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestDescribe)
@@ -465,7 +473,7 @@ namespace RtspClientExample
                             }
 
                             // Split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
-                            if(fmtp != null)
+                            if (fmtp != null)
                             {
                                 var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
                                 var sps_pps = param.SpropParameterSets;
@@ -481,7 +489,7 @@ namespace RtspClientExample
                             video_payload = 0;
                             if (rtpmap != null)
                                 video_payload = rtpmap.PayloadNumber;
-                            
+
 
                             Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
                             setup_message.RtspUri = new Uri(url + "/" + control);
@@ -489,7 +497,7 @@ namespace RtspClientExample
                             RtspTransport transport = null;
                             if (rtp_transport == RTP_TRANSPORT.TCP)
                             {
-                              
+
                                 // Server interleaves the RTP packets over the RTSP connection
                                 // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
                                 video_data_channel = 0;  // Used in DataReceived event handler
@@ -515,17 +523,17 @@ namespace RtspClientExample
                             }
                             if (rtp_transport == RTP_TRANSPORT.MULTICAST)
                             {
-                            	// Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
-                            	// using Multicast Address and Ports that are in the reply to the SETUP message
-                            	// Example for MULTICAST mode     Transport: RTP/AVP;multicast
-                            	video_data_channel = 0; // we get this information in the SETUP message reply
-                            	video_data_channel = 0; // we get this information in the SETUP message reply
+                                // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
+                                // using Multicast Address and Ports that are in the reply to the SETUP message
+                                // Example for MULTICAST mode     Transport: RTP/AVP;multicast
+                                video_data_channel = 0; // we get this information in the SETUP message reply
+                                video_data_channel = 0; // we get this information in the SETUP message reply
                                 transport = new RtspTransport()
                                 {
                                     LowerTransport = RtspTransport.LowerTransportType.UDP,
                                     IsMulticast = true
-                            	};
-							}
+                                };
+                            }
                             setup_message.AddTransport(transport);
 
                             rtsp_client.SendMessage(setup_message);
@@ -542,24 +550,26 @@ namespace RtspClientExample
                 Console.WriteLine("Got reply from Setup. Session is " + message.Session);
 
                 session = message.Session; // Session value used with Play, Pause, Teardown
-                
+
                 // Check the Transport header
-                if (message.Headers.ContainsKey(RtspHeaderNames.Transport)) {
+                if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
+                {
 
-					RtspTransport transport = RtspTransport.Parse(message.Headers[RtspHeaderNames.Transport]);
+                    RtspTransport transport = RtspTransport.Parse(message.Headers[RtspHeaderNames.Transport]);
 
-					// Check if Transport header includes Multicast
-					if (transport.IsMulticast) {
-		                String multicast_address = transport.Destination;
-		                video_data_channel = transport.Port.First;
-		                video_rtcp_channel = transport.Port.Second;
-		                
-		                // Create the Pair of UDP Sockets in Multicast mode
-		                udp_pair = new UDPSocket(multicast_address,video_data_channel,multicast_address,video_rtcp_channel);
-		                udp_pair.DataReceived += Rtp_DataReceived;
-		                udp_pair.Start();
-		            }
-				}                
+                    // Check if Transport header includes Multicast
+                    if (transport.IsMulticast)
+                    {
+                        String multicast_address = transport.Destination;
+                        video_data_channel = transport.Port.First;
+                        video_rtcp_channel = transport.Port.Second;
+
+                        // Create the Pair of UDP Sockets in Multicast mode
+                        udp_pair = new UDPSocket(multicast_address, video_data_channel, multicast_address, video_rtcp_channel);
+                        udp_pair.DataReceived += Rtp_DataReceived;
+                        udp_pair.Start();
+                    }
+                }
 
                 Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
                 play_message.RtspUri = new Uri(url);
@@ -576,14 +586,14 @@ namespace RtspClientExample
 
         }
 
-		void Timer_Elapsed (object sender, System.Timers.ElapsedEventArgs e)
-		{
-			// Send Keepalive message
-        	Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
-			options_message.RtspUri = new Uri(url);
-			rtsp_client.SendMessage(options_message);
+        void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            // Send Keepalive message
+            Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
+            options_message.RtspUri = new Uri(url);
+            rtsp_client.SendMessage(options_message);
 
-		}
+        }
 
 
         // Output an array of NAL Units.
@@ -599,8 +609,9 @@ namespace RtspClientExample
 
             int bytes_written = 0;
 
-            foreach (byte[] nal_unit in nal_units) {
-                fs.Write(new byte[]{0x00,0x00,0x00,0x01}, 0, 4);  // Write Start Code
+            foreach (byte[] nal_unit in nal_units)
+            {
+                fs.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
                 fs.Write(nal_unit, 0, nal_unit.Length);           // Write NAL
                 bytes_written += (nal_unit.Length + 4);
             }
@@ -609,7 +620,7 @@ namespace RtspClientExample
     }
 
     public class UDPSocket
-        {
+    {
 
         private UdpClient data_socket = null;
         private UdpClient control_socket = null;
@@ -619,20 +630,20 @@ namespace RtspClientExample
 
         public int data_port = 50000;
         public int control_port = 50001;
-        
+
         bool is_multicast = false;
         IPAddress data_mcast_addr;
-		IPAddress control_mcast_addr;
-        
+        IPAddress control_mcast_addr;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="UDPSocket"/> class.
-		/// Creates two new UDP sockets using the start and end Port range
+        /// Creates two new UDP sockets using the start and end Port range
         /// </summary>
         public UDPSocket(int start_port, int end_port)
         {
-        
-        	is_multicast = false;
-        	
+
+            is_multicast = false;
+
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
             data_port = start_port;
             control_port = start_port + 1;
@@ -665,38 +676,38 @@ namespace RtspClientExample
 
             control_socket.Client.DontFragment = false;
         }
-        
-        
+
+
         /// <summary>
         /// Initializes a new instance of the <see cref="UDPSocket"/> class.
-		/// Used with Multicast mode with the Multicast Address and Port
+        /// Used with Multicast mode with the Multicast Address and Port
         /// </summary>
         public UDPSocket(String data_multicast_address, int data_multicast_port, String control_multicast_address, int control_multicast_port)
         {
-        
-        	is_multicast = true;
-        	
+
+            is_multicast = true;
+
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
             this.data_port = data_multicast_port;
             this.control_port = control_multicast_port;
 
             try
             {
-				IPEndPoint data_ep = new IPEndPoint(IPAddress.Any,data_port);
-				IPEndPoint control_ep = new IPEndPoint(IPAddress.Any,control_port);
-				
-				data_mcast_addr = IPAddress.Parse(data_multicast_address);
-				control_mcast_addr = IPAddress.Parse(control_multicast_address);
+                IPEndPoint data_ep = new IPEndPoint(IPAddress.Any, data_port);
+                IPEndPoint control_ep = new IPEndPoint(IPAddress.Any, control_port);
 
-				data_socket = new UdpClient();
-				data_socket.Client.Bind(data_ep);
-				data_socket.JoinMulticastGroup(data_mcast_addr);
-				
+                data_mcast_addr = IPAddress.Parse(data_multicast_address);
+                control_mcast_addr = IPAddress.Parse(control_multicast_address);
+
+                data_socket = new UdpClient();
+                data_socket.Client.Bind(data_ep);
+                data_socket.JoinMulticastGroup(data_mcast_addr);
+
                 control_socket = new UdpClient();
                 control_socket.Client.Bind(control_ep);
                 control_socket.JoinMulticastGroup(control_mcast_addr);
-                
-                
+
+
                 data_socket.Client.ReceiveBufferSize = 100 * 1024;
 
                 control_socket.Client.DontFragment = false;
@@ -729,7 +740,7 @@ namespace RtspClientExample
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            data_read_thread = new Thread( () => DoWorkerJob(data_socket, data_port));
+            data_read_thread = new Thread(() => DoWorkerJob(data_socket, data_port));
             data_read_thread.Name = "DataPort " + data_port;
             data_read_thread.Start();
 
@@ -743,11 +754,12 @@ namespace RtspClientExample
         /// </summary>
         public void Stop()
         {
-        	if (is_multicast) {
-        		// leave the multicast groups
-        		data_socket.DropMulticastGroup(data_mcast_addr);
-        		control_socket.DropMulticastGroup(control_mcast_addr);
-			}
+            if (is_multicast)
+            {
+                // leave the multicast groups
+                data_socket.DropMulticastGroup(data_mcast_addr);
+                control_socket.DropMulticastGroup(control_mcast_addr);
+            }
             data_socket.Close();
             control_socket.Close();
         }
