@@ -268,6 +268,7 @@ using System.Collections.Generic;
 
             // Take the YUV image and encode it into a H264 NAL
             // This returns a NAL with no headers (no 00 00 00 01 header and no 32 bit sizes)
+            Console.WriteLine("Compressing video at time(ms) " + timestamp_ms);
             byte[] raw_nal = h264_encoder.CompressFrame(yuv_data);
 
             // Go through each RTSP session and output the NAL
@@ -334,6 +335,7 @@ using System.Collections.Generic;
                 {
                     Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
                     // Todo - could clean up the RTSP Listener
+                    session.play = false; // stop sending data
                 }
             }
         }
