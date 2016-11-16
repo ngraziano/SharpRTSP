@@ -186,12 +186,17 @@ using System.Collections.Generic;
             // Handle SETUP message
             if (message is Rtsp.Messages.RtspRequestSetup)
             {
+
+                // 
+                var setupMessage = message as Rtsp.Messages.RtspRequestSetup;
+                
                 // Check the RTSP transport
                 // If it is UDP or Multicast, create the sockets
                 // If it is RTP over RTSP we send data via the RTSP Listener
-                String transport_str = message.Headers["Transport"];
                 
-                Rtsp.Messages.RtspTransport transport = Rtsp.Messages.RtspTransport.Parse(transport_str);
+                // FIXME client may send more than one possible transport.
+                // very rare
+                Rtsp.Messages.RtspTransport transport = setupMessage.GetTransports()[0];
                 
 
 
@@ -219,7 +224,9 @@ using System.Collections.Generic;
                     // Pass the Port of the two sockets back in the reply
                     transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
                     transport_reply.IsMulticast = false;
-                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+                    transport_reply.ClientPort = transport.ClientPort;  // FIX
+                    // for now until implemented
+                    transport_reply = null;
                 }
 
                 if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
@@ -229,22 +236,37 @@ using System.Collections.Generic;
                     // Pass the Ports of the two sockets back in the reply
                     transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
                     transport_reply.IsMulticast = true;
-                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+                    transport_reply.Port = new Rtsp.Messages.PortCouple(7000,7001);  // FIX
+
+                    // for now until implemented
+                    transport_reply = null;
                 }
 
-                // Add the transports to the Session
-                new_session.client_transport = transport;
-                new_session.transport_reply = transport_reply;
-                
-                // Add the new session to the Sessions List
-                rtp_list.Add(new_session);
-                session_count++;
+
+                if (transport_reply != null)
+                {
+                    // Add the transports to the Session
+                    new_session.client_transport = transport;
+                    new_session.transport_reply = transport_reply;
+
+                    // Add the new session to the Sessions List
+                    rtp_list.Add(new_session);
+                    session_count++;
 
 
-                Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
-                setup_response.Headers[Rtsp.Messages.RtspHeaderNames.Transport] = transport_reply.ToString();
-                setup_response.Session = new_session.session_id;
-                listener.SendMessage(setup_response);
+                    Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
+                    setup_response.Headers[Rtsp.Messages.RtspHeaderNames.Transport] = transport_reply.ToString();
+                    setup_response.Session = new_session.session_id;
+                    listener.SendMessage(setup_response);
+                }
+                else
+                {
+                    Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
+                    // unsuported transport
+                    setup_response.ReturnCode =461;
+                    listener.SendMessage(setup_response);
+                }
+
             }
 
             // Handle PLAY message
