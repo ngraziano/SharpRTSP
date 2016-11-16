@@ -254,14 +254,14 @@ using System.Collections.Generic;
                     session_count++;
 
 
-                    Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
+                    Rtsp.Messages.RtspResponse setup_response = setupMessage.CreateResponse();
                     setup_response.Headers[Rtsp.Messages.RtspHeaderNames.Transport] = transport_reply.ToString();
                     setup_response.Session = new_session.session_id;
                     listener.SendMessage(setup_response);
                 }
                 else
                 {
-                    Rtsp.Messages.RtspResponse setup_response = (e.Message as Rtsp.Messages.RtspRequestSetup).CreateResponse();
+                    Rtsp.Messages.RtspResponse setup_response = setupMessage.CreateResponse();
                     // unsuported transport
                     setup_response.ReturnCode =461;
                     listener.SendMessage(setup_response);
