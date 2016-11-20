@@ -189,7 +189,7 @@ namespace Rtsp.Messages
                     else
                     {
                         //remove timeout part
-                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session]?.Split(';').First();
+                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First();
                     }
             }
         }
