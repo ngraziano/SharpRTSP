@@ -249,7 +249,7 @@ mode                =    <"> *Method <"> | Method
                     case "MODE":
                         if (subPart.Length < 2)
                             throw new ArgumentException("mode value invalid", "aTransportString");
-                        returnValue.SSrc = subPart[1];
+                        returnValue.Mode = subPart[1];
                         break;
                     default:
                         // TODO log invalid part
