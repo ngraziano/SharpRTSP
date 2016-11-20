@@ -55,6 +55,7 @@
     <Compile Include="Messages\PortCoupleTests.cs" />
     <Compile Include="Messages\RtspDataTest.cs" />
     <Compile Include="Messages\RTSPMessageTest.cs" />
+    <Compile Include="Messages\RtspResponseTests.cs" />
     <Compile Include="Messages\RtspTransportTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RTSPListenerTest.cs" />

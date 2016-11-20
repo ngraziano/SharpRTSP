@@ -8,6 +8,8 @@ namespace Rtsp.Messages
 {
     public class RtspResponse : RtspMessage
     {
+        public const int DEFAULT_TIMEOUT = 60;
+
         /// <summary>
         /// Gets the default error message for an error code.
         /// </summary>
@@ -148,6 +150,73 @@ namespace Rtsp.Messages
                 if (ReturnCode > 0 && ReturnCode < 400)
                     return true;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the timeout in second.
+        /// <remarks>The default timeout is 60.</remarks>
+        /// </summary>
+        /// <value>The timeout.</value>
+        public int Timeout
+        {
+            get
+            {
+                int returnValue = DEFAULT_TIMEOUT;
+                if (Headers.ContainsKey(RtspHeaderNames.Session))
+                {
+                    string[] parts = Headers[RtspHeaderNames.Session].Split(';');
+                    if (parts.Length > 1)
+                    {
+                        string[] subParts = parts[1].Split('=');
+                        if (subParts.Length > 1 &&
+                            subParts[0].ToUpperInvariant() == "TIMEOUT")
+                            if (!int.TryParse(subParts[1], out returnValue))
+                                returnValue = DEFAULT_TIMEOUT;
+                    }
+                }
+                return returnValue;
+            }
+            set
+            {
+                if(Headers.ContainsKey(RtspHeaderNames.Session))
+                    if (value != DEFAULT_TIMEOUT)
+                    {
+                        
+                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First() 
+                            + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
+                    }
+                    else
+                    {
+                        //remove timeout part
+                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session]?.Split(';').First();
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Gets the session ID.
+        /// </summary>
+        /// <value>The session ID.</value>
+        public override string Session
+        {
+            get
+            {
+                if (!Headers.ContainsKey(RtspHeaderNames.Session))
+                    return null;
+
+                return Headers[RtspHeaderNames.Session].Split(';')[0];
+            }
+            set
+            {
+                if(Timeout != DEFAULT_TIMEOUT)
+                {
+                    Headers[RtspHeaderNames.Session] = value + ";timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    Headers[RtspHeaderNames.Session] = value;
+                }
             }
         }
 

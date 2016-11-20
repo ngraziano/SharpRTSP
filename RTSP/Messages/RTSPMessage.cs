@@ -155,49 +155,21 @@
         /// Gets the session ID.
         /// </summary>
         /// <value>The session ID.</value>
-        public string Session
+        public virtual string Session
         {
             get
             {
                 if (!_headers.ContainsKey("Session"))
                     return null;
 
-                return _headers["Session"].Split(';')[0];
+                return _headers["Session"];
             }
             set
             {
-//                _headers["Session"] = value + ";timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
                 _headers["Session"] = value;
             }
         }
-
-        /// <summary>
-        /// Gets the timeout in second.
-        /// <remarks>The default timeout is 60.</remarks>
-        /// </summary>
-        /// <value>The timeout.</value>
-        public int Timeout
-        {
-            get
-            {
-                int returnValue = 60;
-                if (_headers.ContainsKey("Session"))
-                {
-                    string[] parts = _headers["Session"].Split(';');
-                    if (parts.Length > 1)
-                    {
-                        string[] subParts = parts[1].Split('=');
-                        if (subParts.Length > 1 &&
-                            subParts[0].ToUpperInvariant() == "TIMEOUT")
-                            if (!int.TryParse(subParts[1], out returnValue))
-                                returnValue = 60;
-                    }
-                }
-                return returnValue;
-            }
-        }
-
-
+        
         /// <summary>
         /// Initialises the length of the data byte array from content lenth header.
         /// </summary>
