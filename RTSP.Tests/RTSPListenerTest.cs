@@ -247,7 +247,7 @@ namespace Rtsp.Tests
 
             // No exception should be generate.
             stream.Close();
-            
+
             // Check the transport was closed.
             _mockTransport.Received().Close();
             //Check the message recevied
@@ -255,7 +255,29 @@ namespace Rtsp.Tests
             Assert.AreEqual(0, _receivedData.Count);
         }
 
+        [Test]
+        public void SendMessage()
+        {
 
+            MemoryStream stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(stream);
 
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+            RtspMessage message = new RtspRequestOptions();
+
+            // Run
+            testedListener.SendMessage(message);
+
+            string result = Encoding.UTF8.GetString(stream.GetBuffer());
+            result = result.TrimEnd('\0');
+            Assert.That(result, Does.StartWith("OPTIONS * RTSP/1.0\r\n"));
+            // packet without payload must end with double return
+            Assert.That(result, Does.EndWith("\r\n\r\n"));
+
+        }
     }
 }
