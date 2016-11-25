@@ -270,8 +270,9 @@ namespace Rtsp.Tests
             RtspMessage message = new RtspRequestOptions();
 
             // Run
-            testedListener.SendMessage(message);
+            var isSuccess = testedListener.SendMessage(message);
 
+            Assert.That(isSuccess, Is.True);
             string result = Encoding.UTF8.GetString(stream.GetBuffer());
             result = result.TrimEnd('\0');
             Assert.That(result, Does.StartWith("OPTIONS * RTSP/1.0\r\n"));
@@ -279,5 +280,52 @@ namespace Rtsp.Tests
             Assert.That(result, Does.EndWith("\r\n\r\n"));
 
         }
+
+
+
+        [Test]
+        public void SendData()
+        {
+            const int dataLenght = 45;
+
+            MemoryStream stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+
+
+            RtspData data = new RtspData();
+            data.Channel = 12;
+            data.Data = new byte[dataLenght];
+            for (int i = 0; i < dataLenght; i++)
+            {
+                data.Data[i] = (byte)i;
+            }
+
+
+            // Run
+            var asyncResult = testedListener.BeginSendData(data, null, null);
+            testedListener.EndSendData(asyncResult);
+
+            var result = stream.GetBuffer();
+
+            int index = 0;
+            Assert.That(result[index++], Is.EqualTo((byte)'$'));
+            Assert.That(result[index++], Is.EqualTo(data.Channel));
+            Assert.That(result[index++], Is.EqualTo((dataLenght & 0xFF00) >> 8));
+            Assert.That(result[index++], Is.EqualTo(dataLenght & 0x00FF));
+            for (int i = 0; i < dataLenght; i++)
+            {
+                Assert.That(result[index++], Is.EqualTo(data.Data[i]));
+            }
+
+
+
+        }
+
     }
 }
