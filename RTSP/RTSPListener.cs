@@ -418,6 +418,8 @@
         {
             if (frame == null)
                 throw new ArgumentNullException("frame");
+            if (frame.Length > 0xFFFF)
+                throw new ArgumentException("frame too large", "frame");
             Contract.EndContractBlock();
 
             if (!_transport.Connected)

@@ -6,6 +6,7 @@ using NSubstitute;
 using NUnit.Framework;
 using Rtsp.Messages;
 using System.IO;
+using NUnit.Framework.Constraints;
 
 namespace Rtsp.Tests
 {
@@ -327,5 +328,31 @@ namespace Rtsp.Tests
 
         }
 
+
+
+        [Test]
+        public void SendDataTooLarge()
+        {
+            const int dataLenght = 0x10001;
+
+            MemoryStream stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+
+
+            RtspData data = new RtspData();
+            data.Channel = 12;
+            data.Data = new byte[dataLenght];
+
+
+            ActualValueDelegate<object> test = () => testedListener.BeginSendData(data,null,null);
+            Assert.That(test, Throws.InstanceOf<ArgumentException>());
+
+        }
     }
 }
