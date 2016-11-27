@@ -14,7 +14,7 @@ build:
   verbosity: minimal
 test_script:
 - ps: >-
-    .\testrunner\OpenCover.4.6.166\tools\OpenCover.Console.exe -register:user -target:nunit3-console.exe "-targetargs:--result=myresults.xml RTSP.Tests\bin\$env:CONFIGURATION\RTSP.Tests.dll" -filter:"+[*]Rtsp*" -output:opencoverCoverage.xml
+    .\testrunner\OpenCover.4.6.166\tools\OpenCover.Console.exe -register:user -target:nunit3-console.exe "-targetargs:--result=myresults.xml RTSP.Tests\bin\$env:CONFIGURATION\RTSP.Tests.dll" -filter:"+[*]Rtsp* -[*.Tests]" -output:opencoverCoverage.xml
     
     $coveralls = (Resolve-Path "./testrunner/coveralls.net.*/tools/csmacnz.coveralls.exe").ToString()
     
