@@ -199,15 +199,6 @@ using System.Collections.Generic;
                 Rtsp.Messages.RtspTransport transport = setupMessage.GetTransports()[0];
                 
 
-
-                // Create a 'Session' and add it to the Session List
-                // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
-                RTPSession new_session = new RTPSession();
-                new_session.session_id = session_count.ToString();
-                new_session.listener = listener;
-                new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
-                new_session.ssrc = 1;
-
                 // Construct the Transport: reply from the Server to the client
                 Rtsp.Messages.RtspTransport transport_reply = new Rtsp.Messages.RtspTransport();
 
@@ -245,13 +236,27 @@ using System.Collections.Generic;
 
                 if (transport_reply != null)
                 {
+
+                    RTPSession new_session = new RTPSession();
+                    new_session.listener = listener;
+                    new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
+                    new_session.ssrc = 1;
+
                     // Add the transports to the Session
                     new_session.client_transport = transport;
                     new_session.transport_reply = transport_reply;
 
-                    // Add the new session to the Sessions List
-                    rtp_list.Add(new_session);
-                    session_count++;
+                    lock (rtp_list)
+                    {
+                        // Create a 'Session' and add it to the Session List
+                        // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
+                        // Place Lock() here so the Session Count and the addition to the list is locked
+                        new_session.session_id = session_count.ToString();
+
+                        // Add the new session to the Sessions List
+                        rtp_list.Add(new_session);
+                        session_count++;
+                    }
 
 
                     Rtsp.Messages.RtspResponse setup_response = setupMessage.CreateResponse();
@@ -326,82 +331,115 @@ using System.Collections.Generic;
         void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
         {
 
+            // Check if there are any clients. Only run the encoding if someone is connected
+            // Could exand this to check if someone is connected and in PLAY mode
+            int current_rtp_count = rtp_list.Count;
+
+            if (current_rtp_count == 0) return;
+
             // Take the YUV image and encode it into a H264 NAL
             // This returns a NAL with no headers (no 00 00 00 01 header and no 32 bit sizes)
-            Console.WriteLine("Compressing video at time(ms) " + timestamp_ms);
+            Console.WriteLine("Compressing video at time(ms) " + timestamp_ms + "    " + current_rtp_count + " RTSP clients connected");
             byte[] raw_nal = h264_encoder.CompressFrame(yuv_data);
 
-            // Go through each RTSP session and output the NAL
-            foreach (RTPSession session in rtp_list)
+
+            // Build a RTP packet, but leave the sequence_number empty and the ssrc empty.
+            // They are different for each client so are added just before transmission.
+
+            int sequence_number_position = 0;
+            int ssrc_position = 0;
+
+            List<byte> rtp_packet = new List<byte>();
+
+            // RTP Packet Header
+            // 0 - Version, P, X, CC, M, PT and Sequence Number
+            //32 - Timestamp. H264 uses a 90kHz clock
+            //64 - SSRC
+            //96 - CSRCs (optional)
+            //nn - Extension ID and Length
+            //nn - Extension header
+
+            int rtp_version = 2;
+            int rtp_padding = 0;
+            int rtp_extension = 0;
+            int rtp_csrc_count = 0;
+            int rtp_marker = 0;
+            int rtp_payload_type = 96;
+
+            byte rtp_byte_0 = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
+            byte rtp_byte_1 = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+
+            rtp_packet.Add(rtp_byte_0);
+            rtp_packet.Add(rtp_byte_1);
+
+            sequence_number_position = rtp_packet.Count; // record the position. We populate the data later
+            UInt16 empty_sequence_number = 0;
+            rtp_packet.Add((byte)((empty_sequence_number >> 8) & 0xFF));
+            rtp_packet.Add((byte)((empty_sequence_number >> 0) & 0xFF));
+
+            UInt32 ts = timestamp_ms * 90; // 90kHZ clock
+
+            rtp_packet.Add((byte)((ts >> 24) & 0xFF));
+            rtp_packet.Add((byte)((ts >> 16) & 0xFF));
+            rtp_packet.Add((byte)((ts >> 8) & 0xFF));
+            rtp_packet.Add((byte)((ts >> 0) & 0xFF));
+
+            ssrc_position = rtp_packet.Count;
+            UInt32 empty_ssrc = 0;
+            rtp_packet.Add((byte)((empty_ssrc >> 24) & 0xFF));
+            rtp_packet.Add((byte)((empty_ssrc >> 16) & 0xFF));
+            rtp_packet.Add((byte)((empty_ssrc >> 8) & 0xFF));
+            rtp_packet.Add((byte)((empty_ssrc >> 0) & 0xFF));
+
+            // Now append the raw NAL
+            foreach (byte b in raw_nal) rtp_packet.Add(b);
+
+
+            lock (rtp_list)
             {
+                // Go through each RTSP session and output the NAL
+                foreach (RTPSession session in rtp_list.ToArray()) // ToArray makes a temp copy of the list.
+                                                                 // This lets us delete items in the foreach
+                {
 
-                // Only process Sessions in Play Mode
-                if (session.play == false) continue;
+                    // Only process Sessions in Play Mode
+                    if (session.play == false) continue;
 
-                // Build the RTP packet(s) for this client
-                List<byte> rtp_packet = new List<byte>();
 
-                // RTP Packet Header
-                // 0 - Version, P, X, CC, M, PT and Sequence Number
-                //32 - Timestamp. H264 uses a 90kHz clock
-                //64 - SSRC
-                //96 - CSRCs (optional)
-                //nn - Extension ID and Length
-                //nn - Extension header
+                    // Add the specific data for each transmission
+                    rtp_packet[sequence_number_position] = ((byte)((session.sequence_number >> 8) & 0xFF));
+                    rtp_packet[sequence_number_position + 1] = ((byte)((session.sequence_number >> 0) & 0xFF));
+                    session.sequence_number++;
 
-                int rtp_version = 2;
-                int rtp_padding = 0;
-                int rtp_extension = 0;
-                int rtp_csrc_count = 0;
-                int rtp_marker = 0;
-                int rtp_payload_type = 96;
+                    rtp_packet[ssrc_position] = ((byte)((empty_ssrc >> 24) & 0xFF));
+                    rtp_packet[ssrc_position + 1] = ((byte)((empty_ssrc >> 16) & 0xFF));
+                    rtp_packet[ssrc_position + 2] = ((byte)((empty_ssrc >> 8) & 0xFF));
+                    rtp_packet[ssrc_position + 3] = ((byte)((empty_ssrc >> 0) & 0xFF));
 
-                byte rtp_byte_0 = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
-                byte rtp_byte_1 = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
 
-                rtp_packet.Add(rtp_byte_0);
-                rtp_packet.Add(rtp_byte_1);
+                    // Send as RTP over RTSP
 
-                rtp_packet.Add((byte)((session.sequence_number >> 8) & 0xFF));
-                rtp_packet.Add((byte)((session.sequence_number >> 0) & 0xFF));
-
-                session.sequence_number++;
-
-                UInt32 ts = timestamp_ms * 90; // 90kHZ clock
-
-                rtp_packet.Add((byte)((ts >> 24) & 0xFF));
-                rtp_packet.Add((byte)((ts >> 16) & 0xFF));
-                rtp_packet.Add((byte)((ts >> 8) & 0xFF));
-                rtp_packet.Add((byte)((ts >> 0) & 0xFF));
-            
-                rtp_packet.Add((byte)((session.ssrc >> 24) & 0xFF));
-                rtp_packet.Add((byte)((session.ssrc >> 16) & 0xFF));
-                rtp_packet.Add((byte)((session.ssrc >> 8) & 0xFF));
-                rtp_packet.Add((byte)((session.ssrc >> 0) & 0xFF));
-
-                // Now append the raw NAL
-                foreach (byte b in raw_nal) rtp_packet.Add(b);
-
-                // Send as RTP over RTSP
-
-                if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) {
-                    int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
-                    object state = new object();
-                    try
+                    if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
                     {
-                        // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
-                        session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
+                        int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
+                        object state = new object();
+                        try
+                        {
+                            // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
+                            session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
+                            session.play = false; // stop sending data
+                            session.listener.Dispose();
+                            rtp_list.Remove(session); // remove the session. It is dead
+                            Console.WriteLine(rtp_list.Count + " remaining sessions open");
+                        }
                     }
-                    catch
-                    {
-                        Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
-                        // Todo - could clean up the RTSP Listener
-                        session.play = false; // stop sending data
-                    }
+                    // TODO. Add UDP and Multicast
+
                 }
-                
-                // TODO. Add UDP and Multicast
-                
             }
         }
 
