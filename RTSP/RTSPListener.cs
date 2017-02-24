@@ -443,7 +443,13 @@
         /// <param name="result">The result.</param>
         public void EndSendData(IAsyncResult result)
         {
-            _stream.EndWrite(result);
+            try
+            {
+                _stream.EndWrite(result);
+            } catch (Exception e)
+            { // Error, for example stream has already been Disposed
+                result = null;
+            }
         }
 
         #region IDisposable Membres
