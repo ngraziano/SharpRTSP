@@ -326,7 +326,29 @@ using System.Collections.Generic;
                 listener.SendMessage(getparameter_response);
             }
 
+
+        // Handle TEARDOWN
+        if (message is Rtsp.Messages.RtspRequestTeardown)
+        {
+            lock (rtp_list)
+            {
+                // Search for the Session in the Sessions List.
+                foreach (RTPSession session in rtp_list.ToArray()) // Convert to ToArray so we can delete from the rtp_list
+                {
+                    if (session.session_id.Equals(message.Session))
+                    {
+                        // TODO - Close UDP or Multicast transport
+                        // For TCP there is no transport to close
+                        rtp_list.Remove(session);
+                        // Close the RTSP socket
+                        listener.Dispose();
+                    }
+                }
+            }
         }
+
+
+    }
 
         void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
         {
