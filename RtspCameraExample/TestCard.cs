@@ -30,6 +30,7 @@ public class TestCard
     private int width = 0;
     private int height = 0;
     private Object generate_lock = new Object();
+    private long count = 0;
 
     // ASCII Font
     // Created by Roger Hardiman using an online generation tool
@@ -71,15 +72,23 @@ public class TestCard
         stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        // Start timer. The Timer will generate a YUV frame on every 'tick'
-        int interval_ms = 1000 / fps;
+        // Start timer. The Timer will generate each YUV frame
         frame_timer = new System.Timers.Timer();
-        frame_timer.Interval = interval_ms;
-        frame_timer.AutoReset = true; // restart timer after the time has elapsed
+        frame_timer.Interval = 1; // on first pass timer will fire straight away (cannot have zero interval)
+        frame_timer.AutoReset = false; // do not restart timer after the time has elapsed
         frame_timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
         {
-            // send a keepalive message
+            // send a frame
             Send_YUV_Frame();
+            count++;
+
+            // Some CPU cycles will have been used in Sending the YUV Frame.
+            // Compute the delay required (the Timer Interval) before sending the next YUV frame
+            long time_for_next_tick_ms = (count * 1000) / fps;
+            long time_to_wait = time_for_next_tick_ms - stopwatch.ElapsedMilliseconds;
+            if (time_to_wait <= 0) time_to_wait = 1; // cannot have negative or zero intervals
+            frame_timer.Interval = time_to_wait;
+            frame_timer.Start();
         };
         frame_timer.Start();
         
