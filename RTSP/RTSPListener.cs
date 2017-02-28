@@ -452,6 +452,35 @@
             }
         }
 
+        /// <summary>
+        /// Send data (Synchronous)
+        /// </summary>
+        /// <param name="channel">The channel.</param>
+        /// <param name="frame">The frame.</param>
+        public void SendData(int channel, byte[] frame)
+        {
+            if (frame == null)
+                throw new ArgumentNullException("frame");
+            if (frame.Length > 0xFFFF)
+                throw new ArgumentException("frame too large", "frame");
+            Contract.EndContractBlock();
+
+            if (!_transport.Connected)
+            {
+                _logger.Warn("Reconnect to a client, strange !!");
+                Reconnect();
+            }
+
+            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            data[0] = 36; // '$' character
+            data[1] = (byte)channel;
+            data[2] = (byte)((frame.Length & 0xFF00) >> 8);
+            data[3] = (byte)((frame.Length & 0x00FF));
+            System.Array.Copy(frame, 0, data, 4, frame.Length);
+            _stream.Write(data, 0, data.Length);
+        }
+
+
         #region IDisposable Membres
 
         public void Dispose()

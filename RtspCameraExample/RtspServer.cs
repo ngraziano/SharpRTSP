@@ -534,7 +534,8 @@ public class RtspServer : IDisposable
                         try
                         {
                             // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
-                            session.listener.BeginSendData(video_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
+                            //session.listener.BeginSendData(video_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
+                            session.listener.SendData(video_channel, rtp_packet);
                         }
                         catch
                         {
