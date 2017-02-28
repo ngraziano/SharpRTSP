@@ -21,8 +21,8 @@ using System.Collections.Generic;
 
 public class RtspServer : IDisposable
 {
-    const int h264_width = 128;
-    const int h264_height = 96;
+    const int h264_width = 192;
+    const int h264_height = 128;
     const int h264_fps = 25;
 
     private TcpListener _RTSPServerListener;
@@ -357,6 +357,7 @@ public class RtspServer : IDisposable
 
     }
 
+    Boolean first_pass_complete = false;
     void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
     {
 
@@ -371,103 +372,186 @@ public class RtspServer : IDisposable
         Console.WriteLine("Compressing video at time(ms) " + timestamp_ms + "    " + current_rtp_count + " RTSP clients connected");
         byte[] raw_nal = h264_encoder.CompressFrame(yuv_data);
 
+        UInt32 ts = timestamp_ms * 90; // 90kHz clock
 
-        // Build a RTP packet, but leave the sequence_number empty and the ssrc empty.
-        // They are different for each client so are added just before transmission.
+        // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
+        // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
+        bool fragmenting = false;
+        if (raw_nal.Length > 1400) fragmenting = true;
 
-        int sequence_number_position = 0;
-        int ssrc_position = 0;
+        // Build a list of 1 or more RTP packets
+        List<byte[]> rtp_packets = new List<byte[]>();
 
-        List<byte> rtp_packet = new List<byte>();
+        if (fragmenting == false)
+        {
+            // Put the whole NAL into one RTP packet.
+            // Note some receivers will have maximum buffers and be unable to handle large RTP packets.
+            // Also with RTP over RTSP there is a limit of 65535 bytes for the RTP packet.
 
-        // RTP Packet Header
-        // 0 - Version, P, X, CC, M, PT and Sequence Number
-        //32 - Timestamp. H264 uses a 90kHz clock
-        //64 - SSRC
-        //96 - CSRCs (optional)
-        //nn - Extension ID and Length
-        //nn - Extension header
+            byte[] rtp_packet = new byte[12 + raw_nal.Length]; // 12 is header size when there are no CSRCs or extensions
+            // Create an single RTP fragment
 
-        int rtp_version = 2;
-        int rtp_padding = 0;
-        int rtp_extension = 0;
-        int rtp_csrc_count = 0;
-        int rtp_marker = 0;
-        int rtp_payload_type = 96;
+            // RTP Packet Header
+            // 0 - Version, P, X, CC, M, PT and Sequence Number
+            //32 - Timestamp. H264 uses a 90kHz clock
+            //64 - SSRC
+            //96 - CSRCs (optional)
+            //nn - Extension ID and Length
+            //nn - Extension header
 
-        byte rtp_byte_0 = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
-        byte rtp_byte_1 = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+            int rtp_version = 2;
+            int rtp_padding = 0;
+            int rtp_extension = 0;
+            int rtp_csrc_count = 0;
+            int rtp_marker = 1;
+            int rtp_payload_type = 96;
 
-        rtp_packet.Add(rtp_byte_0);
-        rtp_packet.Add(rtp_byte_1);
+            rtp_packet[0] = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
+            rtp_packet[1] = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
 
-        sequence_number_position = rtp_packet.Count; // record the position. We populate the data later
-        UInt16 empty_sequence_number = 0;
-        rtp_packet.Add((byte)((empty_sequence_number >> 8) & 0xFF));
-        rtp_packet.Add((byte)((empty_sequence_number >> 0) & 0xFF));
+            UInt32 empty_sequence_id = 0;
+            rtp_packet[2] = ((byte)((empty_sequence_id >> 8) & 0xFF));
+            rtp_packet[3] = ((byte)((empty_sequence_id >> 0) & 0xFF));
 
-        UInt32 ts = timestamp_ms * 90; // 90kHZ clock
+            Console.WriteLine("adjusted TS at 90khz=" + ts);
+            rtp_packet[4] = ((byte)((ts >> 24) & 0xFF));
+            rtp_packet[5] = ((byte)((ts >> 16) & 0xFF));
+            rtp_packet[6] = ((byte)((ts >> 8) & 0xFF));
+            rtp_packet[7] = ((byte)((ts >> 0) & 0xFF));
 
-        rtp_packet.Add((byte)((ts >> 24) & 0xFF));
-        rtp_packet.Add((byte)((ts >> 16) & 0xFF));
-        rtp_packet.Add((byte)((ts >> 8) & 0xFF));
-        rtp_packet.Add((byte)((ts >> 0) & 0xFF));
+            UInt32 empty_ssrc = 0;
+            rtp_packet[8] = ((byte)((empty_ssrc >> 24) & 0xFF));
+            rtp_packet[9] = ((byte)((empty_ssrc >> 16) & 0xFF));
+            rtp_packet[10] = ((byte)((empty_ssrc >> 8) & 0xFF));
+            rtp_packet[11] = ((byte)((empty_ssrc >> 0) & 0xFF));
 
-        ssrc_position = rtp_packet.Count;
-        UInt32 empty_ssrc = 0;
-        rtp_packet.Add((byte)((empty_ssrc >> 24) & 0xFF));
-        rtp_packet.Add((byte)((empty_ssrc >> 16) & 0xFF));
-        rtp_packet.Add((byte)((empty_ssrc >> 8) & 0xFF));
-        rtp_packet.Add((byte)((empty_ssrc >> 0) & 0xFF));
+            // Now append the raw NAL
+            System.Array.Copy(raw_nal, 0, rtp_packet, 12, raw_nal.Length);
 
-        // Now append the raw NAL
-        foreach (byte b in raw_nal) rtp_packet.Add(b);
+            rtp_packets.Add(rtp_packet);
+        }
+        if (fragmenting == true)
+        {
+            int data_remaining = raw_nal.Length;
+            int nal_pointer = 0;
+            int start_bit = 1;
+            int end_bit = 0;
 
+            // consume first byte of the raw_nal. It is used in the FU header
+            byte first_byte = raw_nal[0];
+            nal_pointer++;
+            data_remaining--;
+
+            while (data_remaining > 0)
+            {
+                int payload_size = Math.Min(1400, data_remaining);
+                if (data_remaining - payload_size == 0) end_bit = 1;
+
+                byte[] rtp_packet = new byte[12 + 2 + payload_size]; // 12 is header size. 2 bytes for FU-A header. Then payload
+
+                // RTP Packet Header
+                // 0 - Version, P, X, CC, M, PT and Sequence Number
+                //32 - Timestamp. H264 uses a 90kHz clock
+                //64 - SSRC
+                //96 - CSRCs (optional)
+                //nn - Extension ID and Length
+                //nn - Extension header
+
+                int rtp_version = 2;
+                int rtp_padding = 0;
+                int rtp_extension = 0;
+                int rtp_csrc_count = 0;
+                int rtp_marker = (end_bit == 1 ? 1 : 0); // Marker set to 1 on last packet
+                int rtp_payload_type = 96;
+
+                rtp_packet[0] = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
+                rtp_packet[1] = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+
+                UInt32 empty_sequence_id = 0;
+                rtp_packet[2] = ((byte)((empty_sequence_id >> 8) & 0xFF));
+                rtp_packet[3] = ((byte)((empty_sequence_id >> 0) & 0xFF));
+
+                Console.WriteLine("adjusted TS at 90khz=" + ts);
+                rtp_packet[4] = ((byte)((ts >> 24) & 0xFF));
+                rtp_packet[5] = ((byte)((ts >> 16) & 0xFF));
+                rtp_packet[6] = ((byte)((ts >> 8) & 0xFF));
+                rtp_packet[7] = ((byte)((ts >> 0) & 0xFF));
+
+                UInt32 empty_ssrc = 0;
+                rtp_packet[8] = ((byte)((empty_ssrc >> 24) & 0xFF));
+                rtp_packet[9] = ((byte)((empty_ssrc >> 16) & 0xFF));
+                rtp_packet[10] = ((byte)((empty_ssrc >> 8) & 0xFF));
+                rtp_packet[11] = ((byte)((empty_ssrc >> 0) & 0xFF));
+
+                // Now append the Fragmentation Header (with Start and End marker) and part of the raw_nal
+                byte f_bit = 0;
+                byte nri = (byte)((first_byte >> 5) & 0x03); // Part of the 1st byte of the Raw NAL (NAL Reference ID)
+                byte type = 28; // FU-A Fragmentation
+
+                rtp_packet[12] = (byte)((f_bit << 7) + (nri << 5) + type);
+                rtp_packet[13] = (byte)((start_bit << 7) + (end_bit << 6) + (0 << 5) + (first_byte & 0x1F));
+
+                System.Array.Copy(raw_nal, nal_pointer, rtp_packet, 14, payload_size);
+                nal_pointer = nal_pointer + payload_size;
+                data_remaining = data_remaining - payload_size;
+
+                rtp_packets.Add(rtp_packet);
+
+                start_bit = 0;
+            }
+        }
 
         lock (rtp_list)
         {
+
             // Go through each RTSP session and output the NAL
             foreach (RTPSession session in rtp_list.ToArray()) // ToArray makes a temp copy of the list.
                                                                // This lets us delete items in the foreach
             {
-
                 // Only process Sessions in Play Mode
                 if (session.play == false) continue;
 
-
-                // Add the specific data for each transmission
-                rtp_packet[sequence_number_position] = ((byte)((session.sequence_number >> 8) & 0xFF));
-                rtp_packet[sequence_number_position + 1] = ((byte)((session.sequence_number >> 0) & 0xFF));
-                session.sequence_number++;
-
-                rtp_packet[ssrc_position] = ((byte)((empty_ssrc >> 24) & 0xFF));
-                rtp_packet[ssrc_position + 1] = ((byte)((empty_ssrc >> 16) & 0xFF));
-                rtp_packet[ssrc_position + 2] = ((byte)((empty_ssrc >> 8) & 0xFF));
-                rtp_packet[ssrc_position + 3] = ((byte)((empty_ssrc >> 0) & 0xFF));
-
-
-                // Send as RTP over RTSP
-
-                if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                // There could be more than 1 RTP packet (if the data is fragmented)
+                Boolean write_error = false;
+                foreach (byte[] rtp_packet in rtp_packets)
                 {
-                    int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
-                    object state = new object();
-                    try
-                    {
-                        // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
-                        session.listener.BeginSendData(video_channel, rtp_packet.ToArray(), new AsyncCallback(session.listener.EndSendData), state);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
-                        session.play = false; // stop sending data
-                        session.listener.Dispose();
-                        rtp_list.Remove(session); // remove the session. It is dead
-                        Console.WriteLine(rtp_list.Count + " remaining sessions open");
-                    }
-                }
-                // TODO. Add UDP and Multicast
+                    // Add the specific data for each transmission
+                    rtp_packet[2] = ((byte)((session.sequence_number >> 8) & 0xFF));
+                    rtp_packet[3] = ((byte)((session.sequence_number >> 0) & 0xFF));
+                    session.sequence_number++;
 
+                    // Add the specific SSRC for each transmission
+                    rtp_packet[8] = ((byte)((session.ssrc >> 24) & 0xFF));
+                    rtp_packet[9] = ((byte)((session.ssrc >> 16) & 0xFF));
+                    rtp_packet[10] = ((byte)((session.ssrc >> 8) & 0xFF));
+                    rtp_packet[11] = ((byte)((session.ssrc >> 0) & 0xFF));
+
+                    // Send as RTP over RTSP
+                    if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                    {
+                        int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
+                        object state = new object();
+                        try
+                        {
+                            // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
+                            session.listener.BeginSendData(video_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
+                            write_error = true;
+                            break; // exit out of foreach loop
+                        }
+                    }
+                    // TODO. Add UDP and Multicast
+                }
+                if (write_error)
+                {
+                    session.play = false; // stop sending data
+                    session.listener.Dispose();
+                    rtp_list.Remove(session); // remove the session. It is dead
+                    Console.WriteLine(rtp_list.Count + " remaining sessions open");
+                }
             }
         }
     }
