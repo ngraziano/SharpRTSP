@@ -21,13 +21,16 @@ using System.Collections.Generic;
 
 public class RtspServer : IDisposable
 {
+    const int h264_width = 128;
+    const int h264_height = 96;
+    const int h264_fps = 25;
 
     private TcpListener _RTSPServerListener;
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
 
     private TestCard video_source = null;
-    private TinyH264Encoder h264_encoder = null;
+    private SimpleH264Encoder h264_encoder = null;
 
     List<RTPSession> rtp_list = new List<RTPSession>(); // list of RTSP Listeners, used when sending RTP over RTSP
 
@@ -60,10 +63,10 @@ public class RtspServer : IDisposable
         _ListenTread.Start();
 
         // Initialise the H264 encoder
-        h264_encoder = new TinyH264Encoder();
+        h264_encoder = new SimpleH264Encoder(h264_width, h264_height, h264_fps);
 
         // Start the VideoSource
-        video_source = new TestCard(128, 96, 6);
+        video_source = new TestCard(h264_width, h264_height, h264_fps);
         video_source.ReceivedYUVFrame += video_source_ReceivedYUVFrame;
     }
 
