@@ -357,7 +357,7 @@ public class RtspServer : IDisposable
 
     }
 
-    Boolean first_pass_complete = false;
+    
     void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
     {
 
