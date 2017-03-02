@@ -285,7 +285,7 @@ namespace Rtsp.Tests
 
 
         [Test]
-        public void SendData()
+        public void SendDataAsync()
         {
             const int dataLenght = 45;
 
@@ -328,10 +328,52 @@ namespace Rtsp.Tests
 
         }
 
+        [Test]
+        public void SendDataSync()
+        {
+            const int dataLenght = 45;
+
+            MemoryStream stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+
+
+            RtspData data = new RtspData();
+            data.Channel = 12;
+            data.Data = new byte[dataLenght];
+            for (int i = 0; i < dataLenght; i++)
+            {
+                data.Data[i] = (byte)i;
+            }
+
+
+            // Run
+            testedListener.SendData(data.Channel, data.Data);
+            
+            var result = stream.GetBuffer();
+
+            int index = 0;
+            Assert.That(result[index++], Is.EqualTo((byte)'$'));
+            Assert.That(result[index++], Is.EqualTo(data.Channel));
+            Assert.That(result[index++], Is.EqualTo((dataLenght & 0xFF00) >> 8));
+            Assert.That(result[index++], Is.EqualTo(dataLenght & 0x00FF));
+            for (int i = 0; i < dataLenght; i++)
+            {
+                Assert.That(result[index++], Is.EqualTo(data.Data[i]));
+            }
+
+
+
+        }
 
 
         [Test]
-        public void SendDataTooLarge()
+        public void SendDataTooLargeAsync()
         {
             const int dataLenght = 0x10001;
 
@@ -351,6 +393,31 @@ namespace Rtsp.Tests
 
 
             ActualValueDelegate<object> test = () => testedListener.BeginSendData(data,null,null);
+            Assert.That(test, Throws.InstanceOf<ArgumentException>());
+
+        }
+
+        [Test]
+        public void SendDataTooLargeSync()
+        {
+            const int dataLenght = 0x10001;
+
+            MemoryStream stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(stream);
+
+            // Setup test object.
+            RtspListener testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += new EventHandler<RtspChunkEventArgs>(MessageReceived);
+            testedListener.DataReceived += new EventHandler<RtspChunkEventArgs>(DataReceived);
+
+
+
+            RtspData data = new RtspData();
+            data.Channel = 12;
+            data.Data = new byte[dataLenght];
+
+
+            TestDelegate test = () => testedListener.SendData(data.Channel, data.Data);
             Assert.That(test, Throws.InstanceOf<ArgumentException>());
 
         }
