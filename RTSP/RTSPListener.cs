@@ -447,7 +447,9 @@
             {
                 _stream.EndWrite(result);
             } catch (Exception e)
-            { // Error, for example stream has already been Disposed
+            {
+                // Error, for example stream has already been Disposed
+                _logger.DebugException("Error during end send (can be ignored)", e);
                 result = null;
             }
         }
