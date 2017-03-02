@@ -45,6 +45,7 @@
     <Compile Include="CJOCh264encoder.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RTPPacketUtil.cs" />
     <Compile Include="TestCard.cs" />
     <Compile Include="SimpleH264Encoder.cs" />
     <Compile Include="TinyH264Encoder.cs" />

@@ -406,31 +406,23 @@ public class RtspServer : IDisposable
             int rtp_marker = 1;
             int rtp_payload_type = 96;
 
-            rtp_packet[0] = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
-            rtp_packet[1] = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+            RTPPacketUtil.WriteHeader(rtp_packet, rtp_version, rtp_padding, rtp_extension, rtp_csrc_count, rtp_marker, rtp_payload_type);
 
             UInt32 empty_sequence_id = 0;
-            rtp_packet[2] = ((byte)((empty_sequence_id >> 8) & 0xFF));
-            rtp_packet[3] = ((byte)((empty_sequence_id >> 0) & 0xFF));
+            RTPPacketUtil.WriteSequenceNumber(rtp_packet, empty_sequence_id);
 
             Console.WriteLine("adjusted TS at 90khz=" + ts);
-            rtp_packet[4] = ((byte)((ts >> 24) & 0xFF));
-            rtp_packet[5] = ((byte)((ts >> 16) & 0xFF));
-            rtp_packet[6] = ((byte)((ts >> 8) & 0xFF));
-            rtp_packet[7] = ((byte)((ts >> 0) & 0xFF));
+            RTPPacketUtil.WriteTS(rtp_packet, ts);
 
             UInt32 empty_ssrc = 0;
-            rtp_packet[8] = ((byte)((empty_ssrc >> 24) & 0xFF));
-            rtp_packet[9] = ((byte)((empty_ssrc >> 16) & 0xFF));
-            rtp_packet[10] = ((byte)((empty_ssrc >> 8) & 0xFF));
-            rtp_packet[11] = ((byte)((empty_ssrc >> 0) & 0xFF));
+            RTPPacketUtil.WriteSSRC(rtp_packet, empty_ssrc);
 
             // Now append the raw NAL
             System.Array.Copy(raw_nal, 0, rtp_packet, 12, raw_nal.Length);
 
             rtp_packets.Add(rtp_packet);
         }
-        if (fragmenting == true)
+        else
         {
             int data_remaining = raw_nal.Length;
             int nal_pointer = 0;
@@ -464,24 +456,16 @@ public class RtspServer : IDisposable
                 int rtp_marker = (end_bit == 1 ? 1 : 0); // Marker set to 1 on last packet
                 int rtp_payload_type = 96;
 
-                rtp_packet[0] = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
-                rtp_packet[1] = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+                RTPPacketUtil.WriteHeader(rtp_packet, rtp_version, rtp_padding, rtp_extension, rtp_csrc_count, rtp_marker, rtp_payload_type);
 
                 UInt32 empty_sequence_id = 0;
-                rtp_packet[2] = ((byte)((empty_sequence_id >> 8) & 0xFF));
-                rtp_packet[3] = ((byte)((empty_sequence_id >> 0) & 0xFF));
+                RTPPacketUtil.WriteSequenceNumber(rtp_packet, empty_sequence_id);
 
                 Console.WriteLine("adjusted TS at 90khz=" + ts);
-                rtp_packet[4] = ((byte)((ts >> 24) & 0xFF));
-                rtp_packet[5] = ((byte)((ts >> 16) & 0xFF));
-                rtp_packet[6] = ((byte)((ts >> 8) & 0xFF));
-                rtp_packet[7] = ((byte)((ts >> 0) & 0xFF));
+                RTPPacketUtil.WriteTS(rtp_packet, ts);
 
                 UInt32 empty_ssrc = 0;
-                rtp_packet[8] = ((byte)((empty_ssrc >> 24) & 0xFF));
-                rtp_packet[9] = ((byte)((empty_ssrc >> 16) & 0xFF));
-                rtp_packet[10] = ((byte)((empty_ssrc >> 8) & 0xFF));
-                rtp_packet[11] = ((byte)((empty_ssrc >> 0) & 0xFF));
+                RTPPacketUtil.WriteSSRC(rtp_packet, empty_ssrc);
 
                 // Now append the Fragmentation Header (with Start and End marker) and part of the raw_nal
                 byte f_bit = 0;
@@ -516,15 +500,12 @@ public class RtspServer : IDisposable
                 foreach (byte[] rtp_packet in rtp_packets)
                 {
                     // Add the specific data for each transmission
-                    rtp_packet[2] = ((byte)((session.sequence_number >> 8) & 0xFF));
-                    rtp_packet[3] = ((byte)((session.sequence_number >> 0) & 0xFF));
+                    RTPPacketUtil.WriteSequenceNumber(rtp_packet, session.sequence_number);
                     session.sequence_number++;
 
                     // Add the specific SSRC for each transmission
-                    rtp_packet[8] = ((byte)((session.ssrc >> 24) & 0xFF));
-                    rtp_packet[9] = ((byte)((session.ssrc >> 16) & 0xFF));
-                    rtp_packet[10] = ((byte)((session.ssrc >> 8) & 0xFF));
-                    rtp_packet[11] = ((byte)((session.ssrc >> 0) & 0xFF));
+                    RTPPacketUtil.WriteSSRC(rtp_packet, session.ssrc);
+
 
                     // Send as RTP over RTSP
                     if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
@@ -562,7 +543,7 @@ public class RtspServer : IDisposable
         public Rtsp.RtspListener listener = null;  // The RTSP client connection
         public UInt16 sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
         public String session_id = "";             // RTSP Session ID used with this client connection
-        public int ssrc = 1;                       // SSRC value used with this client connection
+        public uint ssrc = 1;                       // SSRC value used with this client connection
         public bool play = false;                  // set to true when Session is in Play mode
         public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
         public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
