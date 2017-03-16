@@ -6,6 +6,9 @@ Sharp RTSP
 
 A C# library to handle RTSP connections.
 
+**:warning: : This library do not handle the decoding of the video. It is limited to the transport layer. You mut use a library like FFMPEG to do the decoding.**
+
+
 
 RTSP Client Example
 ===================
