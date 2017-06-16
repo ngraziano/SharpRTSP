@@ -264,7 +264,7 @@ RTSP Client Example
 
   An RTP frame consists of 1 or more RTP packets  
   H264 video is packed into one or more RTP packets and this sample extracts Normal Packing and
-  Fragmented Unit ype A packing (the common two)  
+  Fragmented Unit type A packing (the common two)  
   This example writes the video to a .264 file which can be played with FFPLAY
 
   ```C#
