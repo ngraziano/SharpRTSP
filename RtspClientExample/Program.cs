@@ -205,8 +205,8 @@ namespace RtspClientExample
                 if (rtp_extension == 1)
                 {
                     rtp_extension_id = ((uint)e.Message.Data[rtp_payload_start + 0] << 8) + (uint)(e.Message.Data[rtp_payload_start + 1] << 0);
-                    rtp_extension_size = ((uint)e.Message.Data[rtp_payload_start + 2] << 8) + (uint)(e.Message.Data[rtp_payload_start + 3] << 0);
-                    rtp_payload_start += 4 + (int)rtp_extension_size;  // extension header and extension payload
+                    rtp_extension_size = ((uint)e.Message.Data[rtp_payload_start + 2] << 8) + (uint)(e.Message.Data[rtp_payload_start + 3] << 0) * 4; // units of extension_size is 4-bytes
+	                rtp_payload_start += 4 + (int)rtp_extension_size;  // extension header and extension payload
                 }
 
                 Console.WriteLine("RTP Data"
