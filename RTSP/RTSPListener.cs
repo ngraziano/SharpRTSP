@@ -184,6 +184,10 @@
                 _stream.Close();
                 _transport.Close();
             }
+            catch (ObjectDisposedException error)
+            {
+                _logger.Warn("Object Disposed", error);
+            }
             catch (Exception error)
             {
                 _logger.Warn("Unknow Error", error);
