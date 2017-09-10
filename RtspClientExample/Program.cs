@@ -50,6 +50,7 @@ namespace RtspClientExample
         RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocket udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL
+        string session = "";             // RTSP Session
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int video_data_channel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
@@ -266,7 +267,6 @@ namespace RtspClientExample
         }
 
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // used for diagnostics stats
-        private string session;
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
         public void Process_RTP_Frame(List<byte[]> rtp_payloads)
