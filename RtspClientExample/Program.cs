@@ -543,10 +543,15 @@ namespace RtspClientExample
             }
 
 
-            // If we get a reply to SETUP (which was our third command), then process then send PLAY
+            // If we get a reply to SETUP (which was our third command), then process and then send PLAY
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestSetup)
             {
                 // Got Reply to SETUP
+                if (message.IsOk == false) {
+                    Console.WriteLine("Got Error in Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    return;
+                }
+
                 Console.WriteLine("Got reply from Setup. Session is " + message.Session);
 
                 session = message.Session; // Session value used with Play, Pause, Teardown
