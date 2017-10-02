@@ -16,24 +16,35 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             //String url = "rtsp://192.168.1.128/ch1.h264";    // IPS
-            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
+            String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
 
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
 
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
+            //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+
+            // MJPEG Tests (Payload 26)
+            // String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
 
             // Create a RTSP Client
             RTSPClient c = new RTSPClient(url, RTSPClient.RTP_TRANSPORT.TCP);
 
             // Wait for user to terminate programme
+            // Check for null which is returned when running under some IDEs
             Console.WriteLine("Press ENTER to exit");
-            String dummy = Console.ReadLine();
+
+            String readline = null;
+            while (readline == null) {
+                readline = Console.ReadLine();
+
+                // Avoid maxing out CPU on systems that instantly return null for ReadLine
+                if (readline == null) Thread.Sleep(500);
+            }
 
             c.Stop();
 
@@ -456,15 +467,18 @@ namespace RtspClientExample
 
                 for (int x = 0; x < sdp_data.Medias.Count; x++)
                 {
-                    if (sdp_data.Medias[x].GetMediaType() == Rtsp.Sdp.Media.MediaType.video)
+                    if (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.video)
                     {
+
                         // We only want the first video sub-stream
                         if (video_payload == -1)
                         {
-                            // seach the atributes for control, fmtp and rtpmap
+                            video_payload = sdp_data.Medias[x].PayloadType;
+
+                            // search the attributes for control, fmtp and rtpmap
                             String control = "";  // the "track" or "stream id"
-                            Rtsp.Sdp.AttributFmtp fmtp = null; // holds SPS and PPS in base64
-                            Rtsp.Sdp.AttributRtpMap rtpmap = null; // holds Payload format, eg 96 often used with H264 as first dynamic payload value
+                            Rtsp.Sdp.AttributFmtp fmtp = null; // holds SPS and PPS in base64 (h264)
+                            Rtsp.Sdp.AttributRtpMap rtpmap = null; // custom payload (>=96) details
                             foreach (Rtsp.Sdp.Attribut attrib in sdp_data.Medias[x].Attributs)
                             {
                                 if (attrib.Key.Equals("control")) control = attrib.Value;
@@ -472,8 +486,8 @@ namespace RtspClientExample
                                 if (attrib.Key.Equals("rtpmap")) rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
                             }
 
-                            // Split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
-                            if (fmtp != null)
+                            // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
+                            if (rtpmap!= null && rtpmap.Value.Contains("H264") && fmtp != null)
                             {
                                 var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
                                 var sps_pps = param.SpropParameterSets;
@@ -481,15 +495,6 @@ namespace RtspClientExample
                                 if (sps_pps.Count > 1) video_pps = sps_pps[1];
                                 Output_NAL(sps_pps); // output SPS and PPS
                             }
-
-
-
-
-                            // Split the rtpmap to get the Payload Type
-                            video_payload = 0;
-                            if (rtpmap != null)
-                                video_payload = rtpmap.PayloadNumber;
-
 
                             Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
                             setup_message.RtspUri = new Uri(url + "/" + control);

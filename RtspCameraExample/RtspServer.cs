@@ -81,6 +81,8 @@ public class RtspServer : IDisposable
             while (!_Stopping.WaitOne(0))
             {
                 TcpClient oneClient = _RTSPServerListener.AcceptTcpClient();
+                Console.WriteLine("Connection from " + oneClient.Client.RemoteEndPoint.ToString());
+
                 var rtsp_socket = new RtspTcpTransport(oneClient);
                 RtspListener newListener = new RtspListener(rtsp_socket);
                 newListener.MessageReceived += RTSP_Message_Received;
