@@ -278,7 +278,10 @@
 
             foreach (var item in this.Headers)
             {
-                returnValue.Headers.Add(item.Key.Clone() as string, item.Value.Clone() as string);
+                if (item.Value == null)
+                    returnValue.Headers.Add(item.Key.Clone() as string, null);
+                else
+                    returnValue.Headers.Add(item.Key.Clone() as string, item.Value.Clone() as string);
             }
             returnValue.Data = this.Data.Clone() as byte[];
             returnValue.SourcePort = this.SourcePort;
