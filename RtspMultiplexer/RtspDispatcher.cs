@@ -239,6 +239,7 @@
                 destination = new RtspListener(
                     new RtspTcpTransport(destinationUri.Host, destinationUri.Port)
                     );
+                destination.AutoReconnect = true;
 
                 // un peu pourri mais pas d'autre idée...
                 // pour avoir vraiment des clef avec IP....

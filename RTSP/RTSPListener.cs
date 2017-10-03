@@ -78,6 +78,11 @@
         public event EventHandler<RtspChunkEventArgs> MessageReceived;
 
         /// <summary>
+        /// Enable auto reconnect.
+        /// </summary>
+        public bool AutoReconnect { get; set; }
+
+        /// <summary>
         /// Raises the <see cref="E:MessageReceived"/> event.
         /// </summary>
         /// <param name="e">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
@@ -222,6 +227,9 @@
                 _logger.Warn("Reconnect to a client, strange !!");
                 try
                 {
+                    if(!AutoReconnect)
+                        return false;
+                    
                     Reconnect();
                 }
                 catch (SocketException)
@@ -428,7 +436,10 @@
 
             if (!_transport.Connected)
             {
-                _logger.Warn("Reconnect to a client, strange !!");
+                if(!AutoReconnect)
+                    throw new IOException("Client disconnected");
+                
+                _logger.Warn("Reconnect to a client, strange !");
                 Reconnect();
             }
 
@@ -473,6 +484,8 @@
 
             if (!_transport.Connected)
             {
+                if(!AutoReconnect)
+                    throw new IOException("Client disconnected");
                 _logger.Warn("Reconnect to a client, strange !!");
                 Reconnect();
             }
