@@ -3,11 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 
 namespace RtspClientExample
@@ -17,7 +14,7 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             //String url = "rtsp://192.168.1.128/ch1.h264";    // IPS
-            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
+            String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
 
@@ -27,7 +24,7 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            // String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
@@ -62,21 +59,20 @@ namespace RtspClientExample
         Rtsp.RtspListener rtsp_client = null;   // this wraps around a the RTSP tcp_socket stream
         RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocket udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
-        String url = "";                 // RTSP URL
-        String username = "";
-        String password = "";
-        string session = "";             // RTSP Session
+        String url = "";                 // RTSP URL (username & password will be stripped out
+        String username = "";            // Username
+        String password = "";            // Password
+        String session = "";             // RTSP Session
+        String realm = null;             // cached from most recent WWW-Authenticate reply
+        String nonce = null;             // cached from most recent WWW-Authenticate reply
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int video_data_channel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
-        string video_codec = "";         // Codec used with Payload Types 96..127 (eg H264)
-        byte[] video_sps = null;         // SPS from SDP prop-parameter-set
-        byte[] video_pps = null;         // PPS from SDP prop-parameter-set
-        List<byte[]> temporary_rtp_payloads = new List<byte[]>(); // used to assemble the RTP packets that form one RTP frame
-        MemoryStream fragmented_nal = new MemoryStream(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
-        FileStream fs = null; // used to write the NALs to a .264 file
-        StreamWriter fs2;     // used to write Log Messages to a file. (should switch to NLog)
+        string video_codec = "";         // Codec used with Payload Types 96..127 (eg "H264")
+        FileStream fs = null;    // used to write the NALs to a .264 file
+        StreamWriter fs2 = null; // used to write Log Messages to a file. (should switch to NLog)
         System.Timers.Timer keepalive_timer = null;
+        H264Payload h264Payload = new H264Payload();
 
         // Constructor
         public RTSPClient(String url, RTP_TRANSPORT rtp_transport)
@@ -86,10 +82,11 @@ namespace RtspClientExample
 
             if (fs == null)
             {
-                String filename = "rtsp_capture_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".264";
+                String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                String filename = "rtsp_capture_" + now + ".264";
                 fs = new FileStream(filename, FileMode.Create);
 
-                String filename2 = "rtsp_capture_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".raw";
+                String filename2 = "rtsp_capture_" + now + ".raw";
                 fs2 = new StreamWriter(filename2);
             }
 
@@ -261,8 +258,8 @@ namespace RtspClientExample
                                    //             + " Time=" + rtp_timestamp
                                    //             + " SSRC=" + rtp_ssrc
                                    + " Size=" + e.Message.Data.Length;
-                fs2.WriteLine(msg);
-                fs2.Flush();
+                if (fs2 != null) fs2.WriteLine(msg);
+                if (fs2 != null) fs2.Flush();
 
 
                 // Check the payload type in the RTP packet matches the Payload Type value from the SDP
@@ -272,31 +269,29 @@ namespace RtspClientExample
                     return; // ignore this data
                 }
 
-
-                if (rtp_payload_type >= 96 && video_codec.Equals("H264")) {
+                if (rtp_payload_type >= 96 && rtp_payload_type <= 127 && video_codec.Equals("H264")) {
                     // H264 RTP Packet
 
                     // If rtp_marker is '1' then this is the final transmission for this packet.
                     // If rtp_marker is '0' we need to accumulate data with the same timestamp
 
                     // ToDo - Check Timestamp
-                    // ToDo - Could avoid a copy if there is only one RTP frame for the data (temp list is zero)
-
-                    // Add the RTP packet to the tempoary_rtp list
+                    // Add the RTP packet to the tempoary_rtp list until we have a complete 'Frame'
 
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
-                    temporary_rtp_payloads.Add(rtp_payload);
 
-                    if (rtp_marker == 1)
-                    {
-                        // End Marker is set. Process the RTP frame
-                        Process_H264_RTP_Frame(temporary_rtp_payloads);
-                        temporary_rtp_payloads.Clear();
+                    List<byte[]> nal_units = h264Payload.Process_H264_RTP_Packet(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
+
+                    if (nal_units == null) {
+                        // we have not passed in enough RTP packets to make a Frame of video
+                    } else {
+                        // we have a frame of NAL Units. Write them to the file
+                        Output_NAL(nal_units);
                     }
                 }
+
                 else if (rtp_payload_type == 26) {
-                    
                     Console.WriteLine("No parser for JPEG RTP packets");
 
                 } else {
@@ -305,146 +300,6 @@ namespace RtspClientExample
             }
         }
 
-        int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // used for diagnostics stats
-
-        // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
-        public void Process_H264_RTP_Frame(List<byte[]> rtp_payloads)
-        {
-            Console.WriteLine("RTP Data comprised of " + rtp_payloads.Count + " rtp packets");
-
-            List<byte[]> nal_units = new List<byte[]>(); // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
-
-            for (int payload_index = 0; payload_index < rtp_payloads.Count; payload_index++)
-            {
-                // Examine the first rtp_payload and the first byte (the NAL header)
-                int nal_header_f_bit = (rtp_payloads[payload_index][0] >> 7) & 0x01;
-                int nal_header_nri = (rtp_payloads[payload_index][0] >> 5) & 0x03;
-                int nal_header_type = (rtp_payloads[payload_index][0] >> 0) & 0x1F;
-
-                // If the Nal Header Type is in the range 1..23 this is a normal NAL (not fragmented)
-                // So write the NAL to the file
-                if (nal_header_type >= 1 && nal_header_type <= 23)
-                {
-                    Console.WriteLine("Normal NAL");
-                    norm++;
-                    nal_units.Add(rtp_payloads[payload_index]);
-                }
-                // There are 4 types of Aggregation Packet (split over RTP payloads)
-                else if (nal_header_type == 24)
-                {
-                    Console.WriteLine("Agg STAP-A");
-                    stap_a++;
-
-                    // RTP packet contains multiple NALs, each with a 16 bit header
-                    //   Read 16 byte size
-                    //   Read NAL
-                    try
-                    {
-                        int ptr = 1; // start after the nal_header_type which was '24'
-                        // if we have at least 2 more bytes (the 16 bit size) then consume more data
-                        while (ptr + 2 < (rtp_payloads[payload_index].Length - 1))
-                        {
-                            int size = (rtp_payloads[payload_index][ptr] << 8) + (rtp_payloads[payload_index][ptr + 1] << 0);
-                            ptr = ptr + 2;
-                            byte[] nal = new byte[size];
-                            System.Array.Copy(rtp_payloads[payload_index], ptr, nal, 0, size); // copy the NAL
-                            nal_units.Add(nal); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-                            ptr = ptr + size;
-                        }
-                    }
-                    catch
-                    {
-                        // do nothing
-                    }
-                }
-                else if (nal_header_type == 25)
-                {
-                    Console.WriteLine("Agg STAP-B not supported");
-                    stap_b++;
-                }
-                else if (nal_header_type == 26)
-                {
-                    Console.WriteLine("Agg MTAP16 not supported");
-                    mtap16++;
-                }
-                else if (nal_header_type == 27)
-                {
-                    Console.WriteLine("Agg MTAP24 not supported");
-                    mtap24++;
-                }
-                else if (nal_header_type == 28)
-                {
-                    Console.WriteLine("Frag FU-A");
-                    fu_a++;
-
-                    // Parse Fragmentation Unit Header
-                    int fu_header_s = (rtp_payloads[payload_index][1] >> 7) & 0x01;  // start marker
-                    int fu_header_e = (rtp_payloads[payload_index][1] >> 6) & 0x01;  // end marker
-                    int fu_header_r = (rtp_payloads[payload_index][1] >> 5) & 0x01;  // reserved. should be 0
-                    int fu_header_type = (rtp_payloads[payload_index][1] >> 0) & 0x1F; // Original NAL unit header
-
-                    Console.WriteLine("Frag FU-A s=" + fu_header_s + "e=" + fu_header_e);
-
-                    // Check Start and End flags
-                    if (fu_header_s == 1 && fu_header_e == 0)
-                    {
-                        // Start of Fragment.
-                        // Initiise the fragmented_nal byte array
-                        // Build the NAL header with the original F and NRI flags but use the the Type field from the fu_header_type
-                        byte reconstructed_nal_type = (byte)((nal_header_f_bit << 7) + (nal_header_nri << 5) + fu_header_type);
-
-                        // Empty the stream
-                        fragmented_nal.SetLength(0);
-
-                        // Add reconstructed_nal_type byte to the memory stream
-                        fragmented_nal.WriteByte(reconstructed_nal_type);
-
-                        // copy the rest of the RTP payload to the memory stream
-                        fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length - 2);
-                    }
-
-                    if (fu_header_s == 0 && fu_header_e == 0)
-                    {
-                        // Middle part of Fragment
-                        // Append this payload to the fragmented_nal
-                        // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length - 2);
-                    }
-
-                    if (fu_header_s == 0 && fu_header_e == 1)
-                    {
-                        // End part of Fragment
-                        // Append this payload to the fragmented_nal
-                        // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmented_nal.Write(rtp_payloads[payload_index], 2, rtp_payloads[payload_index].Length - 2);
-
-                        // Add the NAL to the array of NAL units
-                        nal_units.Add(fragmented_nal.ToArray());
-                    }
-                }
-
-                else if (nal_header_type == 29)
-                {
-                    Console.WriteLine("Frag FU-B not supported");
-                    fu_b++;
-                }
-                else
-                {
-                    Console.WriteLine("Unknown NAL header " + nal_header_type + " not supported");
-                }
-
-            }
-
-            // Output all the NALs that form one RTP Frame (one frame of video)
-            Output_NAL(nal_units);
-
-            // Output some statistics
-            Console.WriteLine("Norm=" + norm + " ST-A=" + stap_a + " ST-B=" + stap_b + " M16=" + mtap16 + " M24=" + mtap24 + " FU-A=" + fu_a + " FU-B=" + fu_b);
-        }
-
-
-        String realm = null;    // cached from most recent WWW-Authenticate reply
-        String nonce = null;    // cached from most recent WWW-Authenticate reply
 
         // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
         private void Rtsp_MessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
@@ -454,8 +309,8 @@ namespace RtspClientExample
             Console.WriteLine("Received " + message.OriginalRequest.ToString());
 
             // Check if the Message has an Authenticate header. If so we update the 'realm' and 'nonce'
-            if (message.Headers.ContainsKey("WWW-Authenticate")) {
-                String www_authenticate = message.Headers["WWW-Authenticate"];
+            if (message.Headers.ContainsKey(RtspHeaderNames.WWWAuthenticate)) {
+                String www_authenticate = message.Headers[RtspHeaderNames.WWWAuthenticate];
 
                 // Parse www_authenticate
                 // EG:   Digest realm="AXIS_WS_ACCC8E3A0A8F", nonce="000057c3Y810622bff50b36005eb5efeae118626a161bf", stale=FALSE
@@ -509,7 +364,7 @@ namespace RtspClientExample
                 if (message.IsOk == false) {
                     Console.WriteLine("Got Error in DESCRIBE Reply " + message.ReturnCode + " " + message.ReturnMessage);
 
-                    if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey("Authorization")==false)) {
+                    if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey(RtspHeaderNames.Authorization)==false)) {
                         // Error 401 - Unauthorized, but the request did not use Authorizarion.
 
                         if (username == null || password == null) {
@@ -522,10 +377,10 @@ namespace RtspClientExample
                         
                         Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
                         describe_message.RtspUri = new Uri(url);
-                        if (digest_authorization!=null) describe_message.Headers.Add("Authorization",digest_authorization);
+                        if (digest_authorization!=null) describe_message.Headers.Add(RtspHeaderNames.Authorization,digest_authorization);
                         rtsp_client.SendMessage(describe_message);
                         return;
-                    } else if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey("Authorization")==true)) {
+                    } else if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey(RtspHeaderNames.Authorization)==true)) {
                         // Authorization failed
                         return;
                     } else {
@@ -583,9 +438,11 @@ namespace RtspClientExample
                                 video_codec = "H264";
                                 var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
                                 var sps_pps = param.SpropParameterSets;
-                                if (sps_pps.Count > 0) video_sps = sps_pps[0];
-                                if (sps_pps.Count > 1) video_pps = sps_pps[1];
-                                Output_NAL(sps_pps); // output SPS and PPS
+                                if (sps_pps.Count() >= 2) {
+                                    byte[] sps = sps_pps[0];
+                                    byte[] pps = sps_pps[1];
+                                    Output_SPS_PPS(sps,pps); // output SPS and PPS
+                                }
                             }
 
                             RtspTransport transport = null;
@@ -748,8 +605,20 @@ namespace RtspClientExample
         }
 
 
+        // Output SPS and PPS
+        // When writing to a .264 file we will add the Start Code 0x00 0x00 0x00 0x01 before the SPS and before the PPS
+        private void Output_SPS_PPS(byte[] sps, byte[] pps) {
+            if (fs == null) return; // check filestream initialised
+
+            fs.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+            fs.Write(sps, 0, sps.Length);                           // Write SPS
+            fs.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+            fs.Write(pps, 0, pps.Length);                           // Write PPS
+            fs.Flush(true);
+        }
+
         // Output an array of NAL Units.
-        // One frame of video may encoded in 1 large NAL unit, or it may be encoded in several small NAL units.
+        // One frame of video may be encoded in 1 large NAL unit, or it may be encoded in several small NAL units.
         // This function writes out all the NAL units that make one frame of video.
         // This is done to make it easier to feed H264 decoders which may require all the NAL units for a frame of video at the same time.
 
@@ -759,215 +628,12 @@ namespace RtspClientExample
         {
             if (fs == null) return; // check filestream initialised
 
-            int bytes_written = 0;
-
             foreach (byte[] nal_unit in nal_units)
             {
                 fs.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
                 fs.Write(nal_unit, 0, nal_unit.Length);           // Write NAL
-                bytes_written += (nal_unit.Length + 4);
             }
             fs.Flush(true);
-        }
-    }
-
-    public class UDPSocket
-    {
-
-        private UdpClient data_socket = null;
-        private UdpClient control_socket = null;
-
-        private Thread data_read_thread = null;
-        private Thread control_read_thread = null;
-
-        public int data_port = 50000;
-        public int control_port = 50001;
-
-        bool is_multicast = false;
-        IPAddress data_mcast_addr;
-        IPAddress control_mcast_addr;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UDPSocket"/> class.
-        /// Creates two new UDP sockets using the start and end Port range
-        /// </summary>
-        public UDPSocket(int start_port, int end_port)
-        {
-
-            is_multicast = false;
-
-            // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            data_port = start_port;
-            control_port = start_port + 1;
-
-            bool ok = false;
-            while (ok == false && (control_port < end_port))
-            {
-                // Video/Audio port must be odd and command even (next one)
-                try
-                {
-                    data_socket = new UdpClient(data_port);
-                    control_socket = new UdpClient(control_port);
-                    ok = true;
-                }
-                catch (SocketException)
-                {
-                    // Fail to allocate port, try again
-                    if (data_socket != null)
-                        data_socket.Close();
-                    if (control_socket != null)
-                        control_socket.Close();
-
-                    // try next data or control port
-                    data_port += 2;
-                    control_port += 2;
-                }
-            }
-
-            data_socket.Client.ReceiveBufferSize = 100 * 1024;
-
-            control_socket.Client.DontFragment = false;
-        }
-
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UDPSocket"/> class.
-        /// Used with Multicast mode with the Multicast Address and Port
-        /// </summary>
-        public UDPSocket(String data_multicast_address, int data_multicast_port, String control_multicast_address, int control_multicast_port)
-        {
-
-            is_multicast = true;
-
-            // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            this.data_port = data_multicast_port;
-            this.control_port = control_multicast_port;
-
-            try
-            {
-                IPEndPoint data_ep = new IPEndPoint(IPAddress.Any, data_port);
-                IPEndPoint control_ep = new IPEndPoint(IPAddress.Any, control_port);
-
-                data_mcast_addr = IPAddress.Parse(data_multicast_address);
-                control_mcast_addr = IPAddress.Parse(control_multicast_address);
-
-                data_socket = new UdpClient();
-                data_socket.Client.Bind(data_ep);
-                data_socket.JoinMulticastGroup(data_mcast_addr);
-
-                control_socket = new UdpClient();
-                control_socket.Client.Bind(control_ep);
-                control_socket.JoinMulticastGroup(control_mcast_addr);
-
-
-                data_socket.Client.ReceiveBufferSize = 100 * 1024;
-
-                control_socket.Client.DontFragment = false;
-
-            }
-            catch (SocketException)
-            {
-                // Fail to allocate port, try again
-                if (data_socket != null)
-                    data_socket.Close();
-                if (control_socket != null)
-                    control_socket.Close();
-
-                return;
-            }
-        }
-
-        /// <summary>
-        /// Starts this instance.
-        /// </summary>
-        public void Start()
-        {
-            if (data_socket == null || control_socket == null)
-            {
-                throw new InvalidOperationException("UDP Forwader host was not initialized, can't continue");
-            }
-
-            if (data_read_thread != null)
-            {
-                throw new InvalidOperationException("Forwarder was stopped, can't restart it");
-            }
-
-            data_read_thread = new Thread(() => DoWorkerJob(data_socket, data_port));
-            data_read_thread.Name = "DataPort " + data_port;
-            data_read_thread.Start();
-
-            control_read_thread = new Thread(() => DoWorkerJob(control_socket, control_port));
-            control_read_thread.Name = "ControlPort " + control_port;
-            control_read_thread.Start();
-        }
-
-        /// <summary>
-        /// Stops this instance.
-        /// </summary>
-        public void Stop()
-        {
-            if (is_multicast)
-            {
-                // leave the multicast groups
-                data_socket.DropMulticastGroup(data_mcast_addr);
-                control_socket.DropMulticastGroup(control_mcast_addr);
-            }
-            data_socket.Close();
-            control_socket.Close();
-        }
-
-        /// <summary>
-        /// Occurs when message is received.
-        /// </summary>
-        public event EventHandler<Rtsp.RtspChunkEventArgs> DataReceived;
-
-        /// <summary>
-        /// Raises the <see cref="E:DataReceived"/> event.
-        /// </summary>
-        /// <param name="rtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
-        protected void OnDataReceived(Rtsp.RtspChunkEventArgs rtspChunkEventArgs)
-        {
-            EventHandler<Rtsp.RtspChunkEventArgs> handler = DataReceived;
-
-            if (handler != null)
-                handler(this, rtspChunkEventArgs);
-        }
-
-
-        /// <summary>
-        /// Does the video job.
-        /// </summary>
-        private void DoWorkerJob(System.Net.Sockets.UdpClient socket, int data_port)
-        {
-
-            IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, data_port);
-            try
-            {
-                // loop until we get an exception eg the socket closed
-                while (true)
-                {
-                    byte[] frame = socket.Receive(ref ipEndPoint);
-
-                    // We have an RTP frame.
-                    // Fire the DataReceived event with 'frame'
-                    Console.WriteLine("Received RTP data on port " + data_port);
-
-                    Rtsp.Messages.RtspChunk currentMessage = new Rtsp.Messages.RtspData();
-                    // aMessage.SourcePort = ??
-                    currentMessage.Data = frame;
-                    ((Rtsp.Messages.RtspData)currentMessage).Channel = data_port;
-
-
-                    OnDataReceived(new Rtsp.RtspChunkEventArgs(currentMessage));
-
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (SocketException)
-            {
-            }
         }
     }
 }
