@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace RtspClientExample
 {
@@ -16,7 +17,8 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             //String url = "rtsp://192.168.1.128/ch1.h264";    // IPS
-            String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
+            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
+            //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
 
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
@@ -25,10 +27,10 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // MJPEG Tests (Payload 26)
-            // String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
+            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
 
             // Create a RTSP Client
@@ -61,10 +63,13 @@ namespace RtspClientExample
         RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocket udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL
+        String username = "";
+        String password = "";
         string session = "";             // RTSP Session
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int video_data_channel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
+        string video_codec = "";         // Codec used with Payload Types 96..127 (eg H264)
         byte[] video_sps = null;         // SPS from SDP prop-parameter-set
         byte[] video_pps = null;         // PPS from SDP prop-parameter-set
         List<byte[]> temporary_rtp_payloads = new List<byte[]>(); // used to assemble the RTP packets that form one RTP frame
@@ -92,8 +97,20 @@ namespace RtspClientExample
             Console.WriteLine("Connecting to " + url);
             this.url = url;
 
-            // Use URI to extract hostname and port
-            Uri uri = new Uri(url);
+            // Use URI to extract host, port, username and password
+            Uri uri = new Uri(this.url);
+            if (uri.UserInfo.Length > 0) {
+                try {
+                    username = uri.UserInfo.Split(new char[] {':'})[0];
+                    password = uri.UserInfo.Split(new char[] {':'})[1];
+                    this.url = uri.GetComponents((UriComponents.AbsoluteUri &~ UriComponents.UserInfo),
+                                        UriFormat.UriEscaped);
+                    uri = new Uri(this.url);
+                } catch {
+                    username = null;
+                    password = null;
+                }
+            }
 
             // Connect to a RTSP Server. The RTSP session is a TCP connection
             try
@@ -145,7 +162,7 @@ namespace RtspClientExample
             // Send OPTIONS
             // In the Received Message handler we will send DESCRIBE, SETUP and PLAY
             Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
-            options_message.RtspUri = new Uri(url);
+            options_message.RtspUri = new Uri(this.url);
             rtsp_client.SendMessage(options_message);
         }
 
@@ -256,23 +273,34 @@ namespace RtspClientExample
                 }
 
 
-                // If rtp_marker is '1' then this is the final transmission for this packet.
-                // If rtp_marker is '0' we need to accumulate data with the same timestamp
+                if (rtp_payload_type >= 96 && video_codec.Equals("H264")) {
+                    // H264 RTP Packet
 
-                // ToDo - Check Timestamp
-                // ToDo - Could avoid a copy if there is only one RTP frame for the data (temp list is zero)
+                    // If rtp_marker is '1' then this is the final transmission for this packet.
+                    // If rtp_marker is '0' we need to accumulate data with the same timestamp
 
-                // Add the RTP packet to the tempoary_rtp list
+                    // ToDo - Check Timestamp
+                    // ToDo - Could avoid a copy if there is only one RTP frame for the data (temp list is zero)
 
-                byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
-                System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
-                temporary_rtp_payloads.Add(rtp_payload);
+                    // Add the RTP packet to the tempoary_rtp list
 
-                if (rtp_marker == 1)
-                {
-                    // End Marker is set. Process the RTP frame
-                    Process_RTP_Frame(temporary_rtp_payloads);
-                    temporary_rtp_payloads.Clear();
+                    byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
+                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
+                    temporary_rtp_payloads.Add(rtp_payload);
+
+                    if (rtp_marker == 1)
+                    {
+                        // End Marker is set. Process the RTP frame
+                        Process_H264_RTP_Frame(temporary_rtp_payloads);
+                        temporary_rtp_payloads.Clear();
+                    }
+                }
+                else if (rtp_payload_type == 26) {
+                    
+                    Console.WriteLine("No parser for JPEG RTP packets");
+
+                } else {
+                    Console.WriteLine("No parser for this RTP payload");
                 }
             }
         }
@@ -280,7 +308,7 @@ namespace RtspClientExample
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // used for diagnostics stats
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
-        public void Process_RTP_Frame(List<byte[]> rtp_payloads)
+        public void Process_H264_RTP_Frame(List<byte[]> rtp_payloads)
         {
             Console.WriteLine("RTP Data comprised of " + rtp_payloads.Count + " rtp packets");
 
@@ -415,12 +443,35 @@ namespace RtspClientExample
         }
 
 
+        String realm = null;    // cached from most recent WWW-Authenticate reply
+        String nonce = null;    // cached from most recent WWW-Authenticate reply
+
         // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
         private void Rtsp_MessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
             Rtsp.Messages.RtspResponse message = e.Message as Rtsp.Messages.RtspResponse;
 
             Console.WriteLine("Received " + message.OriginalRequest.ToString());
+
+            // Check if the Message has an Authenticate header. If so we update the 'realm' and 'nonce'
+            if (message.Headers.ContainsKey("WWW-Authenticate")) {
+                String www_authenticate = message.Headers["WWW-Authenticate"];
+
+                // Parse www_authenticate
+                // EG:   Digest realm="AXIS_WS_ACCC8E3A0A8F", nonce="000057c3Y810622bff50b36005eb5efeae118626a161bf", stale=FALSE
+                string[] items = www_authenticate.Split(new char[] { ',' , ' ' });
+                foreach (string item in items) {
+                    // Split on the = symbol and load in
+                    string[] parts = item.Split(new char[] { '=' });
+                    if (parts.Count() >= 2 && parts[0].Trim().Equals("realm"))
+                        realm = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
+                    else if (parts.Count() >= 2 && parts[0].Trim().Equals("nonce"))
+                        nonce = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
+                }
+
+                Console.WriteLine("WWW Authorize parsed for " + realm + " " + nonce);
+            }
+
 
             // If we get a reply to OPTIONS and CSEQ is 1 (which was our first command), then send the DESCRIBE
             // If we fer a reply to OPTIONS and CSEQ is not 1, it must have been a keepalive command
@@ -434,7 +485,7 @@ namespace RtspClientExample
                     keepalive_timer.Interval = 20 * 1000;
                     keepalive_timer.Enabled = true;
 
-                    // send the Describe
+                    // send the DESCRIBE. First time around we have no WWW-Authorise
                     Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
                     describe_message.RtspUri = new Uri(url);
                     rtsp_client.SendMessage(describe_message);
@@ -451,6 +502,39 @@ namespace RtspClientExample
             {
 
                 // Got a reply for DESCRIBE
+
+                // First time we send DESCRIBE we will not have the authorization Nonce so we
+                // handle the Unauthorized 401 error here and send a new DESCRIBE message
+
+                if (message.IsOk == false) {
+                    Console.WriteLine("Got Error in DESCRIBE Reply " + message.ReturnCode + " " + message.ReturnMessage);
+
+                    if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey("Authorization")==false)) {
+                        // Error 401 - Unauthorized, but the request did not use Authorizarion.
+
+                        if (username == null || password == null) {
+                            // we do nothave a username or password. Abort
+                            return;
+                        }
+                        // Send a new DESCRIBE with authorization
+                        String digest_authorization = GenerateDigestAuthorization(username,password,
+                                                                                realm,nonce,url,"DESCRIBE");
+                        
+                        Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
+                        describe_message.RtspUri = new Uri(url);
+                        if (digest_authorization!=null) describe_message.Headers.Add("Authorization",digest_authorization);
+                        rtsp_client.SendMessage(describe_message);
+                        return;
+                    } else if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey("Authorization")==true)) {
+                        // Authorization failed
+                        return;
+                    } else {
+                        // some other error
+                        return;
+                    }
+                            
+                }
+
                 // Examine the SDP
 
                 Console.Write(System.Text.Encoding.UTF8.GetString(message.Data));
@@ -481,7 +565,14 @@ namespace RtspClientExample
                             Rtsp.Sdp.AttributRtpMap rtpmap = null; // custom payload (>=96) details
                             foreach (Rtsp.Sdp.Attribut attrib in sdp_data.Medias[x].Attributs)
                             {
-                                if (attrib.Key.Equals("control")) control = attrib.Value;
+                                if (attrib.Key.Equals("control")) {
+                                    String sdp_control = attrib.Value;
+                                    if (sdp_control.ToLower().StartsWith("rtsp://")) {
+                                        control = sdp_control; //absolute path
+                                    } else {
+                                        control = url + "/" + sdp_control; // relative path
+                                    }
+                                }
                                 if (attrib.Key.Equals("fmtp")) fmtp = attrib as Rtsp.Sdp.AttributFmtp;
                                 if (attrib.Key.Equals("rtpmap")) rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
                             }
@@ -489,15 +580,13 @@ namespace RtspClientExample
                             // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
                             if (rtpmap!= null && rtpmap.Value.Contains("H264") && fmtp != null)
                             {
+                                video_codec = "H264";
                                 var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
                                 var sps_pps = param.SpropParameterSets;
                                 if (sps_pps.Count > 0) video_sps = sps_pps[0];
                                 if (sps_pps.Count > 1) video_pps = sps_pps[1];
                                 Output_NAL(sps_pps); // output SPS and PPS
                             }
-
-                            Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
-                            setup_message.RtspUri = new Uri(url + "/" + control);
 
                             RtspTransport transport = null;
                             if (rtp_transport == RTP_TRANSPORT.TCP)
@@ -539,8 +628,16 @@ namespace RtspClientExample
                                     IsMulticast = true
                                 };
                             }
-                            setup_message.AddTransport(transport);
 
+                            // Add authorization (if there is a username and password)
+                            String digest_authorization = GenerateDigestAuthorization(username,password,
+                                                                                  realm,nonce,url,"SETUP");
+
+                            // Send SETUP
+                            Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
+                            setup_message.RtspUri = new Uri(control);
+                            setup_message.AddTransport(transport);
+                            if (digest_authorization!=null) setup_message.Headers.Add("Authorization",digest_authorization);
                             rtsp_client.SendMessage(setup_message);
                         }
                     }
@@ -553,7 +650,7 @@ namespace RtspClientExample
             {
                 // Got Reply to SETUP
                 if (message.IsOk == false) {
-                    Console.WriteLine("Got Error in Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    Console.WriteLine("Got Error in SETUP Reply " + message.ReturnCode + " " + message.ReturnMessage);
                     return;
                 }
 
@@ -581,6 +678,7 @@ namespace RtspClientExample
                     }
                 }
 
+                // Send PLAY
                 Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
                 play_message.RtspUri = new Uri(url);
                 play_message.Session = session;
@@ -591,6 +689,11 @@ namespace RtspClientExample
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestPlay)
             {
                 // Got Reply to PLAY
+                if (message.IsOk == false) {
+                    Console.WriteLine("Got Error in PLAY Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    return;
+                }
+
                 Console.WriteLine("Got reply from Play  " + message.Command);
             }
 
@@ -603,6 +706,45 @@ namespace RtspClientExample
             options_message.RtspUri = new Uri(url);
             rtsp_client.SendMessage(options_message);
 
+        }
+
+        // Generate Digest Authorization
+        public string GenerateDigestAuthorization(string username, string password,
+            string realm, string nonce, string url, string command)  {
+
+            if (username == null || username.Length == 0) return null;
+            if (password == null || password.Length == 0) return null;
+            if (realm == null || realm.Length == 0) return null;
+            if (nonce == null || nonce.Length == 0) return null;
+           
+            MD5 md5 = System.Security.Cryptography.MD5.Create();
+            String hashA1 = CalculateMD5Hash(md5, username+":"+realm+":"+password);
+            String hashA2 = CalculateMD5Hash(md5, command + ":" + url);
+            String response = CalculateMD5Hash(md5, hashA1 + ":" + nonce + ":" + hashA2);
+
+            const String quote = "\"";
+            String digest_authorization = "Digest username=" + quote + username + quote +", "
+                + "realm=" + quote + realm + quote + ", "
+                + "nonce=" + quote + nonce + quote + ", "
+                + "uri=" + quote + url + quote + ", "
+                + "response=" + quote + response + quote;
+
+            return digest_authorization;
+            
+        }
+
+        // MD5 (lower case)
+        public string CalculateMD5Hash(MD5 md5_session, string input)
+        {
+            byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+            byte[] hash = md5_session.ComputeHash(inputBytes);
+
+            StringBuilder output = new StringBuilder();
+            for (int i = 0; i < hash.Length; i++) {
+                output.Append(hash[i].ToString("x2"));
+            }
+
+            return output.ToString();
         }
 
 
