@@ -8,16 +8,37 @@ namespace Rtsp.Sdp
 {
     public class Media
     {
-        private string p;
+        private string mediaString;
 
-        public Media(string p)
+        public Media(string mediaString)
         {
-            // TODO: Complete member initialization
-            this.p = p;
+            // Example is   'video 0 RTP/AVP 26;
+            this.mediaString = mediaString;
+
+            var parts = mediaString.Split(new char[] { ' ' } , 4);
+
+            if (parts.Count() >= 1) {
+                if (parts[0].Equals("video")) MediaType =  MediaTypes.video;
+                else if (parts[0].Equals("audio")) MediaType = MediaTypes.audio;
+                else if (parts[0].Equals("text")) MediaType = MediaTypes.text;
+                else if (parts[0].Equals("application")) MediaType =  MediaTypes.application;
+                else if (parts[0].Equals("message")) MediaType = MediaTypes.message;
+                else MediaType = MediaTypes.unknown; // standard does allow for future types to be defined
+            }
+
+            int pt;
+            if (parts.Count() >= 4) {
+                if(int.TryParse(parts[3], out pt))
+                {
+                    PayloadType = pt;
+                } else {
+                    PayloadType = 0;
+                }
+            }
         }
 
         // RFC4566 Media Types
-        public enum MediaType { video, audio, text, application, message };
+        public enum MediaTypes { video, audio, text, application, message, unknown };
 
         public Connection Connection { get; set; }
 
@@ -25,15 +46,9 @@ namespace Rtsp.Sdp
 
         public EncriptionKey EncriptionKey { get; set; }
 
-        public MediaType GetMediaType()
-        {
-            if (p.StartsWith("video")) return MediaType.video;
-            else if (p.StartsWith("audio")) return MediaType.audio;
-            else if (p.StartsWith("text")) return MediaType.text;
-            else if (p.StartsWith("application")) return MediaType.application;
-            else if (p.StartsWith("message")) return MediaType.message;
-            else throw new InvalidDataException();
-        }
+        public MediaTypes MediaType { get; set; }
+
+        public int PayloadType { get; set; }
 
         private readonly List<Attribut> attributs = new List<Attribut>();
 

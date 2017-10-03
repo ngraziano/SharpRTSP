@@ -17,5 +17,8 @@ namespace Rtsp.Messages
         public const string Public = "Public";
         public const string Session = "Session";
         public const string Transport = "Transport";
+
+        public const string WWWAuthenticate = "WWW-Authenticate";
+        public const string Authorization = "Authorization";
     }
 }
