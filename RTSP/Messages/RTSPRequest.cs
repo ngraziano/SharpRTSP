@@ -80,13 +80,13 @@ namespace Rtsp.Messages
                 case RequestType.GET_PARAMETER:
                     returnValue = new RtspRequestGetParameter();
                     break;
-
-                    /*
                 case RequestType.ANNOUNCE:
+                    returnValue = new RtspRequestAnnounce();
                     break;
-
                 case RequestType.RECORD:
+                    returnValue = new RtspRequestRecord();
                     break;
+                    /*
                 case RequestType.REDIRECT:
                     break;
                 

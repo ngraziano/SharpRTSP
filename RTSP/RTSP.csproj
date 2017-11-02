@@ -73,10 +73,12 @@
     <Compile Include="Messages\RTSPHeaderNames.cs" />
     <Compile Include="Messages\RTSPMessage.cs" />
     <Compile Include="Messages\RTSPRequest.cs" />
+    <Compile Include="Messages\RTSPRequestAnnounce.cs" />
     <Compile Include="Messages\RTSPRequestDescribe.cs" />
     <Compile Include="Messages\RTSPRequestOptions.cs" />
     <Compile Include="Messages\RTSPRequestPause.cs" />
     <Compile Include="Messages\RTSPRequestPlay.cs" />
+    <Compile Include="Messages\RtspRequestRecord.cs" />
     <Compile Include="Messages\RTSPRequestSetup.cs" />
     <Compile Include="Messages\RTSPRequestGetParameter.cs" />
     <Compile Include="Messages\RTSPRequestTeardown.cs" />
