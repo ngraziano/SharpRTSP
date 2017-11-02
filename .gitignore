@@ -13,4 +13,5 @@ SharpRTSP.FxCop.xml
 RTSP.Tests/cover.xml
 RTSP.Tests/TestResult.xml
 RTSP.Tests/Coverage/
-.vs/RTSP/v15/sqlite3/storage.ide
+.vs/
+*.TMP
