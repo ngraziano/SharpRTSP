@@ -38,6 +38,7 @@
         private ManualResetEvent _stopping = new ManualResetEvent(false);
         private AutoResetEvent _newMessage = new AutoResetEvent(false);
 
+        private RtspPushManager pushManager = new RtspPushManager();
 
         /// <summary>
         /// Gets the singleton instance.
@@ -275,6 +276,10 @@
             {
                 destination = HandleRequestWithoutUrl(ref message);
             }
+            else if (request.RtspUri.AbsolutePath.StartsWith("/PUSH/"))
+            {
+                destination = HandleRequestPush(ref message);
+            }
             else
             {
                 try
@@ -346,6 +351,47 @@
 
             }
 
+            return destination;
+        }
+
+        private RtspListener HandleRequestPush(ref RtspMessage message)
+        {
+            Contract.Requires(message != null);
+            Contract.Requires(message is RtspRequest);
+            Contract.Ensures(Contract.Result<RtspListener>() != null);
+            Contract.Ensures(Contract.ValueAtReturn(out message) != null);
+
+
+            RtspListener destination;
+            destination = message.SourcePort;
+            RtspRequest request = message as RtspRequest;
+            RtspResponse theDirectResponse;
+
+   
+
+            switch (request.RequestTyped)
+            {
+                case RtspRequest.RequestType.OPTIONS:
+                    theDirectResponse = pushManager.HandleOptions(message as RtspRequestOptions);
+                    break;
+                case RtspRequest.RequestType.ANNOUNCE:
+                    theDirectResponse = pushManager.HandleAnnounce(message as RtspRequestAnnounce);
+                    break;
+                case RtspRequest.RequestType.SETUP:
+                    theDirectResponse = pushManager.HandleSetup(message as RtspRequestSetup);
+                    break;
+                case RtspRequest.RequestType.RECORD:
+                    theDirectResponse = pushManager.HandleRecord(message as RtspRequestRecord);
+                    break;
+
+                default:
+                    _logger.Warn("Do not know how to handle : {0}", message.Command);
+                    theDirectResponse = request.CreateResponse();
+                    theDirectResponse.ReturnCode = 400;
+                    break;
+            }
+            
+            message = theDirectResponse;
             return destination;
         }
 
