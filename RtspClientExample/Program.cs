@@ -53,11 +53,11 @@ namespace RtspClientExample
 
     class RTSPClient
     {
-        public enum RTP_TRANSPORT { UDP, TCP, MULTICAST };
+        public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
 
         Rtsp.RtspTcpTransport rtsp_socket = null; // RTSP connection
         Rtsp.RtspListener rtsp_client = null;   // this wraps around a the RTSP tcp_socket stream
-        RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
+        RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.UNKNOWN; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocket udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL (username & password will be stripped out
         String username = "";            // Username
@@ -65,6 +65,7 @@ namespace RtspClientExample
         String session = "";             // RTSP Session
         String realm = null;             // cached from most recent WWW-Authenticate reply
         String nonce = null;             // cached from most recent WWW-Authenticate reply
+        uint   ssrc = 12345;
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int video_data_channel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
@@ -196,6 +197,74 @@ namespace RtspClientExample
             if (data_received.Channel == video_rtcp_channel)
             {
                 Console.WriteLine("Received a RTCP message on channel " + data_received.Channel);
+
+                // RTCP Packet
+                // - Version, Padding and Receiver Report Count
+                // - Packet Type
+                // - Length
+                // - SSRC
+                // - payload
+
+                // There can be multiple RTCP packets transmitted together. Loop ever each one
+
+                long packetIndex = 0;
+                while (packetIndex < e.Message.Data.Length) {
+                    
+                    int rtcp_version = (e.Message.Data[packetIndex+0] >> 6);
+                    int rtcp_padding = (e.Message.Data[packetIndex+0] >> 5) & 0x01;
+                    int rtcp_reception_report_count = (e.Message.Data[packetIndex+0] & 0x1F);
+                    byte rtcp_packet_type = e.Message.Data[packetIndex+1]; // Values from 200 to 207
+                    uint rtcp_length = ((uint)e.Message.Data[packetIndex+2] << 8) + (uint)(e.Message.Data[packetIndex+3]); // number of 32 bit words
+                    uint rtcp_ssrc = ((uint)e.Message.Data[packetIndex+4] << 24) + (uint)(e.Message.Data[packetIndex+5] << 16)
+                                    + (uint)(e.Message.Data[packetIndex+6] << 8) + (uint)(e.Message.Data[packetIndex+7]);
+
+                    // 200 = SR = Sender Report
+                    // 201 = RR = Receiver Report
+                    // 202 = SDES = Source Description
+                    // 203 = Bye = Goodbye
+                    // 204 = APP = Application Specific Method
+                    // 207 = XR = Extended Reports
+
+                    Console.WriteLine("RTCP Data. PacketType=" + rtcp_packet_type
+                                      + " SSRC=" +  rtcp_ssrc);
+
+                    if (rtcp_packet_type == 200) {
+                        // Send a Receiver Report
+                        try
+                        {
+                            byte[] rtcp_receiver_report = new byte[8];
+                            int version = 2;
+                            int paddingBit = 0;
+                            int reportCount = 0; // an empty report
+                            int packetType = 201; // Receiver Report
+                            int length = (rtcp_receiver_report.Length/4) - 1; // num 32 bit words minus 1
+                            rtcp_receiver_report[0] = (byte)((version << 6) + (paddingBit << 5) + reportCount);
+                            rtcp_receiver_report[1] = (byte)(packetType);
+                            rtcp_receiver_report[2] = (byte)((length >> 8) & 0xFF);
+                            rtcp_receiver_report[3] = (byte)((length >> 0) & 0XFF);
+                            rtcp_receiver_report[4] = (byte)((ssrc >> 24) & 0xFF);
+                            rtcp_receiver_report[5] = (byte)((ssrc >> 16) & 0xFF);
+                            rtcp_receiver_report[6] = (byte)((ssrc >> 8) & 0xFF);
+                            rtcp_receiver_report[7] = (byte)((ssrc >> 0) & 0xFF);
+
+                            if (rtp_transport == RTP_TRANSPORT.TCP) {
+                                // Send it over via the RTSP connection
+                                rtsp_client.SendData(video_rtcp_channel,rtcp_receiver_report);
+                            }
+                            if (rtp_transport == RTP_TRANSPORT.UDP || rtp_transport == RTP_TRANSPORT.MULTICAST) {
+                                // Send it via a UDP Packet
+                                Console.Write("TODO - Need to implement RTCP over UDP");
+                            }
+
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing RTCP packet");
+                        }
+                    }
+
+                    packetIndex = packetIndex + ((rtcp_length + 1) * 4);
+                }
                 return;
             }
 
