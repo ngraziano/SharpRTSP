@@ -4,9 +4,14 @@ Sharp RTSP
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/ngraziano/SharpRTSP?branch=master&svg=true)](https://ci.appveyor.com/project/ngraziano/sharprtsp)
 [![Coverage Status](https://coveralls.io/repos/github/ngraziano/SharpRTSP/badge.svg?branch=master)](https://coveralls.io/github/ngraziano/SharpRTSP?branch=master)
 
-A C# library to handle RTSP connections.
+A C# library to handle RTSP connections and RTP data streams.
+* RTSP Client - will connect to a RTSP server, setup the stream and play the stream. UDP, TCP and Multicast are supported.
+* RTP Receiver - will recieve RTP and RTCP packets and pass them to a transport handler
+* RTSP Server - will accept RTSP connections and talk to clients
+* RTP Sender - will send RTP packets to clients
+* Transport Handler - A H264 transport handler is provided. Other video and audio formats are not supported at the current time.
 
-**:warning: : This library do not handle the decoding of the video. It is limited to the transport layer. You mut use a library like FFMPEG to do the decoding.**
+**:warning: : This library do not handle the decoding of the video (eg converting H264 into a bitmap). SharpRTSP is limited to the transport layer. You mut use a library like FFMPEG or use Operating System APIs to do the decoding.**
 
 
 
