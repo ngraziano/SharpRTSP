@@ -14,24 +14,26 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             //String url = "rtsp://192.168.1.128/ch1.h264";    // IPS
-            String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
+            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264"; // Axis
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
 
+            //String url = "rtsp://192.168.1.33:8554/unicast";  // Raspberry Pi RPOS using Mpromonet Live555 server
+            //String url = "rtsp://192.168.1.33:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
 
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            // String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
 
             // Create a RTSP Client
-            RTSPClient c = new RTSPClient(url, RTSPClient.RTP_TRANSPORT.TCP);
+            RTSPClient c = new RTSPClient(url, RTSPClient.RTP_TRANSPORT.UDP);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
@@ -58,7 +60,8 @@ namespace RtspClientExample
         Rtsp.RtspTcpTransport rtsp_socket = null; // RTSP connection
         Rtsp.RtspListener rtsp_client = null;   // this wraps around a the RTSP tcp_socket stream
         RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.UNKNOWN; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
-        UDPSocket udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
+        UDPSocket video_udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
+        UDPSocket audio_udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL (username & password will be stripped out
         String username = "";            // Username
         String password = "";            // Password
@@ -67,13 +70,20 @@ namespace RtspClientExample
         String nonce = null;             // cached from most recent WWW-Authenticate reply
         uint   ssrc = 12345;
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
-        int video_data_channel = -1;     // RTP Channel Number used for the video stream or the UDP port number
-        int video_rtcp_channel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
+        int video_data_channel = -1;     // RTP Channel Number used for the video RTP stream or the UDP port number
+        int video_rtcp_channel = -1;     // RTP Channel Number used for the video RTCP status report messages OR the UDP port number
         string video_codec = "";         // Codec used with Payload Types 96..127 (eg "H264")
+        int audio_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
+        int audio_data_channel = -1;     // RTP Channel Number used for the audio RTP stream or the UDP port number
+        int audio_rtcp_channel = -1;     // RTP Channel Number used for the audio RTCP status report messages OR the UDP port number
+        string audio_codec = "";         // Codec used with Payload Types (eg "PCMA")
         FileStream fs = null;    // used to write the NALs to a .264 file
+        FileStream fs1 = null;   // used to write the G711 audio to a .g711 file
         StreamWriter fs2 = null; // used to write Log Messages to a file. (should switch to NLog)
         System.Timers.Timer keepalive_timer = null;
         H264Payload h264Payload = new H264Payload();
+        G711Payload g711Payload = new G711Payload();
+        String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
         // Constructor
         public RTSPClient(String url, RTP_TRANSPORT rtp_transport)
@@ -81,16 +91,8 @@ namespace RtspClientExample
 
             Rtsp.RtspUtils.RegisterUri();
 
-            if (fs == null)
-            {
-                String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                String filename = "rtsp_capture_" + now + ".264";
-                fs = new FileStream(filename, FileMode.Create);
-
-                String filename2 = "rtsp_capture_" + now + ".raw";
-                fs2 = new StreamWriter(filename2);
-            }
-
+            String filename2 = "rtsp_capture_" + now + ".raw";
+            fs2 = new StreamWriter(filename2);
 
             Console.WriteLine("Connecting to " + url);
             this.url = url;
@@ -143,9 +145,12 @@ namespace RtspClientExample
             this.rtp_transport = rtp_transport;
             if (rtp_transport == RTP_TRANSPORT.UDP)
             {
-                udp_pair = new UDPSocket(50000, 50020); // give a range of 10 pairs (20 addresses) to try incase some address are in use
-                udp_pair.DataReceived += Rtp_DataReceived;
-                udp_pair.Start(); // start listening for data on the UDP ports
+                video_udp_pair = new UDPSocket(50000, 50020); // give a range of 10 pairs (20 addresses) to try incase some address are in use
+                video_udp_pair.DataReceived += Rtp_DataReceived;
+                video_udp_pair.Start(); // start listening for data on the UDP ports
+                audio_udp_pair = new UDPSocket(50000, 50020); // give a range of 10 pairs (20 addresses) to try incase some address are in use
+                audio_udp_pair.DataReceived += Rtp_DataReceived;
+                audio_udp_pair.Start(); // start listening for data on the UDP ports
             }
             if (rtp_transport == RTP_TRANSPORT.TCP)
             {
@@ -171,11 +176,12 @@ namespace RtspClientExample
             teardown_message.Session = session;
             rtsp_client.SendMessage(teardown_message);
 
-            // clear up any UDP sockets
-            if (udp_pair != null) udp_pair.Stop();
-
             // Stop the keepalive timer
             if (keepalive_timer != null) keepalive_timer.Stop();
+
+            // clear up any UDP sockets
+            if (video_udp_pair != null) video_udp_pair.Stop();
+            if (audio_udp_pair != null) audio_udp_pair.Stop();
 
             // Drop the RTSP session
             rtsp_client.Stop();
@@ -192,9 +198,9 @@ namespace RtspClientExample
 
             // Check which channel the Data was received on.
             // eg the Video Channel, the Video Control Channel (RTCP)
-            // In the future would also check the Audio Channel and Audio Control Channel
+            // the Audio Channel or the Audio Control Channel (RTCP)
 
-            if (data_received.Channel == video_rtcp_channel)
+            if (data_received.Channel == video_rtcp_channel || data_received.Channel == audio_rtcp_channel)
             {
                 Console.WriteLine("Received a RTCP message on channel " + data_received.Channel);
 
@@ -268,9 +274,9 @@ namespace RtspClientExample
                 return;
             }
 
-            if (data_received.Channel == video_data_channel)
+            if (data_received.Channel == video_data_channel || data_received.Channel == audio_data_channel)
             {
-                // Received some Video Data on the correct channel.
+                // Received some Video or Audio Data on the correct channel.
 
                 // RTP Packet Header
                 // 0 - Version, P, X, CC, M, PT and Sequence Number
@@ -332,13 +338,21 @@ namespace RtspClientExample
 
 
                 // Check the payload type in the RTP packet matches the Payload Type value from the SDP
-                if (rtp_payload_type != video_payload)
+                if (data_received.Channel == video_data_channel && rtp_payload_type != video_payload)
                 {
-                    Console.WriteLine("Ignoring this RTP payload");
+                    Console.WriteLine("Ignoring this Video RTP payload");
                     return; // ignore this data
                 }
 
-                if (rtp_payload_type >= 96 && rtp_payload_type <= 127 && video_codec.Equals("H264")) {
+                // Check the payload type in the RTP packet matches the Payload Type value from the SDP
+                else if (data_received.Channel == audio_data_channel && rtp_payload_type != audio_payload)
+                {
+                    Console.WriteLine("Ignoring this Audio RTP payload");
+                    return; // ignore this data
+                }
+                else if (data_received.Channel == video_data_channel
+                    && rtp_payload_type >= 96 && rtp_payload_type <= 127
+                    && video_codec.Equals("H264")) {
                     // H264 RTP Packet
 
                     // If rtp_marker is '1' then this is the final transmission for this packet.
@@ -359,12 +373,26 @@ namespace RtspClientExample
                         Output_NAL(nal_units);
                     }
                 }
+                else if (data_received.Channel == audio_data_channel && (rtp_payload_type == 0 || rtp_payload_type == 8 || audio_codec.Equals("PCMA") || audio_codec.Equals("PCMU"))) {
+                    // G711 PCMA or G711 PCMU
+                    byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
+                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                else if (rtp_payload_type == 26) {
-                    Console.WriteLine("No parser for JPEG RTP packets");
+                    List<byte[]> audio_frames = g711Payload.Process_G711_RTP_Packet(rtp_payload, rtp_marker);
 
-                } else {
-                    Console.WriteLine("No parser for this RTP payload");
+                    if (audio_frames == null) {
+                        // some error
+                    } else {
+                        // Write the audio frames to the file
+                        Output_G711(audio_frames);
+                    }
+                }
+                else if (data_received.Channel == video_data_channel && rtp_payload_type == 26) {
+                    Console.WriteLine("No parser has been written for JPEG RTP packets. Please help write one");
+                    return; // ignore this data
+                }
+                else {
+                    Console.WriteLine("No parser for RTP payload " + rtp_payload_type);
                 }
             }
         }
@@ -470,102 +498,162 @@ namespace RtspClientExample
                 }
 
                 // Process each 'Media' Attribute in the SDP (each sub-stream)
-                // If the attribute is for Video, then carry out a SETUP and a PLAY
-                // Only do this for the first Video attribute in case there is more than one in the SDP
 
                 for (int x = 0; x < sdp_data.Medias.Count; x++)
                 {
-                    if (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.video)
+                    bool audio = (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.audio);
+                    bool video = (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.video);
+
+                    if (video && video_payload != -1) continue; // have already matched an video payload
+                    if (audio && audio_payload != -1) continue; // have already matched an audio payload
+
+                    if (audio || video)
                     {
 
-                        // We only want the first video sub-stream
-                        if (video_payload == -1)
+                        // search the attributes for control, rtpmap and fmtp
+                        // (fmtp only applies to video)
+                        String control = "";  // the "track" or "stream id"
+                        Rtsp.Sdp.AttributFmtp fmtp = null; // holds SPS and PPS in base64 (h264 video)
+                        foreach (Rtsp.Sdp.Attribut attrib in sdp_data.Medias[x].Attributs) {
+                            if (attrib.Key.Equals("control")) {
+                                String sdp_control = attrib.Value;
+                                if (sdp_control.ToLower().StartsWith("rtsp://")) {
+                                    control = sdp_control; //absolute path
+                                } else {
+                                    control = url + "/" + sdp_control; // relative path
+                                }
+                            }
+                            if (attrib.Key.Equals("fmtp")) {
+                                fmtp = attrib as Rtsp.Sdp.AttributFmtp;
+                            }
+                            if (attrib.Key.Equals("rtpmap")) {
+                                Rtsp.Sdp.AttributRtpMap rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
+
+                                // Check if the Codec Used (EncodingName) is one we support
+                                String[] valid_video_codecs = {"H264"};
+                                String[] valid_audio_codecs = {"PCMA", "PCMU"};
+
+                                if (video && Array.IndexOf(valid_video_codecs,rtpmap.EncodingName) >= 0) {
+                                    // found a valid codec
+                                    video_codec = rtpmap.EncodingName;
+                                    video_payload = sdp_data.Medias[x].PayloadType;
+                                }
+                                if (audio && Array.IndexOf(valid_audio_codecs,rtpmap.EncodingName) >= 0) {
+                                    audio_codec = rtpmap.EncodingName;
+                                    audio_payload = sdp_data.Medias[x].PayloadType;
+                                }
+                            }
+                        }
+
+                        // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
+                        if (video && video_codec.Contains("H264") && fmtp != null) {
+                            // create output file
+                            String filename = "rtsp_capture_" + now + ".264";
+                            fs = new FileStream(filename, FileMode.Create);
+
+                            var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
+                            var sps_pps = param.SpropParameterSets;
+                            if (sps_pps.Count() >= 2) {
+                                byte[] sps = sps_pps[0];
+                                byte[] pps = sps_pps[1];
+                                Output_SPS_PPS(sps,pps); // output SPS and PPS
+                            }
+                        }
+
+                        if (audio && audio_codec.Equals("PCMA")) {
+                            String filename = "rtsp_capture_" + now + ".al";
+                            fs1 = new FileStream(filename, FileMode.Create);
+                        }
+
+                        if (audio && audio_codec.Equals("PCMU")) {
+                            String filename = "rtsp_capture_" + now + ".ul";
+                            fs1 = new FileStream(filename, FileMode.Create);
+                        }
+
+
+                        // Send the SETUP RTSP command if we have a matching Payload Decoder
+                        if (video && video_payload == -1) continue;
+                        if (audio && audio_payload == -1) continue;
+
+                        RtspTransport transport = null;
+                        int data_channel = 0;
+                        int rtcp_channel = 0;
+
+                        if (rtp_transport == RTP_TRANSPORT.TCP)
                         {
-                            video_payload = sdp_data.Medias[x].PayloadType;
-
-                            // search the attributes for control, fmtp and rtpmap
-                            String control = "";  // the "track" or "stream id"
-                            Rtsp.Sdp.AttributFmtp fmtp = null; // holds SPS and PPS in base64 (h264)
-                            Rtsp.Sdp.AttributRtpMap rtpmap = null; // custom payload (>=96) details
-                            foreach (Rtsp.Sdp.Attribut attrib in sdp_data.Medias[x].Attributs)
-                            {
-                                if (attrib.Key.Equals("control")) {
-                                    String sdp_control = attrib.Value;
-                                    if (sdp_control.ToLower().StartsWith("rtsp://")) {
-                                        control = sdp_control; //absolute path
-                                    } else {
-                                        control = url + "/" + sdp_control; // relative path
-                                    }
-                                }
-                                if (attrib.Key.Equals("fmtp")) fmtp = attrib as Rtsp.Sdp.AttributFmtp;
-                                if (attrib.Key.Equals("rtpmap")) rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
+                            // Server interleaves the RTP packets over the RTSP connection
+                            // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
+                            if (video) {
+                                video_data_channel = 0;
+                                video_rtcp_channel = 1;
+                                data_channel = video_data_channel;
+                                rtcp_channel = video_rtcp_channel;
                             }
-
-                            // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
-                            if (rtpmap!= null && rtpmap.Value.Contains("H264") && fmtp != null)
-                            {
-                                video_codec = "H264";
-                                var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
-                                var sps_pps = param.SpropParameterSets;
-                                if (sps_pps.Count() >= 2) {
-                                    byte[] sps = sps_pps[0];
-                                    byte[] pps = sps_pps[1];
-                                    Output_SPS_PPS(sps,pps); // output SPS and PPS
-                                }
+                            if (audio) {
+                                audio_data_channel = 2;
+                                audio_rtcp_channel = 3;
+                                data_channel = audio_data_channel;
+                                rtcp_channel = audio_rtcp_channel;
                             }
-
-                            RtspTransport transport = null;
-                            if (rtp_transport == RTP_TRANSPORT.TCP)
+                            transport = new RtspTransport()
                             {
-
-                                // Server interleaves the RTP packets over the RTSP connection
-                                // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
-                                video_data_channel = 0;  // Used in DataReceived event handler
-                                video_rtcp_channel = 1;  // Used in DataReceived event handler
-                                transport = new RtspTransport()
-                                {
-                                    LowerTransport = RtspTransport.LowerTransportType.TCP,
-                                    Interleaved = new PortCouple(video_data_channel, video_rtcp_channel), // Channel 0 for video. Channel 1 for RTCP status reports
-                                };
+                                LowerTransport = RtspTransport.LowerTransportType.TCP,
+                                Interleaved = new PortCouple(data_channel, rtcp_channel), // Eg Channel 0 for video. Channel 1 for RTCP status reports
+                            };
+                        }
+                        if (rtp_transport == RTP_TRANSPORT.UDP)
+                        {
+                            // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
+                            // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
+                            if (video) {
+                                video_data_channel = video_udp_pair.data_port;     // Used in DataReceived event handler
+                                video_rtcp_channel = video_udp_pair.control_port;  // Used in DataReceived event handler
+                                data_channel = video_data_channel;
+                                rtcp_channel = video_rtcp_channel;
                             }
-                            if (rtp_transport == RTP_TRANSPORT.UDP)
-                            {
-                                // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
-                                // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
-                                video_data_channel = udp_pair.data_port;     // Used in DataReceived event handler
-                                video_rtcp_channel = udp_pair.control_port;  // Used in DataReceived event handler
-                                transport = new RtspTransport()
-                                {
-                                    LowerTransport = RtspTransport.LowerTransportType.UDP,
-                                    IsMulticast = false,
-                                    ClientPort = new PortCouple(video_data_channel, video_rtcp_channel), // a Channel for video. a Channel for RTCP status reports
-                                };
+                            if (audio) {
+                                audio_data_channel = audio_udp_pair.data_port;     // Used in DataReceived event handler
+                                audio_rtcp_channel = audio_udp_pair.control_port;  // Used in DataReceived event handler
+                                data_channel = audio_data_channel;
+                                rtcp_channel = audio_rtcp_channel;
                             }
-                            if (rtp_transport == RTP_TRANSPORT.MULTICAST)
+                            transport = new RtspTransport()
                             {
-                                // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
-                                // using Multicast Address and Ports that are in the reply to the SETUP message
-                                // Example for MULTICAST mode     Transport: RTP/AVP;multicast
+                                LowerTransport = RtspTransport.LowerTransportType.UDP,
+                                IsMulticast = false,
+                                ClientPort = new PortCouple(data_channel, rtcp_channel), // a Channel for data (video or audio). a Channel for RTCP status reports
+                            };
+                        }
+                        if (rtp_transport == RTP_TRANSPORT.MULTICAST)
+                        {
+                            // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
+                            // using Multicast Address and Ports that are in the reply to the SETUP message
+                            // Example for MULTICAST mode     Transport: RTP/AVP;multicast
+                            if (video) {
                                 video_data_channel = 0; // we get this information in the SETUP message reply
                                 video_rtcp_channel = 0; // we get this information in the SETUP message reply
-                                transport = new RtspTransport()
-                                {
-                                    LowerTransport = RtspTransport.LowerTransportType.UDP,
-                                    IsMulticast = true
-                                };
                             }
-
-                            // Add authorization (if there is a username and password)
-                            String digest_authorization = GenerateDigestAuthorization(username,password,
-                                                                                  realm,nonce,url,"SETUP");
-
-                            // Send SETUP
-                            Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
-                            setup_message.RtspUri = new Uri(control);
-                            setup_message.AddTransport(transport);
-                            if (digest_authorization!=null) setup_message.Headers.Add("Authorization",digest_authorization);
-                            rtsp_client.SendMessage(setup_message);
+                            if (audio) {
+                                audio_data_channel = 0; // we get this information in the SETUP message reply
+                                audio_rtcp_channel = 0; // we get this information in the SETUP message reply
+                            }
+                            transport = new RtspTransport()
+                            {
+                                LowerTransport = RtspTransport.LowerTransportType.UDP,
+                                IsMulticast = true
+                            };
                         }
+
+                        // Add authorization (if there is a username and password)
+                        String digest_authorization = GenerateDigestAuthorization(username,password,
+                                                                              realm,nonce,url,"SETUP");
+
+                        // Send SETUP
+                        Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
+                        setup_message.RtspUri = new Uri(control);
+                        setup_message.AddTransport(transport);
+                        if (digest_authorization!=null) setup_message.Headers.Add("Authorization",digest_authorization);
+                        rtsp_client.SendMessage(setup_message);
                     }
                 }
             }
@@ -598,9 +686,11 @@ namespace RtspClientExample
                         video_rtcp_channel = transport.Port.Second;
 
                         // Create the Pair of UDP Sockets in Multicast mode
-                        udp_pair = new UDPSocket(multicast_address, video_data_channel, multicast_address, video_rtcp_channel);
-                        udp_pair.DataReceived += Rtp_DataReceived;
-                        udp_pair.Start();
+                        video_udp_pair = new UDPSocket(multicast_address, video_data_channel, multicast_address, video_rtcp_channel);
+                        video_udp_pair.DataReceived += Rtp_DataReceived;
+                        video_udp_pair.Start();
+
+                        // TODO - Need to set audio_udp_pair
                     }
                 }
 
@@ -704,5 +794,17 @@ namespace RtspClientExample
             }
             fs.Flush(true);
         }
+
+        private void Output_G711(List<byte[]> audio_frames)
+        {
+            if (fs1 == null) return; // check filestream initialised
+
+            foreach (byte[] audio_frame in audio_frames)
+            {
+                fs1.Write(audio_frame, 0, audio_frame.Length);
+            }
+            fs1.Flush(true);
+        }
+
     }
 }
