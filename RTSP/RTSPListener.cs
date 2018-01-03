@@ -483,7 +483,9 @@
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)((frame.Length & 0x00FF));
             System.Array.Copy(frame, 0, data, 4, frame.Length);
-            _stream.Write(data, 0, data.Length);
+            lock (_stream) {
+                _stream.Write(data, 0, data.Length);
+            }
         }
 
 

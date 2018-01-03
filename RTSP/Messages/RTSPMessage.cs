@@ -230,12 +230,14 @@
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
-            stream.Write(buffer, 0, buffer.Length);
+            lock(stream) {
+                stream.Write(buffer, 0, buffer.Length);
 
-            // Output data
-            if (Data.Length > 0)
-                stream.Write(Data, 0, Data.Length);
+                // Output data
+                if (Data.Length > 0)
+                    stream.Write(Data, 0, Data.Length);
 
+                }
             stream.Flush();
         }
 
