@@ -22,11 +22,10 @@ namespace RtspClientExample
         public delegate void Received_G711_Delegate (String format, List<byte[]> g711);
 
         public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
-        public enum RTSP_STATUS { Unknown, Connecting, ConnectFailed, Connected, Disconnected };
-        public volatile RTSP_STATUS Current_Status = RTSP_STATUS.Unknown;
-
+        private enum RTSP_STATUS { WaitingToConnect, Connecting, ConnectFailed, Connected };
 
         Rtsp.RtspTcpTransport rtsp_socket = null; // RTSP connection
+        volatile RTSP_STATUS rtsp_socket_status = RTSP_STATUS.WaitingToConnect;
         Rtsp.RtspListener rtsp_client = null;   // this wraps around a the RTSP tcp_socket stream
         RTP_TRANSPORT rtp_transport = RTP_TRANSPORT.UNKNOWN; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         Rtsp.UDPSocket video_udp_pair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
@@ -79,29 +78,31 @@ namespace RtspClientExample
             }
 
             // Connect to a RTSP Server. The RTSP session is a TCP connection
-            Current_Status = RTSP_STATUS.Connecting;
+            rtsp_socket_status = RTSP_STATUS.Connecting;
             try
             {
                 rtsp_socket = new Rtsp.RtspTcpTransport(uri.Host, uri.Port);
             }
             catch
             {
-                Current_Status = RTSP_STATUS.ConnectFailed;
+                rtsp_socket_status = RTSP_STATUS.ConnectFailed;
                 Console.WriteLine("Error - did not connect");
                 return;
             }
 
             if (rtsp_socket.Connected == false)
             {
-                Current_Status = RTSP_STATUS.ConnectFailed;
+                rtsp_socket_status = RTSP_STATUS.ConnectFailed;
                 Console.WriteLine("Error - did not connect");
                 return;
             }
 
-            Current_Status = RTSP_STATUS.Connected;
+            rtsp_socket_status = RTSP_STATUS.Connected;
 
             // Connect a RTSP Listener to the RTSP Socket (or other Stream) to send RTSP messages and listen for RTSP replies
             rtsp_client = new Rtsp.RtspListener(rtsp_socket);
+
+            rtsp_client.AutoReconnect = false;
 
             rtsp_client.MessageReceived += Rtsp_MessageReceived;
             rtsp_client.DataReceived += Rtp_DataReceived;
@@ -139,6 +140,14 @@ namespace RtspClientExample
             options_message.RtspUri = new Uri(this.url);
             rtsp_client.SendMessage(options_message);
         }
+
+        // return true if this connection failed, or if it connected but is no longer connected.
+        public bool StreamingFinished() {
+            if (rtsp_socket_status == RTSP_STATUS.ConnectFailed) return true;
+            if (rtsp_socket_status == RTSP_STATUS.Connected && rtsp_socket.Connected == false) return true;
+            else return false;
+        }
+
 
         public void Pause()
         {
@@ -178,7 +187,9 @@ namespace RtspClientExample
             if (audio_udp_pair != null) audio_udp_pair.Stop();
 
             // Drop the RTSP session
-            rtsp_client.Stop();
+            if (rtsp_client != null) {
+                rtsp_client.Stop();
+            }
 
         }
 
@@ -253,7 +264,7 @@ namespace RtspClientExample
                             }
                             if (rtp_transport == RTP_TRANSPORT.UDP || rtp_transport == RTP_TRANSPORT.MULTICAST) {
                                 // Send it via a UDP Packet
-                                Console.Write("TODO - Need to implement RTCP over UDP");
+                                Console.WriteLine("TODO - Need to implement RTCP over UDP");
                             }
 
                         }
