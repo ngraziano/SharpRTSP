@@ -103,6 +103,9 @@
     <Compile Include="Sdp\SdpFile.cs" />
     <Compile Include="Sdp\SdpTimeZone.cs" />
     <Compile Include="Sdp\Timing.cs" />
+    <Compile Include="G711Payload.cs" />
+    <Compile Include="H264Payload.cs" />
+    <Compile Include="UdpSocket.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

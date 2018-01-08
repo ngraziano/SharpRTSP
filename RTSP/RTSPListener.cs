@@ -58,6 +58,7 @@
         public void Start()
         {
             _listenTread = new Thread(new ThreadStart(DoJob));
+            _listenTread.Name = "DoJob";
             _listenTread.Start();
         }
 
@@ -71,6 +72,11 @@
             _transport.Close();
 
         }
+
+        /// <summary>
+        /// Enable auto reconnect.
+        /// </summary>
+        public bool AutoReconnect { get; set; }
 
         /// <summary>
         /// Occurs when message is received.
@@ -90,7 +96,7 @@
         }
 
         /// <summary>
-        /// Occurs when message is received.
+        /// Occurs when Data is received.
         /// </summary>
         public event EventHandler<RtspChunkEventArgs> DataReceived;
 
@@ -112,7 +118,7 @@
         /// <remarks>
         /// This method read one message from TCP connection.
         /// If it a response it add the associate question.
-        /// The sopping is made by the closing of the TCP connection.
+        /// The stopping is made by the closing of the TCP connection.
         /// </remarks>
         private void DoJob()
         {
@@ -170,7 +176,6 @@
                         _transport.Close();
                     }
                 }
-                _logger.Debug("Connection Close");
             }
             catch (IOException error)
             {
@@ -193,6 +198,8 @@
                 _logger.Warn("Unknow Error", error);
                 throw;
             }
+
+            _logger.Debug("Connection Close");
         }
 
         [Serializable]
@@ -219,6 +226,9 @@
 
             if (!_transport.Connected)
             {
+                if(!AutoReconnect)
+                    return false;
+
                 _logger.Warn("Reconnect to a client, strange !!");
                 try
                 {
@@ -428,6 +438,9 @@
 
             if (!_transport.Connected)
             {
+                if(!AutoReconnect)
+                    return null; // cannot write when transport is disconnected
+
                 _logger.Warn("Reconnect to a client, strange !!");
                 Reconnect();
             }
@@ -473,6 +486,9 @@
 
             if (!_transport.Connected)
             {
+                if(!AutoReconnect)
+                    return;
+
                 _logger.Warn("Reconnect to a client, strange !!");
                 Reconnect();
             }

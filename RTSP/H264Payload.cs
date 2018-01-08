@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace RtspClientExample
+namespace Rtsp
 {
     // This class handles the H264 Payload
     // It has methods to parse parameters in the SDP

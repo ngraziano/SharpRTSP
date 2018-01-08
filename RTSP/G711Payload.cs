@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace RtspClientExample
+namespace Rtsp
 {
     // This class handles the G711 Payload
     // It has methods to process the RTP Payload
