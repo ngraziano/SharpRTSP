@@ -33,6 +33,8 @@ namespace RtspClientExample
         String url = "";                 // RTSP URL (username & password will be stripped out
         String username = "";            // Username
         String password = "";            // Password
+        String hostname = "";            // RTSP Server hostname or IP address
+        int port = 0;                    // RTSP Server TCP Port number
         String session = "";             // RTSP Session
         String realm = null;             // cached from most recent WWW-Authenticate reply
         String nonce = null;             // cached from most recent WWW-Authenticate reply
@@ -62,26 +64,29 @@ namespace RtspClientExample
             Console.WriteLine("Connecting to " + url);
             this.url = url;
 
-            // Use URI to extract host, port, username and password
-            Uri uri = new Uri(this.url);
-            if (uri.UserInfo.Length > 0) {
-                try {
+            // Use URI to extract username and password
+            // and to make a new URL without the username and password
+            try {
+                Uri uri = new Uri(this.url);
+                hostname = uri.Host;
+                port = uri.Port;
+
+                if (uri.UserInfo.Length > 0) {
                     username = uri.UserInfo.Split(new char[] {':'})[0];
                     password = uri.UserInfo.Split(new char[] {':'})[1];
                     this.url = uri.GetComponents((UriComponents.AbsoluteUri &~ UriComponents.UserInfo),
-                                        UriFormat.UriEscaped);
-                    uri = new Uri(this.url);
-                } catch {
-                    username = null;
-                    password = null;
+                                                 UriFormat.UriEscaped);
                 }
+            } catch {
+                username = null;
+                password = null;
             }
 
             // Connect to a RTSP Server. The RTSP session is a TCP connection
             rtsp_socket_status = RTSP_STATUS.Connecting;
             try
             {
-                rtsp_socket = new Rtsp.RtspTcpTransport(uri.Host, uri.Port);
+                rtsp_socket = new Rtsp.RtspTcpTransport(hostname, port);
             }
             catch
             {

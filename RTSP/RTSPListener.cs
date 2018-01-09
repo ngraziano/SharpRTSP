@@ -374,9 +374,13 @@
                         if (currentMessage.Data.Length > 0)
                         {
                             // Read the remaning data
-                            byteReaden += commandStream.Read(currentMessage.Data, byteReaden,
-                                currentMessage.Data.Length - byteReaden);
-                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
+                            int byteCount = commandStream.Read(currentMessage.Data, byteReaden,
+                                                               currentMessage.Data.Length - byteReaden);
+                            if (byteCount <= 0) {
+                                currentReadingState = ReadingState.End;
+                                break;
+                            }
+                            byteReaden += byteCount;                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
                         }
                         // if we haven't read all go there again else go to end. 
                         if (byteReaden >= currentMessage.Data.Length)
@@ -384,19 +388,42 @@
                         break;
                     case ReadingState.InterleavedData:
                         currentMessage = new RtspData();
-                        ((RtspData)currentMessage).Channel = commandStream.ReadByte();
-                        size = (commandStream.ReadByte() << 8) + commandStream.ReadByte();
+                        int channelByte = commandStream.ReadByte();
+                        if (channelByte == -1) {
+                            currentReadingState = ReadingState.End;
+                            break;
+                        }
+                        ((RtspData)currentMessage).Channel = channelByte;
+
+                        int sizeByte1 = commandStream.ReadByte();
+                        if (sizeByte1 == -1) {
+                            currentReadingState = ReadingState.End;
+                            break;
+                        }
+                        int sizeByte2 = commandStream.ReadByte();
+                        if (sizeByte2 == -1) {
+                            currentReadingState = ReadingState.End;
+                            break;
+                        }
+                        size = (sizeByte1 << 8) + sizeByte2;
                         currentMessage.Data = new byte[size];
                         currentReadingState = ReadingState.MoreInterleavedData;
                         break;
                     case ReadingState.MoreInterleavedData:
                         // apparently non blocking
-                        byteReaden += commandStream.Read(currentMessage.Data, byteReaden, size - byteReaden);
-                        if (byteReaden < size)
-                            currentReadingState = ReadingState.MoreInterleavedData;
-                        else
-                            currentReadingState = ReadingState.End;
-                        break;
+                        {
+                            int byteCount = commandStream.Read(currentMessage.Data, byteReaden, size - byteReaden);
+                            if (byteCount <= 0) {
+                                currentReadingState = ReadingState.End;
+                                break;
+                            }
+                            byteReaden += byteCount;
+                            if (byteReaden < size)
+                                currentReadingState = ReadingState.MoreInterleavedData;
+                            else
+                                currentReadingState = ReadingState.End;
+                            break;
+                        }
                     default:
                         break;
                 }
@@ -466,7 +493,7 @@
             } catch (Exception e)
             {
                 // Error, for example stream has already been Disposed
-                _logger.DebugException("Error during end send (can be ignored)", e);
+                _logger.Debug("Error during end send (can be ignored) " + e);
                 result = null;
             }
         }

@@ -20,7 +20,7 @@ namespace RtspClientExample
 
             //String url = "rtsp://192.168.1.33:8554/unicast";  // Raspberry Pi RPOS using Mpromonet Live555 server
             //String url = "rtsp://192.168.1.33:8554/h264";  // Raspberry Pi RPOS using Live555
-            String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
+            //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
 
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
@@ -28,10 +28,11 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
-            //String url = "rtsp://admin:9999@192.168.1.187/h264main";
+            String url = "rtsp://admin:9999@192.168.1.187/h264main";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
+
 
             String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             FileStream fs_v = null;   // used to write the NALs to a .264 file
