@@ -1,8 +1,6 @@
 ﻿namespace Rtsp.Sdp
 {
     using System;
-    using System.Collections.Generic;
-    using System.Net;
     using System.Globalization;
 
     public class ConnectionIP6 : Connection

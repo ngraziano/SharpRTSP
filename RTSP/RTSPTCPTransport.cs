@@ -40,7 +40,7 @@ namespace Rtsp
         }
 
 
-        #region IRtspTransport Membres
+        #region IRtspTransport Members
 
         /// <summary>
         /// Gets the stream of the transport.

@@ -28,7 +28,8 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
-            String url = "rtsp://admin:9999@192.168.1.187/h264main";
+            //String url = "rtsp://192.168.83.12:554";
+            string url = "rtsp://192.168.83.12:554/user=admin&password=&channel=1&stream=0.sdp?";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";

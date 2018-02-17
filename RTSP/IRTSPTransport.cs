@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Rtsp
+﻿namespace Rtsp
 {
     /// <summary>
     /// Interface for Transport of Rtsp (TCP, TCP+SSL,..)

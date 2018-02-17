@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Security.Cryptography;
 
 namespace RtspClientExample
@@ -137,7 +136,6 @@ namespace RtspClientExample
             {
                 // Nothing to do. Will open Multicast UDP sockets after the SETUP command
             }
-
 
             // Send OPTIONS
             // In the Received Message handler we will send DESCRIBE, SETUP and PLAY
@@ -749,6 +747,5 @@ namespace RtspClientExample
 
             return output.ToString();
         }
-
     }
 }

@@ -532,7 +532,7 @@
         }
 
 
-        #region IDisposable Membres
+        #region IDisposable Members
 
         public void Dispose()
         {

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Rtsp.Messages
+﻿namespace Rtsp.Messages
 {
     /// <summary>
     /// Class containing helper constant for general use headers.

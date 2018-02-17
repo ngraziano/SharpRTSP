@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Diagnostics.Contracts;
-using System.Globalization;
 
 namespace Rtsp.Messages
 {
@@ -207,7 +204,7 @@ mode                =    <"> *Method <"> | Method
                     case "INTERLEAVED":
                     	returnValue.IsMulticast = false;
                         if (subPart.Length < 2)
-                            throw new ArgumentException("interleaved value invalid", "aTransportString");
+                            throw new ArgumentException("interleaved value is invalid", "aTransportString");
 
                         returnValue.Interleaved =  PortCouple.Parse(subPart[1]);
                         break;
@@ -217,23 +214,23 @@ mode                =    <"> *Method <"> | Method
                     case "TTL":
                         int ttl = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out ttl))
-                            throw new ArgumentException("TTL value invalid", "aTransportString");
+                            throw new ArgumentException("TTL value is invalid", "aTransportString");
                         returnValue.TTL = ttl;
                         break;
                     case "LAYERS":
                         int layers = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out layers))
-                            throw new ArgumentException("Layers value invalid", "aTransportString");
-                        returnValue.TTL = layers;
+                            throw new ArgumentException("Layers value is invalid", "aTransportString");
+                        returnValue.Layers = layers;
                         break;
                     case "PORT":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("Port value invalid", "aTransportString");
+                            throw new ArgumentException("Port value is invalid", "aTransportString");
                         returnValue.Port = PortCouple.Parse(subPart[1]);
                         break;
                     case "CLIENT_PORT":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("client_port value invalid", "aTransportString");
+                            throw new ArgumentException("client_port value is invalid", "aTransportString");
                         returnValue.ClientPort = PortCouple.Parse(subPart[1]);
                         break;
                     case "SERVER_PORT":
@@ -243,12 +240,12 @@ mode                =    <"> *Method <"> | Method
                         break;
                     case "SSRC":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("ssrc value invalid", "aTransportString");
+                            throw new ArgumentException("ssrc value is invalid", "aTransportString");
                         returnValue.SSrc = subPart[1];
                         break;
                     case "MODE":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("mode value invalid", "aTransportString");
+                            throw new ArgumentException("mode value is invalid", "aTransportString");
                         returnValue.Mode = subPart[1];
                         break;
                     default:
@@ -357,7 +354,7 @@ mode                =    <"> *Method <"> | Method
             if (Mode != null && Mode != "PLAY")
             {
                 transportString.Append(";mode=");
-                transportString.Append(SSrc);
+                transportString.Append(Mode);
             }
             return transportString.ToString();
         }
