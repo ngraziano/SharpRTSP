@@ -4,16 +4,19 @@ using System.Collections.Generic;
 
 public class RtspPushDescription
 {
-    public string Sdp { get; }
-    public string AbsolutePath { get; }
+    public string Sdp { get { return sdp; } }
+    public string AbsolutePath { get { return absolutePath; } }
 
     private string pushSession;
+    private readonly string absolutePath;
+    private readonly string sdp;
+
     private readonly Dictionary<string, Forwarder> forwarders = new Dictionary<string, Forwarder>();
 
     public RtspPushDescription(string absolutePath, string sdp)
     {
-        AbsolutePath = absolutePath;
-        Sdp = sdp;
+        this.absolutePath = absolutePath;
+        this.sdp = sdp;
     }
 
     public void AddForwarders(string session, string path, Forwarder forwarder)

@@ -12,12 +12,8 @@ namespace RtspMulticaster
 
         private Random sessionGenerator = new Random();
 
-        public Dictionary<string, RtspPushDescription> PushDescriptions { get; }
-
-        public RtspPushManager()
-        {
-            PushDescriptions = new Dictionary<string, RtspPushDescription>();
-        }
+        private readonly Dictionary<string, RtspPushDescription> pushDescriptions = new Dictionary<string, RtspPushDescription>();
+        public Dictionary<string, RtspPushDescription> PushDescriptions { get { return pushDescriptions; } }
 
         internal RtspResponse HandleOptions(RtspRequestOptions request)
         {
