@@ -12,7 +12,12 @@ namespace RtspMulticaster
 
         private Random sessionGenerator = new Random();
 
-        public Dictionary<string, RtspPushDescription> PushDescriptions { get; } = new Dictionary<string, RtspPushDescription>();
+        public Dictionary<string, RtspPushDescription> PushDescriptions { get; }
+
+        public RtspPushManager()
+        {
+            PushDescriptions = new Dictionary<string, RtspPushDescription>();
+        }
 
         internal RtspResponse HandleOptions(RtspRequestOptions request)
         {
@@ -46,7 +51,7 @@ namespace RtspMulticaster
                 {
                     PushDescriptions[path] = session;
                 }
-                
+
             }
 
             return response;
@@ -57,12 +62,12 @@ namespace RtspMulticaster
             var paths = new List<string>();
             // hugly , must be improved
             var basepathcompleted = new Uri(basepath.ToString() + "/");
-            foreach (var line in sdp.Split(new string[] { "\r\n", "\n" },StringSplitOptions.RemoveEmptyEntries))
+            foreach (var line in sdp.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 if (line.StartsWith("a=control:"))
                 {
 
-                   
+
                     // TODO handle full url, etc...
                     var part = line.Remove(0, "a=control:".Length);
                     paths.Add(new Uri(basepathcompleted, part).AbsolutePath);
@@ -80,7 +85,7 @@ namespace RtspMulticaster
             Contract.Ensures(Contract.Result<RtspResponse>() != null);
 
             var response = request.CreateResponse();
-            if(string.IsNullOrEmpty(response.Session))
+            if (string.IsNullOrEmpty(response.Session))
             {
                 // TODO Allocate a real session ID
                 response.Session = sessionGenerator.Next().ToString();
@@ -93,7 +98,7 @@ namespace RtspMulticaster
                 return response;
             }
 
- 
+
             bool configok = false;
             foreach (var transport in request.GetTransports())
             {
@@ -102,7 +107,7 @@ namespace RtspMulticaster
                     )
                 {
                     var forwarder = new UDPForwarder();
-                    description.AddForwarders(response.Session, request.RtspUri.AbsolutePath,forwarder);
+                    description.AddForwarders(response.Session, request.RtspUri.AbsolutePath, forwarder);
                     transport.ServerPort = new PortCouple(forwarder.ListenVideoPort);
                     response.Headers[RtspHeaderNames.Transport] = transport.ToString();
                     configok = true;
