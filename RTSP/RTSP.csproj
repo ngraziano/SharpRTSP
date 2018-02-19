@@ -78,7 +78,7 @@
     <Compile Include="Messages\RTSPRequestOptions.cs" />
     <Compile Include="Messages\RTSPRequestPause.cs" />
     <Compile Include="Messages\RTSPRequestPlay.cs" />
-    <Compile Include="Messages\RtspRequestRecord.cs" />
+    <Compile Include="Messages\RTSPRequestRecord.cs" />
     <Compile Include="Messages\RTSPRequestSetup.cs" />
     <Compile Include="Messages\RTSPRequestGetParameter.cs" />
     <Compile Include="Messages\RTSPRequestTeardown.cs" />
