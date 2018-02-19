@@ -280,6 +280,10 @@
             {
                 destination = HandleRequestPush(ref message);
             }
+            else if (request.RtspUri.AbsolutePath.StartsWith("/PULL/"))
+            {
+                destination = HandleRequestPull(ref message);
+            }
             else
             {
                 try
@@ -383,7 +387,9 @@
                 case RtspRequest.RequestType.RECORD:
                     theDirectResponse = pushManager.HandleRecord(message as RtspRequestRecord);
                     break;
-
+                case RtspRequest.RequestType.TEARDOWN:
+                    theDirectResponse = pushManager.HandleTeardown(message as RtspRequestTeardown);
+                    break;
                 default:
                     _logger.Warn("Do not know how to handle : {0}", message.Command);
                     theDirectResponse = request.CreateResponse();
@@ -391,6 +397,49 @@
                     break;
             }
             
+            message = theDirectResponse;
+            return destination;
+        }
+
+        private RtspListener HandleRequestPull(ref RtspMessage message)
+        {
+            Contract.Requires(message != null);
+            Contract.Requires(message is RtspRequest);
+            Contract.Ensures(Contract.Result<RtspListener>() != null);
+            Contract.Ensures(Contract.ValueAtReturn(out message) != null);
+
+
+            RtspListener destination;
+            destination = message.SourcePort;
+            RtspRequest request = message as RtspRequest;
+            RtspResponse theDirectResponse;
+
+
+
+            switch (request.RequestTyped)
+            {
+                case RtspRequest.RequestType.OPTIONS:
+                    theDirectResponse = pushManager.HandleOptions(message as RtspRequestOptions);
+                    break;
+                case RtspRequest.RequestType.DESCRIBE:
+                    theDirectResponse = pushManager.HandlePullDescribe(message as RtspRequestDescribe);
+                    break;
+                case RtspRequest.RequestType.SETUP:
+                    theDirectResponse = pushManager.HandlePullSetup(message as RtspRequestSetup);
+                    break;
+                case RtspRequest.RequestType.PLAY:
+                    theDirectResponse = pushManager.HandlePullPlay(message as RtspRequestPlay);
+                    break;
+                case RtspRequest.RequestType.GET_PARAMETER:
+                    theDirectResponse = pushManager.HandlePullGetParameter(message as RtspRequestGetParameter);
+                    break;
+                default:
+                    _logger.Warn("Do not know how to handle : {0}", message.Command);
+                    theDirectResponse = request.CreateResponse();
+                    theDirectResponse.ReturnCode = 400;
+                    break;
+            }
+
             message = theDirectResponse;
             return destination;
         }
