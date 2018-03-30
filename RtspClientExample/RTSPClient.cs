@@ -36,6 +36,7 @@ namespace RtspClientExample
         String hostname = "";            // RTSP Server hostname or IP address
         int port = 0;                    // RTSP Server TCP Port number
         String session = "";             // RTSP Session
+		String auth_type = null;         // cached from most recent WWW-Authenticate reply
         String realm = null;             // cached from most recent WWW-Authenticate reply
         String nonce = null;             // cached from most recent WWW-Authenticate reply
         uint   ssrc = 12345;
@@ -405,23 +406,34 @@ namespace RtspClientExample
 
             Console.WriteLine("Received " + message.OriginalRequest.ToString());
 
-            // Check if the Message has an Authenticate header. If so we update the 'realm' and 'nonce'
-            if (message.Headers.ContainsKey(RtspHeaderNames.WWWAuthenticate)) {
+            // Check if the Message has an Authenticate header.
+			if (message.Headers.ContainsKey(RtspHeaderNames.WWWAuthenticate)) {
                 String www_authenticate = message.Headers[RtspHeaderNames.WWWAuthenticate];
-
+               
                 // Parse www_authenticate
+				// EG:   Basic realm="AProxy"
                 // EG:   Digest realm="AXIS_WS_ACCC8E3A0A8F", nonce="000057c3Y810622bff50b36005eb5efeae118626a161bf", stale=FALSE
                 string[] items = www_authenticate.Split(new char[] { ',' , ' ' });
                 foreach (string item in items) {
-                    // Split on the = symbol and load in
-                    string[] parts = item.Split(new char[] { '=' });
-                    if (parts.Count() >= 2 && parts[0].Trim().Equals("realm"))
-                        realm = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
-                    else if (parts.Count() >= 2 && parts[0].Trim().Equals("nonce"))
-                        nonce = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
+					if (item.ToLower().Equals("basic")) {
+						auth_type = "Basic";
+					}
+					else if (item.ToLower().Equals("digest")) {
+						auth_type = "Digest";
+					}
+					else {
+						// Split on the = symbol and update the realm and nonce
+                        string[] parts = item.Split(new char[] { '=' });
+					    if (parts.Count() >= 2 && parts[0].Trim().Equals("realm")) {
+                            realm = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
+						}
+						else if (parts.Count() >= 2 && parts[0].Trim().Equals("nonce")) {
+                            nonce = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
+						}
+					}
                 }
 
-                Console.WriteLine("WWW Authorize parsed for " + realm + " " + nonce);
+                Console.WriteLine("WWW Authorize parsed for " + auth_type + " " + realm + " " + nonce);
             }
 
 
@@ -465,16 +477,16 @@ namespace RtspClientExample
                         // Error 401 - Unauthorized, but the request did not use Authorizarion.
 
                         if (username == null || password == null) {
-                            // we do nothave a username or password. Abort
+                            // we do not have a username or password. Abort
                             return;
                         }
                         // Send a new DESCRIBE with authorization
-                        String digest_authorization = GenerateDigestAuthorization(username,password,
-                                                                                realm,nonce,url,"DESCRIBE");
+                        String authorization = GenerateAuthorization(username,password,
+                                                                                auth_type,realm,nonce,url,"DESCRIBE");
                         
                         Rtsp.Messages.RtspRequest describe_message = new Rtsp.Messages.RtspRequestDescribe();
                         describe_message.RtspUri = new Uri(url);
-                        if (digest_authorization!=null) describe_message.Headers.Add(RtspHeaderNames.Authorization,digest_authorization);
+                        if (authorization!=null) describe_message.Headers.Add(RtspHeaderNames.Authorization,authorization);
                         rtsp_client.SendMessage(describe_message);
                         return;
                     } else if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey(RtspHeaderNames.Authorization)==true)) {
@@ -632,14 +644,14 @@ namespace RtspClientExample
                         }
 
                         // Add authorization (if there is a username and password)
-                        String digest_authorization = GenerateDigestAuthorization(username,password,
-                                                                              realm,nonce,url,"SETUP");
-
+                        String authorization = GenerateAuthorization(username,password,
+                                                                              auth_type,realm,nonce,url,"SETUP");
+                        
                         // Send SETUP
                         Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
                         setup_message.RtspUri = new Uri(control);
                         setup_message.AddTransport(transport);
-                        if (digest_authorization!=null) setup_message.Headers.Add("Authorization",digest_authorization);
+                        if (authorization!=null) setup_message.Headers.Add("Authorization",authorization);
                         rtsp_client.SendMessage(setup_message);
                     }
                 }
@@ -711,28 +723,40 @@ namespace RtspClientExample
 
         }
 
-        // Generate Digest Authorization
-        public string GenerateDigestAuthorization(string username, string password,
-            string realm, string nonce, string url, string command)  {
+        // Generate Basic or Digest Authorization
+        public string GenerateAuthorization(string username, string password,
+            string auth_type, string realm, string nonce, string url, string command)  {
 
             if (username == null || username.Length == 0) return null;
             if (password == null || password.Length == 0) return null;
             if (realm == null || realm.Length == 0) return null;
-            if (nonce == null || nonce.Length == 0) return null;
-           
-            MD5 md5 = System.Security.Cryptography.MD5.Create();
-            String hashA1 = CalculateMD5Hash(md5, username+":"+realm+":"+password);
-            String hashA2 = CalculateMD5Hash(md5, command + ":" + url);
-            String response = CalculateMD5Hash(md5, hashA1 + ":" + nonce + ":" + hashA2);
+			if (auth_type.Equals("Digest") && (nonce == null || nonce.Length == 0)) return null;
 
-            const String quote = "\"";
-            String digest_authorization = "Digest username=" + quote + username + quote +", "
-                + "realm=" + quote + realm + quote + ", "
-                + "nonce=" + quote + nonce + quote + ", "
-                + "uri=" + quote + url + quote + ", "
-                + "response=" + quote + response + quote;
+			if (auth_type.Equals("Basic")) {
+				byte[] credentials = System.Text.Encoding.UTF8.GetBytes(username+":"+password);
+				String credentials_base64 = Convert.ToBase64String(credentials);
+                String basic_authorization = "Basic " + credentials_base64;
+				return basic_authorization;
+            }
+            else if (auth_type.Equals("Digest")) {
+               
+                MD5 md5 = System.Security.Cryptography.MD5.Create();
+                String hashA1 = CalculateMD5Hash(md5, username+":"+realm+":"+password);
+                String hashA2 = CalculateMD5Hash(md5, command + ":" + url);
+                String response = CalculateMD5Hash(md5, hashA1 + ":" + nonce + ":" + hashA2);
 
-            return digest_authorization;
+                const String quote = "\"";
+                String digest_authorization = "Digest username=" + quote + username + quote +", "
+                    + "realm=" + quote + realm + quote + ", "
+                    + "nonce=" + quote + nonce + quote + ", "
+                    + "uri=" + quote + url + quote + ", "
+                    + "response=" + quote + response + quote;
+
+                return digest_authorization;
+			}
+			else {
+				return null;
+			}
             
         }
 
