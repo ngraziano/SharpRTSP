@@ -93,6 +93,20 @@
         }
 
 
+		/// <summary>
+        /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
+        /// </summary>
+        /// <value>The Method</value>
+        public string Method
+		{
+			get
+			{
+				if (commandArray == null)
+					return string.Empty;
+				return commandArray[0];
+			}
+		}
+
 
         /// <summary>
         /// Gets the headers of the message.

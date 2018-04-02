@@ -196,7 +196,7 @@
             catch (Exception error)
             {
                 _logger.Warn("Unknow Error", error);
-                throw;
+//                throw;
             }
 
             _logger.Debug("Connection Close");
