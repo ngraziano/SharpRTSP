@@ -7,10 +7,19 @@ namespace RtspCameraExample
     {
         static void Main(string[] args)
         {
-            RtspServer s = new RtspServer(8554);
+			int port = 8554;
+			string username = "user";      // or use NUL if there is no username
+			string password = "password";  // or use NUL if there is no password
+            
+            RtspServer s = new RtspServer(port,username,password);
             s.StartListen();
 
             // Wait for user to terminate programme
+			String msg = "Connect RTSP client to Port=" + port;
+			if (username != null && password != null) {
+				msg += " Username=" + username + " Password=" + password;
+			}
+			Console.WriteLine(msg);
             Console.WriteLine("Press ENTER to exit");
             String readline = null;
             while (readline == null) {

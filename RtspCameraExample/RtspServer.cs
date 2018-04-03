@@ -37,15 +37,27 @@ public class RtspServer : IDisposable
     Random rnd = new Random();
     int session_count = 0;
 
+	Authentication auth = null;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RTSPServer"/> class.
     /// </summary>
     /// <param name="aPortNumber">A numero port.</param>
-    public RtspServer(int portNumber)
+	/// <param name="username">username.</param>
+	/// <param name="password">password.</param>
+    public RtspServer(int portNumber, String username, String password)
     {
         if (portNumber < System.Net.IPEndPoint.MinPort || portNumber > System.Net.IPEndPoint.MaxPort)
             throw new ArgumentOutOfRangeException("aPortNumber", portNumber, "Port number must be between System.Net.IPEndPoint.MinPort and System.Net.IPEndPoint.MaxPort");
         Contract.EndContractBlock();
+
+		if (String.IsNullOrEmpty(username) == false
+		    && String.IsNullOrEmpty(password) == false) {
+		    String realm = "SharpRTSPServer";
+		    auth = new Authentication(username,password,realm,Authentication.Type.Digest);
+		} else {
+			auth = null;
+		}
 
         RtspUtils.RegisterUri();
         _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
@@ -138,6 +150,25 @@ public class RtspServer : IDisposable
         Rtsp.Messages.RtspMessage message = e.Message as Rtsp.Messages.RtspMessage;
 
         Console.WriteLine("RTSP message received " + message);
+
+        
+		// Check if the RTSP Message has valid authentication (validating against username,password,realm and nonce)
+		if (auth != null) {
+			bool authorized = false;
+			if (message.Headers.ContainsKey("Authorization") == true ) {
+				// Check the message has the correct Authorization
+				authorized = auth.IsValid(message);
+			}
+			if ((message.Headers.ContainsKey("Authorization") == false)
+			    || authorized == false) {
+                // Send a 401 Authentication Required reply
+				Rtsp.Messages.RtspResponse authorization_response = (e.Message as Rtsp.Messages.RtspRequest).CreateResponse();
+				authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader());
+				authorization_response.ReturnCode = 401;
+				listener.SendMessage(authorization_response);
+				return;
+			}
+		}
 
         // Handle OPTIONS message
         if (message is Rtsp.Messages.RtspRequestOptions)

@@ -106,6 +106,7 @@
     <Compile Include="G711Payload.cs" />
     <Compile Include="H264Payload.cs" />
     <Compile Include="UdpSocket.cs" />
+    <Compile Include="Authentication.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
