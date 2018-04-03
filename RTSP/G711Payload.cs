@@ -9,8 +9,6 @@ namespace Rtsp
 
     public class G711Payload
     {
-        MemoryStream fragmented_nal = new MemoryStream(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
-
         // Constructor
         public G711Payload()
         {

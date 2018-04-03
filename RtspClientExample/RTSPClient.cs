@@ -15,11 +15,13 @@ namespace RtspClientExample
         public event Received_SPS_PPS_Delegate  Received_SPS_PPS;
         public event Received_NALs_Delegate     Received_NALs;
         public event Received_G711_Delegate     Received_G711;
+		public event Received_AMR_Delegate      Received_AMR;
 
         // Delegated functions (essentially the function prototype)
         public delegate void Received_SPS_PPS_Delegate (byte[] sps, byte[] pps);
         public delegate void Received_NALs_Delegate (List<byte[]> nal_units);
         public delegate void Received_G711_Delegate (String format, List<byte[]> g711);
+		public delegate void Received_AMR_Delegate (String format, List<byte[]> amr);
 
         public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
         private enum RTSP_STATUS { WaitingToConnect, Connecting, ConnectFailed, Connected };
@@ -47,11 +49,12 @@ namespace RtspClientExample
         int audio_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int audio_data_channel = -1;     // RTP Channel Number used for the audio RTP stream or the UDP port number
         int audio_rtcp_channel = -1;     // RTP Channel Number used for the audio RTCP status report messages OR the UDP port number
-        string audio_codec = "";         // Codec used with Payload Types (eg "PCMA")
+        string audio_codec = "";         // Codec used with Payload Types (eg "PCMA" or "AMR")
 
         System.Timers.Timer keepalive_timer = null;
         Rtsp.H264Payload h264Payload = new Rtsp.H264Payload();
         Rtsp.G711Payload g711Payload = new Rtsp.G711Payload();
+		Rtsp.AMRPayload amrPayload = new Rtsp.AMRPayload();
 
         // Constructor
         public RTSPClient() {
@@ -400,6 +403,22 @@ namespace RtspClientExample
                         }
                     }
                 }
+				else if (data_received.Channel == audio_data_channel && rtp_payload_type >= 96 && rtp_payload_type <= 127 && audio_codec.Equals("AMR")) {
+                    // AMR
+                    byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
+                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
+
+                    List<byte[]> audio_frames = amrPayload.Process_AMR_RTP_Packet(rtp_payload, rtp_marker);
+
+                    if (audio_frames == null) {
+                        // some error
+                    } else {
+                        // Write the audio frames to the file
+                        if (Received_AMR != null) {
+                            Received_AMR(audio_codec, audio_frames);
+                        }
+                    }
+                }
                 else if (data_received.Channel == video_data_channel && rtp_payload_type == 26) {
                     Console.WriteLine("No parser has been written for JPEG RTP packets. Please help write one");
                     return; // ignore this data
@@ -554,7 +573,7 @@ namespace RtspClientExample
 
                                 // Check if the Codec Used (EncodingName) is one we support
                                 String[] valid_video_codecs = {"H264"};
-                                String[] valid_audio_codecs = {"PCMA", "PCMU"};
+                                String[] valid_audio_codecs = {"PCMA", "PCMU", "AMR"};
 
                                 if (video && Array.IndexOf(valid_video_codecs,rtpmap.EncodingName) >= 0) {
                                     // found a valid codec

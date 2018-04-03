@@ -107,6 +107,7 @@
     <Compile Include="H264Payload.cs" />
     <Compile Include="UdpSocket.cs" />
     <Compile Include="Authentication.cs" />
+    <Compile Include="AMRPayload.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

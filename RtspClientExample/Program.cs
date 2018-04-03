@@ -28,15 +28,15 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
             //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
-            String url = "rtsp://admin:9999@192.168.1.187/h264main";
+            String url = "rtsp://192.168.1.79:8554/amrAudioTest"; // Live555 AMR Audio Test
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
 
             String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            FileStream fs_v = null;   // used to write the NALs to a .264 file
-            FileStream fs_a = null;   // used to write the G711 audio to a .g711 file
+            FileStream fs_v = null;   // used to write the video
+            FileStream fs_a = null;   // used to write the audio
 
             // Create a RTSP Client
             RTSPClient c = new RTSPClient();
@@ -86,6 +86,20 @@ namespace RtspClientExample
                 }
             };
 
+            c.Received_AMR += (string format, List<byte[]> amr) => {
+                if (fs_a == null && format.Equals("AMR")) {
+                    String filename = "rtsp_capture_" + now + ".amr";
+                    fs_a = new FileStream(filename, FileMode.Create);
+                    byte[] header = new byte[]{0x23,0x21,0x41,0x4D,0x52,0x0A}; // #!AMR<0x0A>
+                    fs_a.Write(header,0,header.Length);
+                }
+
+                if (fs_a != null) {
+                    foreach (byte[] data in amr) {
+                        fs_a.Write(data, 0, data.Length);
+                    }
+                }
+            };
 
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
