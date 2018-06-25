@@ -56,6 +56,8 @@ namespace RtspClientExample
         Rtsp.G711Payload g711Payload = new Rtsp.G711Payload();
 		Rtsp.AMRPayload amrPayload = new Rtsp.AMRPayload();
 
+        List<Rtsp.Messages.RtspRequestSetup> setup_messages = new List<Rtsp.Messages.RtspRequestSetup>(); // setup messages still to send
+
         // Constructor
         public RTSPClient() {
         }
@@ -539,6 +541,10 @@ namespace RtspClientExample
                     sdp_data = Rtsp.Sdp.SdpFile.Read(sdp_stream);
                 }
 
+                // RTP and RTCP 'channels' are used in TCP Interleaved mode (RTP over RTSP)
+                int next_free_rtp_channel = 0;
+                int next_free_rtcp_channel = 1;
+
                 // Process each 'Media' Attribute in the SDP (each sub-stream)
 
                 for (int x = 0; x < sdp_data.Medias.Count; x++)
@@ -605,52 +611,51 @@ namespace RtspClientExample
                         if (audio && audio_payload == -1) continue;
 
                         RtspTransport transport = null;
-                        int data_channel = 0;
-                        int rtcp_channel = 0;
 
                         if (rtp_transport == RTP_TRANSPORT.TCP)
                         {
                             // Server interleaves the RTP packets over the RTSP connection
                             // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
                             if (video) {
-                                video_data_channel = 0;
-                                video_rtcp_channel = 1;
-                                data_channel = video_data_channel;
-                                rtcp_channel = video_rtcp_channel;
+                                video_data_channel = next_free_rtp_channel;
+                                video_rtcp_channel = next_free_rtcp_channel;
                             }
                             if (audio) {
-                                audio_data_channel = 2;
-                                audio_rtcp_channel = 3;
-                                data_channel = audio_data_channel;
-                                rtcp_channel = audio_rtcp_channel;
+                                audio_data_channel = next_free_rtp_channel;
+                                audio_rtcp_channel = next_free_rtcp_channel;
                             }
                             transport = new RtspTransport()
                             {
                                 LowerTransport = RtspTransport.LowerTransportType.TCP,
-                                Interleaved = new PortCouple(data_channel, rtcp_channel), // Eg Channel 0 for video. Channel 1 for RTCP status reports
+                                Interleaved = new PortCouple(next_free_rtp_channel, next_free_rtcp_channel), // Eg Channel 0 for RTP video data. Channel 1 for RTCP status reports
                             };
+
+                            next_free_rtp_channel += 2;
+                            next_free_rtcp_channel += 2;
                         }
                         if (rtp_transport == RTP_TRANSPORT.UDP)
                         {
+                            int rtp_port = 0;
+                            int rtcp_port = 0;
                             // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
                             // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
                             if (video) {
                                 video_data_channel = video_udp_pair.data_port;     // Used in DataReceived event handler
                                 video_rtcp_channel = video_udp_pair.control_port;  // Used in DataReceived event handler
-                                data_channel = video_data_channel;
-                                rtcp_channel = video_rtcp_channel;
+                                rtp_port = video_udp_pair.data_port;
+                                rtcp_port = video_udp_pair.control_port;
                             }
                             if (audio) {
                                 audio_data_channel = audio_udp_pair.data_port;     // Used in DataReceived event handler
                                 audio_rtcp_channel = audio_udp_pair.control_port;  // Used in DataReceived event handler
-                                data_channel = audio_data_channel;
-                                rtcp_channel = audio_rtcp_channel;
+                                rtp_port = audio_udp_pair.data_port;
+                                rtcp_port = audio_udp_pair.control_port;
                             }
                             transport = new RtspTransport()
                             {
                                 LowerTransport = RtspTransport.LowerTransportType.UDP,
                                 IsMulticast = false,
-                                ClientPort = new PortCouple(data_channel, rtcp_channel), // a Channel for data (video or audio). a Channel for RTCP status reports
+                                ClientPort = new PortCouple(rtp_port, rtcp_port), // a UDP Port for data (video or audio). a UDP Port for RTCP status reports
                             };
                         }
                         if (rtp_transport == RTP_TRANSPORT.MULTICAST)
@@ -673,20 +678,28 @@ namespace RtspClientExample
                             };
                         }
 
-                        // Send SETUP
+                        // Generate SETUP messages
                         Rtsp.Messages.RtspRequestSetup setup_message = new Rtsp.Messages.RtspRequestSetup();
                         setup_message.RtspUri = new Uri(control);
                         setup_message.AddTransport(transport);
 						if (auth_type != null) {
 							AddAuthorization(setup_message,username,password,auth_type,realm,nonce,url);
                         }
-                        rtsp_client.SendMessage(setup_message);
+
+                        // Add SETUP message to list of mesages to send
+                        setup_messages.Add(setup_message);
+
                     }
                 }
+                // Send the FIRST SETUP message and remove it from the list of Setup Messages
+                rtsp_client.SendMessage(setup_messages[0]);
+                setup_messages.RemoveAt(0);
             }
 
 
-            // If we get a reply to SETUP (which was our third command), then process and then send PLAY
+            // If we get a reply to SETUP (which was our third command), then we
+            // (i) check if we have any more SETUP commands to send out (eg if we are doing SETUP for Video and Audio)
+            // (ii) send a PLAY command if all the SETUP command have been sent
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestSetup)
             {
                 // Got Reply to SETUP
@@ -697,7 +710,7 @@ namespace RtspClientExample
 
                 Console.WriteLine("Got reply from Setup. Session is " + message.Session);
 
-                session = message.Session; // Session value used with Play, Pause, Teardown
+                session = message.Session; // Session value used with Play, Pause, Teardown and and additional Setups
 
                 // Check the Transport header
                 if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
@@ -721,14 +734,27 @@ namespace RtspClientExample
                     }
                 }
 
-                // Send PLAY
-                Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
-                play_message.RtspUri = new Uri(url);
-                play_message.Session = session;
-				if (auth_type != null) {
-					AddAuthorization(play_message,username,password,auth_type,realm,nonce,url);
+
+                // Check if we have another SETUP command to send, then remote it from the list
+                if (setup_messages.Count > 0) {
+                    // send the next SETUP message, after adding in the 'session'
+                    Rtsp.Messages.RtspRequestSetup next_setup = setup_messages[0];
+                    next_setup.Session = session;
+                    rtsp_client.SendMessage(next_setup);
+
+                    setup_messages.RemoveAt(0);
                 }
-                rtsp_client.SendMessage(play_message);
+
+                else {
+                    // Send PLAY
+                    Rtsp.Messages.RtspRequest play_message = new Rtsp.Messages.RtspRequestPlay();
+                    play_message.RtspUri = new Uri(url);
+                    play_message.Session = session;
+    				if (auth_type != null) {
+    					AddAuthorization(play_message,username,password,auth_type,realm,nonce,url);
+                    }
+                    rtsp_client.SendMessage(play_message);
+                }
             }
 
             // If we get a reply to PLAY (which was our fourth command), then we should have video being received
