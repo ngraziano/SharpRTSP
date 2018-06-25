@@ -357,7 +357,7 @@ mode                =    <"> *Method <"> | Method
             if (Mode != null && Mode != "PLAY")
             {
                 transportString.Append(";mode=");
-                transportString.Append(SSrc);
+                transportString.Append(Mode);
             }
             return transportString.ToString();
         }
