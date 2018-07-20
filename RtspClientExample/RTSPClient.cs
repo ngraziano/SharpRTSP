@@ -711,7 +711,11 @@ namespace RtspClientExample
                 Console.WriteLine("Got reply from Setup. Session is " + message.Session);
 
                 session = message.Session; // Session value used with Play, Pause, Teardown and and additional Setups
-
+                if(message.Timeout > 0 && message.Timeout > keepalive_timer.Interval / 1000)
+                {
+                    keepalive_timer.Interval = message.Timeout * 1000 / 2;
+                }
+                
                 // Check the Transport header
                 if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
                 {
@@ -774,13 +778,23 @@ namespace RtspClientExample
         void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Send Keepalive message
+#if false
             Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
             options_message.RtspUri = new Uri(url);
 			if (auth_type != null) {
                 AddAuthorization(options_message,username,password,auth_type,realm,nonce,url);
             }
             rtsp_client.SendMessage(options_message);
-
+#else
+            Rtsp.Messages.RtspRequest getparam_message = new Rtsp.Messages.RtspRequestGetParameter();
+            getparam_message.RtspUri = new Uri(url);
+            getparam_message.Session = session;
+            if (auth_type != null)
+            {
+                AddAuthorization(getparam_message, username, password, auth_type, realm, nonce, url);
+            }
+            rtsp_client.SendMessage(getparam_message);
+#endif
         }
 
         // Generate Basic or Digest Authorization
