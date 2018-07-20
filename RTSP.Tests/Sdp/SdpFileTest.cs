@@ -41,7 +41,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.AreEqual(0, readenSDP.Version);
                 Assert.AreEqual("Teleste", readenSDP.Origin.Username);
                 Assert.AreEqual("749719680", readenSDP.Origin.SessionId);
-                Assert.AreEqual(2684264576, readenSDP.Origin.SessionVersion);
+                Assert.AreEqual("2684264576", readenSDP.Origin.SessionVersion);
                 Assert.AreEqual("IN", readenSDP.Origin.NetType);
                 Assert.AreEqual("IP4", readenSDP.Origin.AddressType);
                 Assert.AreEqual("172.16.200.193", readenSDP.Origin.UnicastAddress);
