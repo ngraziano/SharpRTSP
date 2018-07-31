@@ -25,6 +25,8 @@ public class RtspServer : IDisposable
     const int h264_height = 128;
     const int h264_fps = 25;
 
+    const uint global_ssrc = 0x4321FADE; // 8 hex digits
+
     private TcpListener _RTSPServerListener;
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
@@ -237,6 +239,7 @@ public class RtspServer : IDisposable
 
             // Construct the Transport: reply from the Server to the client
             Rtsp.Messages.RtspTransport transport_reply = new Rtsp.Messages.RtspTransport();
+            transport_reply.SSrc = global_ssrc.ToString("X8"); // Convert to Hex, padded to 8 characters
 
             if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
             {
@@ -279,7 +282,7 @@ public class RtspServer : IDisposable
                 RTPSession new_session = new RTPSession();
                 new_session.listener = listener;
                 new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
-                new_session.ssrc = 1;
+                new_session.ssrc = global_ssrc;
 
                 // Add the transports to the Session
                 new_session.client_transport = transport;
@@ -319,20 +322,37 @@ public class RtspServer : IDisposable
             lock (rtp_list)
             {
                 // Search for the Session in the Sessions List. Change the state of "PLAY"
+                bool session_found = false;
                 foreach (RTPSession session in rtp_list)
                 {
                     if (session.session_id.Equals(message.Session))
                     {
                         // found the session
+                        session_found = true;
                         session.play = true;
+
+                        string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
+                        string rtp_info = "url="+((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + session.sequence_number; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+
+                        // Send the reply
+                        Rtsp.Messages.RtspResponse play_response = (e.Message as Rtsp.Messages.RtspRequestPlay).CreateResponse();
+                        play_response.AddHeader("Range: " + range);
+                        play_response.AddHeader("RTP-Info: " + rtp_info);
+                        listener.SendMessage(play_response);
+
                         break;
                     }
                 }
+
+                if (session_found == false) {
+                    // Session ID was not found in the list of Sessions. Send a 454 error
+                    Rtsp.Messages.RtspResponse play_failed_response = (e.Message as Rtsp.Messages.RtspRequestPlay).CreateResponse();
+                    play_failed_response.ReturnCode = 454; // Session Not Found
+                    listener.SendMessage(play_failed_response);
+                }
+
             }
 
-            // ToDo - only send back the OK response if the Session in the RTSP message was found
-            Rtsp.Messages.RtspResponse play_response = (e.Message as Rtsp.Messages.RtspRequestPlay).CreateResponse();
-            listener.SendMessage(play_response);
         }
 
         // Handle PLAUSE message
@@ -576,7 +596,7 @@ public class RtspServer : IDisposable
         public Rtsp.RtspListener listener = null;  // The RTSP client connection
         public UInt16 sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
         public String session_id = "";             // RTSP Session ID used with this client connection
-        public uint ssrc = 1;                       // SSRC value used with this client connection
+        public UInt32 ssrc = 0x12345678;           // SSRC value used with this client connection
         public bool play = false;                  // set to true when Session is in Play mode
         public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
         public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
