@@ -51,7 +51,10 @@ namespace RtspClientExample
         int audio_rtcp_channel = -1;     // RTP Channel Number used for the audio RTCP status report messages OR the UDP port number
         string audio_codec = "";         // Codec used with Payload Types (eg "PCMA" or "AMR")
 
-        System.Timers.Timer keepalive_timer = null;
+        bool server_supports_get_parameter = false; // Used with RTSP keepalive
+        bool server_supports_set_parameter = false; // Used with RTSP keepalive
+        System.Timers.Timer keepalive_timer = null; // Used with RTSP keepalive
+
         Rtsp.H264Payload h264Payload = new Rtsp.H264Payload();
         Rtsp.G711Payload g711Payload = new Rtsp.G711Payload();
 		Rtsp.AMRPayload amrPayload = new Rtsp.AMRPayload();
@@ -437,7 +440,7 @@ namespace RtspClientExample
         {
             Rtsp.Messages.RtspResponse message = e.Message as Rtsp.Messages.RtspResponse;
 
-            Console.WriteLine("Received " + message.OriginalRequest.ToString());
+            Console.WriteLine("Received RTSP Message " + message.OriginalRequest.ToString());
 
             // If message has a 401 - Unauthorised Error, then we re-send the message with Authorization
             // using the most recently received 'realm' and 'nonce'
@@ -498,7 +501,20 @@ namespace RtspClientExample
             // If we get a reply to OPTIONS then start the Keepalive Timer and send DESCRIBE
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestOptions)
             {
-				if (keepalive_timer == null)
+
+                // Check the capabilities returned by OPTIONS
+                // The Public: header contains the list of commands the RTSP server supports
+                // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
+                if (message.Headers.ContainsKey(RtspHeaderNames.Public))
+                {
+                    string[] parts = message.Headers[RtspHeaderNames.Public].Split(',');
+                    foreach (String part in parts) {
+                        if (part.Trim().ToUpper().Equals("GET_PARAMETER")) server_supports_get_parameter = true;
+                        if (part.Trim().ToUpper().Equals("SET_PARAMETER")) server_supports_set_parameter = true;
+                    }
+                }
+
+                if (keepalive_timer == null)
                 {
                     // Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
                     keepalive_timer = new System.Timers.Timer();
@@ -778,23 +794,32 @@ namespace RtspClientExample
         void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Send Keepalive message
-#if false
-            Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
-            options_message.RtspUri = new Uri(url);
-			if (auth_type != null) {
-                AddAuthorization(options_message,username,password,auth_type,realm,nonce,url);
+            // The ONVIF Standard uses SET_PARAMETER as "an optional method to keep an RTSP session alive"
+            // RFC 2326 (RTSP Standard) says "GET_PARAMETER with no entity body may be used to test client or server liveness("ping")"
+
+            // This code uses GET_PARAMETER (unless OPTIONS report it is not supported, and then it sends OPTIONS as a keepalive)
+
+
+            if (server_supports_get_parameter) {
+
+                Rtsp.Messages.RtspRequest getparam_message = new Rtsp.Messages.RtspRequestGetParameter();
+                getparam_message.RtspUri = new Uri(url);
+                getparam_message.Session = session;
+                if (auth_type != null)
+                {
+                    AddAuthorization(getparam_message, username, password, auth_type, realm, nonce, url);
+                }
+                rtsp_client.SendMessage(getparam_message);
+
+            } else {
+
+                Rtsp.Messages.RtspRequest options_message = new Rtsp.Messages.RtspRequestOptions();
+                options_message.RtspUri = new Uri(url);
+    			if (auth_type != null) {
+                    AddAuthorization(options_message,username,password,auth_type,realm,nonce,url);
+                }
+                rtsp_client.SendMessage(options_message);
             }
-            rtsp_client.SendMessage(options_message);
-#else
-            Rtsp.Messages.RtspRequest getparam_message = new Rtsp.Messages.RtspRequestGetParameter();
-            getparam_message.RtspUri = new Uri(url);
-            getparam_message.Session = session;
-            if (auth_type != null)
-            {
-                AddAuthorization(getparam_message, username, password, auth_type, realm, nonce, url);
-            }
-            rtsp_client.SendMessage(getparam_message);
-#endif
         }
 
         // Generate Basic or Digest Authorization
