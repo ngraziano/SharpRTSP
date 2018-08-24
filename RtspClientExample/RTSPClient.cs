@@ -516,7 +516,7 @@ namespace RtspClientExample
 
                 if (keepalive_timer == null)
                 {
-                    // Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
+                    // Start a Timer to send an Keepalive RTSP command every 20 seconds
                     keepalive_timer = new System.Timers.Timer();
                     keepalive_timer.Elapsed += Timer_Elapsed;
                     keepalive_timer.Interval = 20 * 1000;
@@ -532,6 +532,8 @@ namespace RtspClientExample
                 }
                 else
                 {
+                    // If the Keepalive Timer was not null, the OPTIONS reply may have come from a Keepalive
+                    // So no need to generate a DESCRIBE message
                     // do nothing
                 }
             }
