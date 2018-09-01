@@ -368,8 +368,8 @@ namespace RtspClientExample
                     return; // ignore this data
                 }
                 else if (data_received.Channel == video_data_channel
-                    && rtp_payload_type >= 96 && rtp_payload_type <= 127
-                    && video_codec.Equals("H264")) {
+                         && rtp_payload_type == video_payload
+                         && video_codec.Equals("H264")) {
                     // H264 RTP Packet
 
                     // If rtp_marker is '1' then this is the final transmission for this packet.
@@ -408,7 +408,9 @@ namespace RtspClientExample
                         }
                     }
                 }
-				else if (data_received.Channel == audio_data_channel && rtp_payload_type >= 96 && rtp_payload_type <= 127 && audio_codec.Equals("AMR")) {
+                else if (data_received.Channel == audio_data_channel
+                          && rtp_payload_type == audio_payload
+                          && audio_codec.Equals("AMR")) {
                     // AMR
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
