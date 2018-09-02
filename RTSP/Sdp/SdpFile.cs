@@ -43,30 +43,35 @@ namespace Rtsp.Sdp
             if (value.Key == "v")
             {
                 returnValue.Version = int.Parse(value.Value, CultureInfo.InvariantCulture);
+                value = GetKeyValue(sdpStream);
             }
-            else
+            else {
                 throw new InvalidDataException();
-            value = GetKeyValue(sdpStream);
+            }
 
             // Origin mandatory
             if (value.Key == "o")
             {
                 returnValue.Origin = Origin.Parse(value.Value);
+                value = GetKeyValue(sdpStream);
             }
-            else
+            else {
                 throw new InvalidDataException();
-            value = GetKeyValue(sdpStream);
+            }
 
-            // Session mandatory
+            // Session mandatory.
+            // However the MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
+            // does not include the 'Session' so supress InvalidDatarException
             if (value.Key == "s")
             {
                 returnValue.Session = value.Value;
+                value = GetKeyValue(sdpStream);
             }
-            else
-                throw new InvalidDataException();
-            value = GetKeyValue(sdpStream);
+            else {
+                // throw new InvalidDataException(); // we should throw, but instead we just ignore the error
+            }
 
-            // Session optional
+            // Session Information optional
             if (value.Key == "i")
             {
                 returnValue.SessionInformation = value.Value;
@@ -94,7 +99,7 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // Connexion optional
+            // Connection optional
             if (value.Key == "c")
             {
                 returnValue.Connection = Connection.Parse(value.Value);
@@ -108,7 +113,7 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            //Timing
+            // Timing mandatory
             while (value.Key == "t")
             {
                 string timing = value.Value;
@@ -130,7 +135,7 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // enkription key optional
+            // encryption key optional
             if (value.Key == "k")
             {
 
@@ -138,13 +143,20 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            //Attribut optional multiple
+            //Attribute optional multiple
             while (value.Key == "a")
             {
                 returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
                 value = GetKeyValue(sdpStream);
             }
 
+            // Hack for MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
+            // Skip over all other Key/Value pairs until the 'm=' key
+            while (value.Key != "m") {
+                value = GetKeyValue(sdpStream);
+            }
+
+            // Media
             while (value.Key == "m")
             {
                 Media newMedia = ReadMedia(sdpStream, ref value);
