@@ -13,22 +13,37 @@ namespace RtspClientExample
     {
         static void Main(string[] args)
         {
-            //String url = "rtsp://192.168.1.128/ch1.h264";    // IPS
-            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264"; // Axis
-            //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264"; // Axis
-            //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1"; // Bosch
+            // Internet Test - Big Buck Bunney
+            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
+            // IPS IP Camera Tests
+            //String url = "rtsp://192.168.1.128/ch1.h264";
+
+            // Axis Tests
+            //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264";
+            //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
+
+            // Bosch Tests
+            //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1";
+
+            // 360 Vision Tests
+            //String url = "rtsp://192.168.1.187/h264main";
+
+            // Live555 Server Tests (ONVIF RPOS PROJECT)
             //String url = "rtsp://192.168.1.33:8554/unicast";  // Raspberry Pi RPOS using Mpromonet Live555 server
             //String url = "rtsp://192.168.1.33:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264";  // Raspberry Pi RPOS using Live555
             //String url = "rtsp://192.168.1.121:8554/h264m";  // Raspberry Pi RPOS using Live555 in Multicast mode
 
-            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest"; // Live555 Cygwin
-            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest"; // Live555 Cygwin
-            //String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            // Live555 Server Tests
+            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest";
+            //String url = "rtsp://192.168.1.160:8554/h264ESVideoTest";
+            //String url = "rtsp://127.0.0.1:8554/h264ESVideoTest";
+            //String url = "rtsp://192.168.1.79:8554/amrAudioTest";
 
-            String url = "rtsp://192.168.1.79:8554/amrAudioTest"; // Live555 AMR Audio Test
+            // VLC Server Tests
+            // String url = "rtsp://192.168.1.150:8554/test";
+
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
@@ -41,6 +56,8 @@ namespace RtspClientExample
             // Create a RTSP Client
             RTSPClient c = new RTSPClient();
 
+            // The SPS/PPS comes from the out-of-band SDP data.
+            // Note if the SDP does not include the SPS and PPS the dcoder will have to read it from the in-band data (in the NALs)
             c.Received_SPS_PPS += (byte[] sps, byte[] pps) => {
                 if (fs_v == null) {
                     String filename = "rtsp_capture_" + now + ".264";
@@ -56,7 +73,13 @@ namespace RtspClientExample
                 }
             };
 
+            // Video NALs. May also include the SPS and PPS in-band
             c.Received_NALs += (List<byte[]> nal_units) => {
+                if (fs_v == null)
+                {
+                    String filename = "rtsp_capture_" + now + ".264";
+                    fs_v = new FileStream(filename, FileMode.Create);
+                }
                 if (fs_v != null) {
                     
                     foreach (byte[] nal_unit in nal_units)
