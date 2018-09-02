@@ -42,10 +42,13 @@ namespace RtspClientExample
         String realm = null;             // cached from most recent WWW-Authenticate reply
         String nonce = null;             // cached from most recent WWW-Authenticate reply
         uint   ssrc = 12345;
-        int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
+        Uri video_uri = null;            // URI used for the Video Track
+        int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value. Bosch use 35)
         int video_data_channel = -1;     // RTP Channel Number used for the video RTP stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the video RTCP status report messages OR the UDP port number
         string video_codec = "";         // Codec used with Payload Types 96..127 (eg "H264")
+
+        Uri audio_uri = null;            // URI used for the Audio Track
         int audio_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         int audio_data_channel = -1;     // RTP Channel Number used for the audio RTP stream or the UDP port number
         int audio_rtcp_channel = -1;     // RTP Channel Number used for the audio RTCP status report messages OR the UDP port number
@@ -562,6 +565,8 @@ namespace RtspClientExample
                 }
 
                 // RTP and RTCP 'channels' are used in TCP Interleaved mode (RTP over RTSP)
+                // These are the channels we request. The camera confirms the channel in the SETUP Reply.
+                // But, a Panasonic decides to use different channels in the reply.
                 int next_free_rtp_channel = 0;
                 int next_free_rtcp_channel = 1;
 
@@ -572,8 +577,8 @@ namespace RtspClientExample
                     bool audio = (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.audio);
                     bool video = (sdp_data.Medias[x].MediaType == Rtsp.Sdp.Media.MediaTypes.video);
 
-                    if (video && video_payload != -1) continue; // have already matched an video payload
-                    if (audio && audio_payload != -1) continue; // have already matched an audio payload
+                    if (video && video_payload != -1) continue; // have already matched a video payload. don't match another
+                    if (audio && audio_payload != -1) continue; // have already matched an audio payload. don't match another
 
                     if (audio || video)
                     {
@@ -590,6 +595,8 @@ namespace RtspClientExample
                                 } else {
                                     control = url + "/" + sdp_control; // relative path
                                 }
+                                if (video) video_uri = new Uri(control);
+                                if (audio) audio_uri = new Uri(control);
                             }
                             if (attrib.Key.Equals("fmtp")) {
                                 fmtp = attrib as Rtsp.Sdp.AttributFmtp;
@@ -718,8 +725,9 @@ namespace RtspClientExample
 
 
             // If we get a reply to SETUP (which was our third command), then we
-            // (i) check if we have any more SETUP commands to send out (eg if we are doing SETUP for Video and Audio)
-            // (ii) send a PLAY command if all the SETUP command have been sent
+            // (i) check if the Interleaved Channel numbers have been modified by the camera (eg Panasonic cameras)
+            // (ii) check if we have any more SETUP commands to send out (eg if we are doing SETUP for Video and Audio)
+            // (iii) send a PLAY command if all the SETUP command have been sent
             if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestSetup)
             {
                 // Got Reply to SETUP
@@ -754,7 +762,21 @@ namespace RtspClientExample
                         video_udp_pair.DataReceived += Rtp_DataReceived;
                         video_udp_pair.Start();
 
-                        // TODO - Need to set audio_udp_pair
+                        // TODO - Need to set audio_udp_pair for Multicast
+                    }
+
+                    // check if the requested Interleaved channels have been modified by the camera
+                    // in the SETUP Reply (Panasonic have a camera that does this)
+                    if (transport.LowerTransport == RtspTransport.LowerTransportType.TCP) {
+                        if (message.OriginalRequest.RtspUri == video_uri) {
+                            video_data_channel = transport.Interleaved.First;
+                            video_rtcp_channel = transport.Interleaved.Second;
+                        }
+                        if (message.OriginalRequest.RtspUri == audio_uri) {
+                            audio_data_channel = transport.Interleaved.First;
+                            audio_rtcp_channel = transport.Interleaved.Second;
+                        }
+
                     }
                 }
 
