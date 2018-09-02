@@ -84,6 +84,16 @@ namespace RtspClientExample
                     
                     foreach (byte[] nal_unit in nal_units)
                     {
+                        if (nal_unit.Length > 0) {
+                            int nal_ref_idc  = (nal_unit[0] >> 5) & 0x03;
+                            int nal_unit_type = nal_unit[0] & 0x1F;
+                            String description = "";
+                            if (nal_unit_type == 6) description = "SEI NAL";
+                            else if (nal_unit_type == 7) description = "SPS NAL";
+                            else if (nal_unit_type == 8) description = "PPS NAL";
+                            Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
+                        }
+
                         fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
                         fs_v.Write(nal_unit, 0, nal_unit.Length);                 // Write NAL
                     }
