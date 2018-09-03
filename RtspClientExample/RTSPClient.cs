@@ -46,6 +46,7 @@ namespace RtspClientExample
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value. Bosch use 35)
         int video_data_channel = -1;     // RTP Channel Number used for the video RTP stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the video RTCP status report messages OR the UDP port number
+        bool h264_sps_pps_fired = false; // True if the SDP included a sprop-Parameter-Set for H264 video
         string video_codec = "";         // Codec used with Payload Types 96..127 (eg "H264")
 
         Uri audio_uri = null;            // URI used for the Audio Track
@@ -389,6 +390,36 @@ namespace RtspClientExample
                     if (nal_units == null) {
                         // we have not passed in enough RTP packets to make a Frame of video
                     } else {
+                        // If we did not have a SPS and PPS in the SDP then search for the SPS and PPS
+                        // in the NALs and fire the Received_SPS_PPS event.
+                        // We assume the SPS and PPS are in the same Frame.
+                        if (h264_sps_pps_fired == false) {
+
+                            // Check this frame for SPS and PPS
+                            byte[] sps = null;
+                            byte[] pps = null;
+                            foreach (byte[] nal_unit in nal_units) {
+                                if (nal_unit.Length > 0)
+                                {
+                                    int nal_ref_idc = (nal_unit[0] >> 5) & 0x03;
+                                    int nal_unit_type = nal_unit[0] & 0x1F;
+
+                                    if (nal_unit_type == 7) sps = nal_unit; // SPS
+                                    if (nal_unit_type == 8) pps = nal_unit; // PPS
+                                }
+                            }
+                            if (sps != null && pps != null) {
+                                // Fire the Event
+                                if (Received_SPS_PPS != null)
+                                {
+                                    Received_SPS_PPS(sps, pps);
+                                }
+                                h264_sps_pps_fired = true;
+                            }
+                        }
+
+
+
                         // we have a frame of NAL Units. Write them to the file
                         if (Received_NALs != null) {
                             Received_NALs(nal_units);
@@ -630,6 +661,10 @@ namespace RtspClientExample
                                 if (Received_SPS_PPS != null) {
                                     Received_SPS_PPS(sps,pps);
                                 }
+                                h264_sps_pps_fired = true;
+                            }
+                            else {
+                                h264_sps_pps_fired = false;
                             }
                         }
 

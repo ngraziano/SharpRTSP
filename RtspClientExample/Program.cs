@@ -56,8 +56,8 @@ namespace RtspClientExample
             // Create a RTSP Client
             RTSPClient c = new RTSPClient();
 
-            // The SPS/PPS comes from the out-of-band SDP data.
-            // Note if the SDP does not include the SPS and PPS the dcoder will have to read it from the in-band data (in the NALs)
+            // The SPS/PPS comes from the SDP data
+            // or it is the first SPS/PPS from the H264 video stream
             c.Received_SPS_PPS += (byte[] sps, byte[] pps) => {
                 if (fs_v == null) {
                     String filename = "rtsp_capture_" + now + ".264";
@@ -75,22 +75,21 @@ namespace RtspClientExample
 
             // Video NALs. May also include the SPS and PPS in-band
             c.Received_NALs += (List<byte[]> nal_units) => {
-                if (fs_v == null)
-                {
-                    String filename = "rtsp_capture_" + now + ".264";
-                    fs_v = new FileStream(filename, FileMode.Create);
-                }
                 if (fs_v != null) {
-                    
                     foreach (byte[] nal_unit in nal_units)
                     {
+                        // Output some H264 stream information
                         if (nal_unit.Length > 0) {
                             int nal_ref_idc  = (nal_unit[0] >> 5) & 0x03;
                             int nal_unit_type = nal_unit[0] & 0x1F;
                             String description = "";
-                            if (nal_unit_type == 6) description = "SEI NAL";
+                            if (nal_unit_type == 1) description = "NON IDR NAL";
+                            else if (nal_unit_type == 5) description = "IDR NAL";
+                            else if (nal_unit_type == 6) description = "SEI NAL";
                             else if (nal_unit_type == 7) description = "SPS NAL";
                             else if (nal_unit_type == 8) description = "PPS NAL";
+                            else if (nal_unit_type == 9) description = "ACCESS UNIT DELIMITER NAL";
+                            else description = "OTHER NAL";
                             Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
                         }
 
