@@ -4,21 +4,21 @@ Sharp RTSP
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/ngraziano/SharpRTSP?branch=master&svg=true)](https://ci.appveyor.com/project/ngraziano/sharprtsp)
 [![Coverage Status](https://coveralls.io/repos/github/ngraziano/SharpRTSP/badge.svg?branch=master)](https://coveralls.io/github/ngraziano/SharpRTSP?branch=master)
 
-A C# library to handle RTSP connections and RTP data streams.
-* RTSP Client Example - will connect to a RTSP server, setup the stream and play the stream. UDP, TCP and Multicast are supported. The client emits H264 NALs, G711 Audio and AMR Audio data.
-* RTSP Camera Example - A YUV Image Generter and a very simple H264 Encoder generate NALs which are then delivered via RTSP to clients
+A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
+* RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711 and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
+* RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients
 * RTP Receiver - will recieve RTP and RTCP packets and pass them to a transport handler
 * RTSP Server - will accept RTSP connections and talk to clients
 * RTP Sender - will send RTP packets to clients
-* Transport Handler - A H264 transport handler is provided. Other video and audio formats are not supported at the current time.
+* Transport Handler - Transport hanlders for H264, H265/HEVC, G711 and AMR are provided.
 
-**:warning: : This library do not handle the decoding of the video (eg converting H264 into a bitmap). SharpRTSP is limited to the transport layer. You mut use a library like FFMPEG or use Operating System APIs to do the decoding.**
+**:warning: : This library does not handle the decoding of the video or audio (eg converting H264 into a bitmap). SharpRTSP is limited to the transport layer and generates the raw data that you need to feed into a video decoder or audio decoder. Many people use FFMPEG or use Hardware Accelerated Operating System APIs to do the decoding.**
 
 
 
 Walkthrough of the RTSP Client Example
 ======================================
-This is a walkthrough of an older version of the RTSP Client Example which lighlight the main areas of the library.
+This is a walkthrough of an **old version** of the RTSP Client Example which highlights the main way to use the library.
 
 
 * STEP 1 - Open TCP Socket connection to the RTSP Server
