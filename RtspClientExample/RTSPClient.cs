@@ -13,13 +13,15 @@ namespace RtspClientExample
     {
         // Events that applications can receive
         public event Received_SPS_PPS_Delegate  Received_SPS_PPS;
+        public event Received_VPS_SPS_PPS_Delegate Received_VPS_SPS_PPS;
         public event Received_NALs_Delegate     Received_NALs;
         public event Received_G711_Delegate     Received_G711;
 		public event Received_AMR_Delegate      Received_AMR;
 
         // Delegated functions (essentially the function prototype)
-        public delegate void Received_SPS_PPS_Delegate (byte[] sps, byte[] pps);
-        public delegate void Received_NALs_Delegate (List<byte[]> nal_units);
+        public delegate void Received_SPS_PPS_Delegate (byte[] sps, byte[] pps); // H264
+        public delegate void Received_VPS_SPS_PPS_Delegate(byte[] vps, byte[] sps, byte[] pps); // H265
+        public delegate void Received_NALs_Delegate (List<byte[]> nal_units); // H264 or H265
         public delegate void Received_G711_Delegate (String format, List<byte[]> g711);
 		public delegate void Received_AMR_Delegate (String format, List<byte[]> amr);
 
@@ -47,6 +49,7 @@ namespace RtspClientExample
         int video_data_channel = -1;     // RTP Channel Number used for the video RTP stream or the UDP port number
         int video_rtcp_channel = -1;     // RTP Channel Number used for the video RTCP status report messages OR the UDP port number
         bool h264_sps_pps_fired = false; // True if the SDP included a sprop-Parameter-Set for H264 video
+        bool h265_vps_sps_pps_fired = false; // True if the SDP included a sprop-vps, sprop-sps and sprop_pps for H265 video
         string video_codec = "";         // Codec used with Payload Types 96..127 (eg "H264")
 
         Uri audio_uri = null;            // URI used for the Audio Track
@@ -59,7 +62,8 @@ namespace RtspClientExample
         bool server_supports_set_parameter = false; // Used with RTSP keepalive
         System.Timers.Timer keepalive_timer = null; // Used with RTSP keepalive
 
-        Rtsp.H264Payload h264Payload = new Rtsp.H264Payload();
+        Rtsp.H264Payload h264Payload = null;
+        Rtsp.H265Payload h265Payload = null;
         Rtsp.G711Payload g711Payload = new Rtsp.G711Payload();
 		Rtsp.AMRPayload amrPayload = new Rtsp.AMRPayload();
 
@@ -426,6 +430,35 @@ namespace RtspClientExample
                         }
                     }
                 }
+                else if (data_received.Channel == video_data_channel
+                         && rtp_payload_type == video_payload
+                         && video_codec.Equals("H265"))
+                {
+                    // H265 RTP Packet
+
+                    // If rtp_marker is '1' then this is the final transmission for this packet.
+                    // If rtp_marker is '0' we need to accumulate data with the same timestamp
+
+                    // Add the RTP packet to the tempoary_rtp list until we have a complete 'Frame'
+
+                    byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
+                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
+
+                    List<byte[]> nal_units = h265Payload.Process_H265_RTP_Packet(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
+
+                    if (nal_units == null)
+                    {
+                        // we have not passed in enough RTP packets to make a Frame of video
+                    }
+                    else
+                    {
+                        // we have a frame of NAL Units. Write them to the file
+                        if (Received_NALs != null)
+                        {
+                            Received_NALs(nal_units);
+                        }
+                    }
+                }
                 else if (data_received.Channel == audio_data_channel && (rtp_payload_type == 0 || rtp_payload_type == 8 || audio_codec.Equals("PCMA") || audio_codec.Equals("PCMU"))) {
                     // G711 PCMA or G711 PCMU
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
@@ -636,7 +669,7 @@ namespace RtspClientExample
                                 Rtsp.Sdp.AttributRtpMap rtpmap = attrib as Rtsp.Sdp.AttributRtpMap;
 
                                 // Check if the Codec Used (EncodingName) is one we support
-                                String[] valid_video_codecs = {"H264"};
+                                String[] valid_video_codecs = {"H264","H265"};
                                 String[] valid_audio_codecs = {"PCMA", "PCMU", "AMR"};
 
                                 if (video && Array.IndexOf(valid_video_codecs,rtpmap.EncodingName) >= 0) {
@@ -649,6 +682,12 @@ namespace RtspClientExample
                                     audio_payload = sdp_data.Medias[x].PayloadType;
                                 }
                             }
+                        }
+
+                        // Create H264 RTP Parser
+                        if (video && video_codec.Contains("H264"))
+                        {
+                            h264Payload = new Rtsp.H264Payload();
                         }
 
                         // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
@@ -667,6 +706,37 @@ namespace RtspClientExample
                                 h264_sps_pps_fired = false;
                             }
                         }
+
+                        // Create H265 RTP Parser
+                        if (video && video_codec.Contains("H265"))
+                        {
+                            // TODO - check if DONL is being used
+                            bool has_donl = false;
+                            h265Payload = new Rtsp.H265Payload(has_donl);
+                        }
+
+                        // If the rtpmap contains H265 then split the fmtp to get the sprop-vps, sprop-sps and sprop-vps
+                        if (video && video_codec.Contains("H265") && fmtp != null)
+                        {
+                            var param = Rtsp.Sdp.H265Parameters.Parse(fmtp.FormatParameter);
+                            var vps_sps_pps = param.SpropParameterSets;
+                            if (vps_sps_pps.Count() >= 3)
+                            {
+                                byte[] vps = vps_sps_pps[0];
+                                byte[] sps = vps_sps_pps[1];
+                                byte[] pps = vps_sps_pps[2];
+                                if (Received_VPS_SPS_PPS != null)
+                                {
+                                    Received_VPS_SPS_PPS(vps,sps, pps);
+                                }
+                                h265_vps_sps_pps_fired = true;
+                            }
+                            else
+                            {
+                                h265_vps_sps_pps_fired = false;
+                            }
+                        }
+
 
                         // Send the SETUP RTSP command if we have a matching Payload Decoder
                         if (video && video_payload == -1) continue;

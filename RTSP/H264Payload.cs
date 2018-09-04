@@ -89,7 +89,7 @@ namespace Rtsp
                     }
                     catch
                     {
-                        // do nothing
+                        Console.WriteLine("H264 Aggregate Packet processing error");
                     }
                 }
                 else if (nal_header_type == 25)

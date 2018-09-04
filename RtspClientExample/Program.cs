@@ -48,10 +48,13 @@ namespace RtspClientExample
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
+            // H265 Tests
 
             String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             FileStream fs_v = null;   // used to write the video
             FileStream fs_a = null;   // used to write the audio
+            bool h264 = false;
+            bool h265 = false;
 
             // Create a RTSP Client
             RTSPClient c = new RTSPClient();
@@ -59,6 +62,7 @@ namespace RtspClientExample
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
             c.Received_SPS_PPS += (byte[] sps, byte[] pps) => {
+                h264 = true;
                 if (fs_v == null) {
                     String filename = "rtsp_capture_" + now + ".264";
                     fs_v = new FileStream(filename, FileMode.Create);
@@ -73,13 +77,35 @@ namespace RtspClientExample
                 }
             };
 
-            // Video NALs. May also include the SPS and PPS in-band
+            c.Received_VPS_SPS_PPS += (byte[] vps, byte[] sps, byte[] pps) => {
+                h265 = true;
+                if (fs_v == null)
+                {
+                    String filename = "rtsp_capture_" + now + ".265";
+                    fs_v = new FileStream(filename, FileMode.Create);
+                }
+
+                if (fs_v != null)
+                {
+                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+                    fs_v.Write(vps, 0, vps.Length);
+                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+                    fs_v.Write(sps, 0, sps.Length);
+                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+                    fs_v.Write(pps, 0, pps.Length);
+                    fs_v.Flush(true);
+                }
+            };
+
+
+
+            // Video NALs. May also include the SPS and PPS in-band for H264
             c.Received_NALs += (List<byte[]> nal_units) => {
                 if (fs_v != null) {
                     foreach (byte[] nal_unit in nal_units)
                     {
                         // Output some H264 stream information
-                        if (nal_unit.Length > 0) {
+                        if (h264 && nal_unit.Length > 0) {
                             int nal_ref_idc  = (nal_unit[0] >> 5) & 0x03;
                             int nal_unit_type = nal_unit[0] & 0x1F;
                             String description = "";
