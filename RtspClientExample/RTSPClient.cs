@@ -139,10 +139,10 @@ namespace RtspClientExample
             this.rtp_transport = rtp_transport;
             if (rtp_transport == RTP_TRANSPORT.UDP)
             {
-                video_udp_pair = new Rtsp.UDPSocket(50000, 50020); // give a range of 10 pairs (20 addresses) to try incase some address are in use
+                video_udp_pair = new Rtsp.UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
                 video_udp_pair.DataReceived += Rtp_DataReceived;
                 video_udp_pair.Start(); // start listening for data on the UDP ports
-                audio_udp_pair = new Rtsp.UDPSocket(50000, 50020); // give a range of 10 pairs (20 addresses) to try incase some address are in use
+                audio_udp_pair = new Rtsp.UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
                 audio_udp_pair.DataReceived += Rtp_DataReceived;
                 audio_udp_pair.Start(); // start listening for data on the UDP ports
             }

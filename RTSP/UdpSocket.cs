@@ -56,11 +56,15 @@ namespace Rtsp
                     data_port += 2;
                     control_port += 2;
                 }
+
+                if (ok)
+                {
+                    data_socket.Client.ReceiveBufferSize = 100 * 1024;
+
+                    control_socket.Client.DontFragment = false;
+
+                }
             }
-
-            data_socket.Client.ReceiveBufferSize = 100 * 1024;
-
-            control_socket.Client.DontFragment = false;
         }
 
 
