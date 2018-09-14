@@ -380,7 +380,8 @@
                                 currentReadingState = ReadingState.End;
                                 break;
                             }
-                            byteReaden += byteCount;                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
+                            byteReaden += byteCount;
+                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
                         }
                         // if we haven't read all go there again else go to end. 
                         if (byteReaden >= currentMessage.Data.Length)
