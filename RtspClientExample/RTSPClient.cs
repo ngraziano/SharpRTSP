@@ -261,9 +261,9 @@ namespace RtspClientExample
                     int rtcp_padding = (e.Message.Data[packetIndex+0] >> 5) & 0x01;
                     int rtcp_reception_report_count = (e.Message.Data[packetIndex+0] & 0x1F);
                     byte rtcp_packet_type = e.Message.Data[packetIndex+1]; // Values from 200 to 207
-                    uint rtcp_length = ((uint)e.Message.Data[packetIndex+2] << 8) + (uint)(e.Message.Data[packetIndex+3]); // number of 32 bit words
-                    uint rtcp_ssrc = ((uint)e.Message.Data[packetIndex+4] << 24) + (uint)(e.Message.Data[packetIndex+5] << 16)
-                                    + (uint)(e.Message.Data[packetIndex+6] << 8) + (uint)(e.Message.Data[packetIndex+7]);
+                    uint rtcp_length = (uint)(e.Message.Data[packetIndex+2] << 8) + (uint)(e.Message.Data[packetIndex+3]); // number of 32 bit words
+                    uint rtcp_ssrc = (uint)(e.Message.Data[packetIndex+4] << 24) + (uint)(e.Message.Data[packetIndex+5] << 16)
+                        + (uint)(e.Message.Data[packetIndex+6] << 8) + (uint)(e.Message.Data[packetIndex+7]);
 
                     // 200 = SR = Sender Report
                     // 201 = RR = Receiver Report
@@ -276,6 +276,28 @@ namespace RtspClientExample
                                       + " SSRC=" +  rtcp_ssrc);
 
                     if (rtcp_packet_type == 200) {
+                        // We have received a Sender Report
+                        // Use it to convert the RTP timestamp into the UTC time
+
+                        UInt32 ntp_msw_seconds = (uint)(e.Message.Data[packetIndex + 8] << 24) + (uint)(e.Message.Data[packetIndex + 9] << 16)
+                        + (uint)(e.Message.Data[packetIndex + 10] << 8) + (uint)(e.Message.Data[packetIndex + 11]);
+
+                        UInt32 ntp_lsw_fractions = (uint)(e.Message.Data[packetIndex + 12] << 24) + (uint)(e.Message.Data[packetIndex + 13] << 16)
+                        + (uint)(e.Message.Data[packetIndex + 14] << 8) + (uint)(e.Message.Data[packetIndex + 15]);
+
+                        UInt32 rtp_timestamp = (uint)(e.Message.Data[packetIndex + 16] << 24) + (uint)(e.Message.Data[packetIndex + 17] << 16)
+                        + (uint)(e.Message.Data[packetIndex + 18] << 8) + (uint)(e.Message.Data[packetIndex + 19]);
+
+                        double ntp = ntp_msw_seconds + (ntp_lsw_fractions / UInt32.MaxValue);
+
+                        // NTP Most Signigicant Word is relative to 0h, 1 Jan 1900
+                        // This will wrap around in 2036
+                        DateTime time = new DateTime(1900,1,1,0,0,0,DateTimeKind.Utc);
+
+                        time = time.AddSeconds((double)ntp_msw_seconds); // adds 'double' (whole&fraction)
+
+                        _logger.Debug("RTCP time (UTC) for RTP timestamp " + rtp_timestamp + " is " + time);
+
                         // Send a Receiver Report
                         try
                         {
