@@ -515,7 +515,7 @@
             if (!_transport.Connected)
             {
                 if(!AutoReconnect)
-                    return;
+                    throw new Exception("Connection is lost");
 
                 _logger.Warn("Reconnect to a client, strange !!");
                 Reconnect();
