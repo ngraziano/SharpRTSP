@@ -31,7 +31,8 @@ namespace Rtsp.Sdp
         {
             get
             {
-                if (EncodingParameters.Length == 0) {
+                if(string.IsNullOrEmpty(EncodingParameters))
+                {
                     return string.Format("{0} {1}/{2}", PayloadNumber, EncodingName, ClockRate);
                 } else {
                     return string.Format("{0} {1}/{2}/{3}", PayloadNumber, EncodingName, ClockRate, EncodingParameters);

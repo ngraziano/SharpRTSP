@@ -115,7 +115,7 @@ namespace Rtsp.Messages.Tests
                 Interleaved = new PortCouple(0, 1),
 
             };
-            Assert.AreEqual("RTP/AVP/TCP;interleaved=0-1", transport.ToString());
+            Assert.AreEqual("RTP/AVP/TCP;unicast;interleaved=0-1", transport.ToString());
         }
 
 
