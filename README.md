@@ -5,7 +5,7 @@ Sharp RTSP
 [![Coverage Status](https://coveralls.io/repos/github/ngraziano/SharpRTSP/badge.svg?branch=master)](https://coveralls.io/github/ngraziano/SharpRTSP?branch=master)
 
 A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
-* RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711 and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
+* RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711, AAC and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
 * RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients
 * RTP Receiver - will recieve RTP and RTCP packets and pass them to a transport handler
 * RTSP Server - will accept RTSP connections and talk to clients
