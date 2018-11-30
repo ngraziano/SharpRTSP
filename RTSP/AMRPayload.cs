@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Rtsp
 {
-    // This class handles the G711 Payload
+    // This class handles the AMR Payload
     // It has methods to process the RTP Payload
 
     public class AMRPayload

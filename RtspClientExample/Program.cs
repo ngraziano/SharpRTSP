@@ -158,6 +158,51 @@ namespace RtspClientExample
                     }
                 }
             };
+            c.Received_AAC += (string format, List<byte[]> aac, uint ObjectType, uint FrequencyIndex, uint ChannelConfiguration) => {
+                if (fs_a == null)
+                {
+                    String filename = "rtsp_capture_" + now + ".aac";
+                    fs_a = new FileStream(filename, FileMode.Create);
+                }
+
+                if (fs_a != null)
+                {
+                    foreach (byte[] data in aac)
+                    {
+                        // ASDT header format
+                        int protection_absent = 1;
+//                        int profile = 2; // Profile 2 = AAC Low Complexity (LC)
+//                        int sample_freq = 4; // 4 = 44100 Hz
+//                        int channel_config = 2; // 2 = Stereo
+
+                        Rtsp.BitStream bs = new Rtsp.BitStream();
+                        bs.AddValue(0xFFF,12); // (a) Start of data
+                        bs.AddValue(0,1); // (b) Version ID, 0 = MPEG4
+                        bs.AddValue(0,2); // (c) Layer always 2 bits set to 0
+                        bs.AddValue(protection_absent,1); // (d) 1 = No CRC
+                        bs.AddValue((int)ObjectType-1,2); // (e) MPEG Object Type / Profile, minus 1
+                        bs.AddValue((int)FrequencyIndex,4); // (f)
+                        bs.AddValue(0, 1); // (g) private bit. Always zero
+                        bs.AddValue((int)ChannelConfiguration,3); // (h)
+                        bs.AddValue(0,1); // (i) originality
+                        bs.AddValue(0,1); // (j) home
+                        bs.AddValue(0,1); // (k) copyrighted id
+                        bs.AddValue(0,1); // (l) copyright id start
+                        bs.AddValue(data.Length + 7,13); // (m) AAC data + size of the ASDT header
+                        bs.AddValue(2047,11); // (n) buffer fullness ???
+                        int num_acc_frames = 1;
+                        bs.AddValue(num_acc_frames-1,1); // (o) num of AAC Frames, minus 1
+
+                        // If Protection was On, there would be a 16 bit CRC
+                        if (protection_absent == 0) bs.AddValue(0xABCD /*CRC*/,16); // (p)
+
+                        byte[] header = bs.ToArray();
+
+                        fs_a.Write(header, 0, header.Length);
+                        fs_a.Write(data, 0, data.Length);
+                    }
+                }
+            };
 
             // Connect to RTSP Server
             Console.WriteLine("Connecting");

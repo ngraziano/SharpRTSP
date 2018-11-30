@@ -114,6 +114,8 @@
     <Compile Include="AMRPayload.cs" />
     <Compile Include="H265Payload.cs" />
     <Compile Include="Sdp\H265Parameter.cs" />
+    <Compile Include="AACPayload.cs" />
+    <Compile Include="BitStream.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

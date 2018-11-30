@@ -19,6 +19,7 @@ namespace RtspClientExample
         public event Received_NALs_Delegate     Received_NALs;
         public event Received_G711_Delegate     Received_G711;
 		public event Received_AMR_Delegate      Received_AMR;
+        public event Received_AAC_Delegate      Received_AAC;
 
         // Delegated functions (essentially the function prototype)
         public delegate void Received_SPS_PPS_Delegate (byte[] sps, byte[] pps); // H264
@@ -26,6 +27,7 @@ namespace RtspClientExample
         public delegate void Received_NALs_Delegate (List<byte[]> nal_units); // H264 or H265
         public delegate void Received_G711_Delegate (String format, List<byte[]> g711);
 		public delegate void Received_AMR_Delegate (String format, List<byte[]> amr);
+        public delegate void Received_AAC_Delegate(String format, List<byte[]> aac, uint ObjectType, uint FrequencyIndex, uint ChannelConfiguration);
 
         public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
         private enum RTSP_STATUS { WaitingToConnect, Connecting, ConnectFailed, Connected };
@@ -68,6 +70,7 @@ namespace RtspClientExample
         Rtsp.H265Payload h265Payload = null;
         Rtsp.G711Payload g711Payload = new Rtsp.G711Payload();
 		Rtsp.AMRPayload amrPayload = new Rtsp.AMRPayload();
+        Rtsp.AACPayload aacPayload = null;
 
         List<Rtsp.Messages.RtspRequestSetup> setup_messages = new List<Rtsp.Messages.RtspRequestSetup>(); // setup messages still to send
 
@@ -517,6 +520,26 @@ namespace RtspClientExample
                         }
                     }
                 }
+                else if (data_received.Channel == audio_data_channel
+                         && rtp_payload_type == audio_payload
+                         && audio_codec.Equals("MPEG4-GENERIC")
+                        && aacPayload != null)
+                {
+                    // AAC
+                    byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
+                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
+
+                    List<byte[]> audio_frames = aacPayload.Process_AAC_RTP_Packet(rtp_payload, rtp_marker);
+
+                    if (audio_frames == null) {
+                        // some error
+                    } else {
+                        // Write the audio frames to the file
+                        if (Received_AAC != null) {
+                            Received_AAC(audio_codec, audio_frames, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration);
+                        }
+                    }
+                }
                 else if (data_received.Channel == video_data_channel && rtp_payload_type == 26) {
                     _logger.Warn("No parser has been written for JPEG RTP packets. Please help write one");
                     return; // ignore this data
@@ -694,15 +717,15 @@ namespace RtspClientExample
 
                                 // Check if the Codec Used (EncodingName) is one we support
                                 String[] valid_video_codecs = {"H264","H265"};
-                                String[] valid_audio_codecs = {"PCMA", "PCMU", "AMR"};
+                                String[] valid_audio_codecs = {"PCMA", "PCMU", "AMR", "MPEG4-GENERIC" /* for aac */}; // Note some are "mpeg4-generic" lower case
 
-                                if (video && Array.IndexOf(valid_video_codecs,rtpmap.EncodingName) >= 0) {
+                                if (video && Array.IndexOf(valid_video_codecs,rtpmap.EncodingName.ToUpper()) >= 0) {
                                     // found a valid codec
-                                    video_codec = rtpmap.EncodingName;
+                                    video_codec = rtpmap.EncodingName.ToUpper();
                                     video_payload = sdp_data.Medias[x].PayloadType;
                                 }
-                                if (audio && Array.IndexOf(valid_audio_codecs,rtpmap.EncodingName) >= 0) {
-                                    audio_codec = rtpmap.EncodingName;
+                                if (audio && Array.IndexOf(valid_audio_codecs,rtpmap.EncodingName.ToUpper()) >= 0) {
+                                    audio_codec = rtpmap.EncodingName.ToUpper();
                                     audio_payload = sdp_data.Medias[x].PayloadType;
                                 }
                             }
@@ -759,6 +782,16 @@ namespace RtspClientExample
                             {
                                 h265_vps_sps_pps_fired = false;
                             }
+                        }
+
+                        // Create AAC RTP Parser
+                        // Example fmtp is "96 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1490"
+                        // Example fmtp is ""96 streamtype=5;profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210"
+                        if (audio && audio_codec.Contains("MPEG4-GENERIC") && fmtp.GetParameter("mode").ToLower().Equals("aac-hbr"))
+                        {
+                            // Extract config (eg 0x1490 or 0x1210)
+
+                            aacPayload = new Rtsp.AACPayload(fmtp.GetParameter("config"));
                         }
 
 
