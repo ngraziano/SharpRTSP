@@ -37,7 +37,7 @@ public class RtspServer : IDisposable
     List<RTPSession> rtp_list = new List<RTPSession>(); // list of RTSP Listeners, used when sending RTP over RTSP
 
     Random rnd = new Random();
-    int session_count = 0;
+    int session_handle = 1;
 
 	Authentication auth = null;
 
@@ -293,11 +293,11 @@ public class RtspServer : IDisposable
                     // Create a 'Session' and add it to the Session List
                     // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
                     // Place Lock() here so the Session Count and the addition to the list is locked
-                    new_session.session_id = session_count.ToString();
+                    new_session.session_id = session_handle.ToString();
 
                     // Add the new session to the Sessions List
                     rtp_list.Add(new_session);
-                    session_count++;
+                    session_handle++;
                 }
 
 
@@ -355,7 +355,7 @@ public class RtspServer : IDisposable
 
         }
 
-        // Handle PLAUSE message
+        // Handle PAUSE message
         if (message is Rtsp.Messages.RtspRequestPause)
         {
             lock (rtp_list)
@@ -410,27 +410,35 @@ public class RtspServer : IDisposable
 
     }
 
-    
+    // The 'Camera' (YUV TestCard) has generated a YUV image.
+    // If there are RTSP clients connected then Compress the Video Frame (with H264) and send it to the client
     void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
     {
-
-        // Check if there are any clients. Only run the encoding if someone is connected
-        // Could exand this to check if someone is connected and in PLAY mode
-        int current_rtp_count = rtp_list.Count;
-
-        if (current_rtp_count == 0) return;
+        int current_rtp_play_count = 0;
+        int current_rtp_count = 0;
+        lock (rtp_list) {
+            current_rtp_count = rtp_list.Count;
+            foreach (RTPSession session in rtp_list) {
+                if (session.play) current_rtp_play_count++;
+            }
+        }
 
         // Take the YUV image and encode it into a H264 NAL
         // This returns a NAL with no headers (no 00 00 00 01 header and no 32 bit sizes)
-        Console.WriteLine("Compressing video at time(ms) " + timestamp_ms + "    " + current_rtp_count + " RTSP clients connected");
+        Console.WriteLine(current_rtp_count + " RTSP clients connected. " + current_rtp_play_count + " RTSP clients in PLAY mode");
+
+        if (current_rtp_play_count == 0) return;
+
+        // Compress the video (YUV to H264)
         byte[] raw_nal = h264_encoder.CompressFrame(yuv_data);
 
-        UInt32 ts = timestamp_ms * 90; // 90kHz clock
+        UInt32 rtp_timestamp = timestamp_ms * 90; // 90kHz clock
 
         // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
         // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
         bool fragmenting = false;
-        if (raw_nal.Length > 1400) fragmenting = true;
+        int packetMTU = 65000; //1400;
+        if (raw_nal.Length > packetMTU) fragmenting = true;
 
         // Build a list of 1 or more RTP packets
         List<byte[]> rtp_packets = new List<byte[]>();
@@ -464,8 +472,7 @@ public class RtspServer : IDisposable
             UInt32 empty_sequence_id = 0;
             RTPPacketUtil.WriteSequenceNumber(rtp_packet, empty_sequence_id);
 
-            Console.WriteLine("adjusted TS at 90khz=" + ts);
-            RTPPacketUtil.WriteTS(rtp_packet, ts);
+            RTPPacketUtil.WriteTS(rtp_packet, rtp_timestamp);
 
             UInt32 empty_ssrc = 0;
             RTPPacketUtil.WriteSSRC(rtp_packet, empty_ssrc);
@@ -489,7 +496,7 @@ public class RtspServer : IDisposable
 
             while (data_remaining > 0)
             {
-                int payload_size = Math.Min(1400, data_remaining);
+                int payload_size = Math.Min(packetMTU, data_remaining);
                 if (data_remaining - payload_size == 0) end_bit = 1;
 
                 byte[] rtp_packet = new byte[12 + 2 + payload_size]; // 12 is header size. 2 bytes for FU-A header. Then payload
@@ -514,8 +521,7 @@ public class RtspServer : IDisposable
                 UInt32 empty_sequence_id = 0;
                 RTPPacketUtil.WriteSequenceNumber(rtp_packet, empty_sequence_id);
 
-                Console.WriteLine("adjusted TS at 90khz=" + ts);
-                RTPPacketUtil.WriteTS(rtp_packet, ts);
+                RTPPacketUtil.WriteTS(rtp_packet, rtp_timestamp);
 
                 UInt32 empty_ssrc = 0;
                 RTPPacketUtil.WriteSSRC(rtp_packet, empty_ssrc);
@@ -544,9 +550,12 @@ public class RtspServer : IDisposable
             // Go through each RTSP session and output the NAL
             foreach (RTPSession session in rtp_list.ToArray()) // ToArray makes a temp copy of the list.
                                                                // This lets us delete items in the foreach
+                                                               // eg when there is Write Error
             {
                 // Only process Sessions in Play Mode
                 if (session.play == false) continue;
+
+                Console.WriteLine("Sending video to " + session.session_id + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence="+ session.sequence_number);
 
                 // There could be more than 1 RTP packet (if the data is fragmented)
                 Boolean write_error = false;
@@ -582,10 +591,10 @@ public class RtspServer : IDisposable
                 }
                 if (write_error)
                 {
+                    Console.WriteLine("Removing session " + session.session_id + " due to write error");
                     session.play = false; // stop sending data
                     session.listener.Dispose();
                     rtp_list.Remove(session); // remove the session. It is dead
-                    Console.WriteLine(rtp_list.Count + " remaining sessions open");
                 }
             }
         }

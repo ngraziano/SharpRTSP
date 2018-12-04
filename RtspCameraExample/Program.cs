@@ -12,7 +12,12 @@ namespace RtspCameraExample
 			string password = "password";  // or use NUL if there is no password
             
             RtspServer s = new RtspServer(port,username,password);
-            s.StartListen();
+            try {
+                s.StartListen();
+            } catch {
+                Console.WriteLine("Error: Could not start server");
+                return;
+            }
 
             // Wait for user to terminate programme
 			String msg = "Connect RTSP client to Port=" + port;
