@@ -41,6 +41,8 @@ public class RtspServer : IDisposable
 
 	Authentication auth = null;
 
+    private UInt32 time_of_last_video_frame_ms = 0;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RTSPServer"/> class.
     /// </summary>
@@ -177,7 +179,7 @@ public class RtspServer : IDisposable
         {
             // Create the reponse to OPTIONS
             Rtsp.Messages.RtspResponse options_response = (e.Message as Rtsp.Messages.RtspRequestOptions).CreateResponse();
-            listener.SendMessage(options_response);
+            listener.SendMessage(options_response.Headers);
         }
 
         // Handle DESCRIBE message
@@ -284,6 +286,10 @@ public class RtspServer : IDisposable
                 new_session.sequence_number = (UInt16)rnd.Next(65535); // start with a random 16 bit sequence number
                 new_session.ssrc = global_ssrc;
 
+                // Compute rtptime that goes with NPT of Zero
+                UInt32 expected_next_frame_time_ms = time_of_last_video_frame_ms + (1000 / h264_fps);
+                new_session.rtptime_for_zero_npt = expected_next_frame_time_ms * 90; // 90kHz clock for H264 video
+
                 // Add the transports to the Session
                 new_session.client_transport = transport;
                 new_session.transport_reply = transport_reply;
@@ -332,7 +338,10 @@ public class RtspServer : IDisposable
                         session.play = true;
 
                         string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
-                        string rtp_info = "url="+((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + session.sequence_number; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                        string rtp_info = "url="
+                                        +((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + session.sequence_number
+                                        +";rtptime="+session.rtptime_for_zero_npt
+                                         ;
 
                         // Send the reply
                         Rtsp.Messages.RtspResponse play_response = (e.Message as Rtsp.Messages.RtspRequestPlay).CreateResponse();
@@ -414,6 +423,10 @@ public class RtspServer : IDisposable
     // If there are RTSP clients connected then Compress the Video Frame (with H264) and send it to the client
     void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
     {
+        // cache the time of the current video frame
+        // it is used when computing the RTP-Info in the RTSP PLAY message
+        time_of_last_video_frame_ms = timestamp_ms;
+
         int current_rtp_play_count = 0;
         int current_rtp_count = 0;
         lock (rtp_list) {
@@ -609,6 +622,7 @@ public class RtspServer : IDisposable
         public bool play = false;                  // set to true when Session is in Play mode
         public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
         public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
+        public UInt32 rtptime_for_zero_npt = 0;     // Store RTP Timestamp that corresponds to NPT time (Network Player Time) of Zero
 
     }
 }
