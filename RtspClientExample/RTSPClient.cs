@@ -479,6 +479,38 @@ namespace RtspClientExample
                     }
                     else
                     {
+                        // If we did not have a VPS, SPS and PPS in the SDP then search for the VPS SPS and PPS
+                        // in the NALs and fire the Received_VPS_SPS_PPS event.
+                        // We assume the VPS, SPS and PPS are in the same Frame.
+                        if (h265_vps_sps_pps_fired == false)
+                        {
+
+                            // Check this frame for VPS, SPS and PPS
+                            byte[] vps = null;
+                            byte[] sps = null;
+                            byte[] pps = null;
+                            foreach (byte[] nal_unit in nal_units)
+                            {
+                                if (nal_unit.Length > 0)
+                                {
+                                    int nal_unit_type = (nal_unit[0] >> 1) & 0x3F;
+
+                                    if (nal_unit_type == 32) vps = nal_unit; // VPS
+                                    if (nal_unit_type == 33) sps = nal_unit; // SPS
+                                    if (nal_unit_type == 34) pps = nal_unit; // PPS
+                                }
+                            }
+                            if (vps != null &&  sps != null && pps != null)
+                            {
+                                // Fire the Event
+                                if (Received_VPS_SPS_PPS != null)
+                                {
+                                    Received_VPS_SPS_PPS(vps, sps, pps);
+                                }
+                                h265_vps_sps_pps_fired = true;
+                            }
+                        }
+
                         // we have a frame of NAL Units. Write them to the file
                         if (Received_NALs != null)
                         {
@@ -573,28 +605,32 @@ namespace RtspClientExample
 				if (message.ReturnCode == 401 && message.Headers.ContainsKey(RtspHeaderNames.WWWAuthenticate)) {
 
                     // Process the WWW-Authenticate header
-					// EG:   Basic realm="AProxy"
+                    // EG:   Basic realm="AProxy"
                     // EG:   Digest realm="AXIS_WS_ACCC8E3A0A8F", nonce="000057c3Y810622bff50b36005eb5efeae118626a161bf", stale=FALSE
+                    // EG:   Digest realm="IP Camera(21388)", nonce="534407f373af1bdff561b7b4da295354", stale="FALSE"
 
                     String www_authenticate = message.Headers[RtspHeaderNames.WWWAuthenticate];
-                    string[] items = www_authenticate.Split(new char[] { ',' , ' ' });
+                    String auth_params = "";
+
+                    if (www_authenticate.StartsWith("basic",StringComparison.InvariantCultureIgnoreCase)) {
+                        auth_type = "Basic";
+                        auth_params = www_authenticate.Substring(5);
+                    }
+                    if (www_authenticate.StartsWith("digest",StringComparison.InvariantCultureIgnoreCase)) {
+                        auth_type = "Digest";
+                        auth_params = www_authenticate.Substring(6);
+                    }
+
+                    string[] items = auth_params.Split(new char[] { ',' }); // NOTE, does not handle Commas in Quotes
 
                     foreach (string item in items) {
-    					if (item.ToLower().Equals("basic")) {
-    						auth_type = "Basic";
+    					// Split on the = symbol and update the realm and nonce
+						string[] parts = item.Trim().Split(new char[] {'='},2); // max 2 parts in the results array
+    					if (parts.Count() >= 2 && parts[0].Trim().Equals("realm")) {
+                            realm = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
     					}
-    					else if (item.ToLower().Equals("digest")) {
-    						auth_type = "Digest";
-    					}
-    					else {
-    						// Split on the = symbol and update the realm and nonce
-							string[] parts = item.Split(new char[] {'='},2); // max 2 parts in the results array
-    					    if (parts.Count() >= 2 && parts[0].Trim().Equals("realm")) {
-                                realm = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
-    						}
-    						else if (parts.Count() >= 2 && parts[0].Trim().Equals("nonce")) {
-                                nonce = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
-    						}
+    					else if (parts.Count() >= 2 && parts[0].Trim().Equals("nonce")) {
+                            nonce = parts[1].Trim(new char[] {' ','\"'}); // trim space and quotes
     					}
                     }
 
@@ -749,9 +785,6 @@ namespace RtspClientExample
                                 }
                                 h264_sps_pps_fired = true;
                             }
-                            else {
-                                h264_sps_pps_fired = false;
-                            }
                         }
 
                         // Create H265 RTP Parser
@@ -762,7 +795,8 @@ namespace RtspClientExample
                             h265Payload = new Rtsp.H265Payload(has_donl);
                         }
 
-                        // If the rtpmap contains H265 then split the fmtp to get the sprop-vps, sprop-sps and sprop-vps
+                        // If the rtpmap contains H265 then split the fmtp to get the sprop-vps, sprop-sps and sprop-pps
+                        // The RFC makes the VPS, SPS and PPS OPTIONAL so they may not be present. In which we pass back NULL values
                         if (video && video_codec.Contains("H265") && fmtp != null)
                         {
                             var param = Rtsp.Sdp.H265Parameters.Parse(fmtp.FormatParameter);
@@ -777,10 +811,6 @@ namespace RtspClientExample
                                     Received_VPS_SPS_PPS(vps,sps, pps);
                                 }
                                 h265_vps_sps_pps_fired = true;
-                            }
-                            else
-                            {
-                                h265_vps_sps_pps_fired = false;
                             }
                         }
 
