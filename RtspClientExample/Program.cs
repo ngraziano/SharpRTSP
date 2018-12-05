@@ -119,6 +119,21 @@ namespace RtspClientExample
                             Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
                         }
 
+                        // Output some H265 stream information
+                        if (h265 && nal_unit.Length > 0)
+                        {
+                            int nal_unit_type = (nal_unit[0] >> 1) & 0x3F;
+                            String description = "";
+                            if (nal_unit_type == 1) description = "NON IDR NAL";
+                            else if (nal_unit_type == 19) description = "IDR NAL";
+                            else if (nal_unit_type == 32) description = "VPS NAL";
+                            else if (nal_unit_type == 33) description = "SPS NAL";
+                            else if (nal_unit_type == 34) description = "PPS NAL";
+                            else if (nal_unit_type == 39) description = "SEI NAL";
+                            else description = "OTHER NAL";
+                            Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
+                        }
+
                         fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
                         fs_v.Write(nal_unit, 0, nal_unit.Length);                 // Write NAL
                     }
