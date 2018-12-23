@@ -60,6 +60,7 @@ namespace Rtsp
                 if (ok)
                 {
                     data_socket.Client.ReceiveBufferSize = 100 * 1024;
+                    data_socket.Client.SendBufferSize = 65535; // default is 8192. Make it as large as possible for large RTP packets which are not fragmented
 
                     control_socket.Client.DontFragment = false;
 
@@ -99,6 +100,8 @@ namespace Rtsp
 
 
                 data_socket.Client.ReceiveBufferSize = 100 * 1024;
+                data_socket.Client.SendBufferSize = 65535; // default is 8192. Make it as large as possible for large RTP packets which are not fragmented
+
 
                 control_socket.Client.DontFragment = false;
 
@@ -207,5 +210,21 @@ namespace Rtsp
             {
             }
         }
+
+        /// <summary>
+        /// Write to the RTP Data Port
+        /// </summary>
+        public void Write_To_Data_Port(byte[] data, String hostname, int port) {
+            data_socket.Send(data,data.Length, hostname, port);
+        }
+
+        /// <summary>
+        /// Write to the RTP Control Port
+        /// </summary>
+        public void Write_To_Control_Port(byte[] data, String hostname, int port)
+        {
+            data_socket.Send(data, data.Length, hostname, port);
+        }
+
     }
 }
