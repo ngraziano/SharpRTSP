@@ -7,17 +7,17 @@ using Rtsp;
 using System.Text;
 using System.Collections.Generic;
 
-// RTSP Server Example by Roger Hardiman, 2016
+// RTSP Server Example by Roger Hardiman, 2016, 2018
 // Re-uses some code from the Multiplexer example of SharpRTSP
 //
 // This example simulates a live RTSP video stream, for example a CCTV Camera
 // It creates a Video Source (a test card) that creates a YUV Image
-// The image is then encoded as H264 data
-// The H264 data is sent to the RTSP clients
+// The image is then encoded as H264 data using a very basic H264 Encoder
+// The H264 data (the NALs) are sent to the RTSP clients
 
 // The Tiny H264 Encoder is a 100% .NET encoder which is lossless and creates large bitstreams as
 // there is no compression. It is limited to 128x96 resolution. However it makes it easy to write a quick
-// demo without needing native APIs or cross compiled C libraries for H264
+// demo without needing native APIs or cross compiled C libraries for H264 encoding
 
 public class RtspServer : IDisposable
 {
@@ -248,17 +248,28 @@ public class RtspServer : IDisposable
                 transport_reply.Interleaved = new Rtsp.Messages.PortCouple(transport.Interleaved.First, transport.Interleaved.Second);
             }
 
+            Rtsp.UDPSocket udp_pair = null;
             if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
                 && transport.IsMulticast == false)
             {
-                // RTP over UDP mode}
-                // Create a pair of UDP sockets
-                // Pass the Port of the two sockets back in the reply
-                transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
-                transport_reply.IsMulticast = false;
-                transport_reply.ClientPort = transport.ClientPort;  // FIX
-                                                                    // for now until implemented
-                transport_reply = null;
+                Boolean udp_supported = true;
+                if (udp_supported) {
+                    // RTP over UDP mode
+                    // Create a pair of UDP sockets - One is for the Video, one is for the RTCP
+                    udp_pair = new Rtsp.UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
+                    udp_pair.DataReceived += (object local_sender, RtspChunkEventArgs local_e) => {
+                        // RTCP data received
+                        Console.WriteLine("RTCP data received " + local_sender.ToString() + " " + local_e.ToString());
+                    };
+                    udp_pair.Start(); // start listening for data on the UDP ports
+
+                    // Pass the Port of the two sockets back in the reply
+                    transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
+                    transport_reply.IsMulticast = false;
+                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(udp_pair.data_port,udp_pair.control_port);
+                } else {
+                    transport_reply = null;
+                }
             }
 
             if (transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
@@ -288,11 +299,15 @@ public class RtspServer : IDisposable
                 new_session.client_transport = transport;
                 new_session.transport_reply = transport_reply;
 
+                // If we are sending in UDP mode, add the UDP Socket pair and the Client Hostname
+                new_session.udp_pair = udp_pair;
+                new_session.client_hostname = listener.RemoteAdress.Split(':')[0];
+
                 lock (rtp_list)
                 {
                     // Create a 'Session' and add it to the Session List
                     // ToDo - Check the Track ID. In the SDP the H264 video track is TrackID 0
-                    // Place Lock() here so the Session Count and the addition to the list is locked
+                    // Wrapped in a Lock() so the Session Count and the addition to the list is locked
                     new_session.session_id = session_handle.ToString();
 
                     // Add the new session to the Sessions List
@@ -397,9 +412,15 @@ public class RtspServer : IDisposable
                 {
                     if (session.session_id.Equals(message.Session))
                     {
-                        // TODO - Close UDP or Multicast transport
-                        // For TCP there is no transport to close
+                        // If this is UDP, close the transport
+                        // For TCP there is no transport to close (as RTP packets were interleaved into the RTSP connection)
+                        if (session.udp_pair != null) {
+                            session.udp_pair.Stop();
+                            session.udp_pair = null;
+                        }
+
                         rtp_list.Remove(session);
+
                         // Close the RTSP socket
                         listener.Dispose();
                     }
@@ -569,7 +590,7 @@ public class RtspServer : IDisposable
                     RTPPacketUtil.WriteSSRC(rtp_packet, session.ssrc);
 
 
-                    // Send as RTP over RTSP
+                    // Send as RTP over RTSP (Interleaved)
                     if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
                     {
                         int video_channel = session.transport_reply.Interleaved.First; // second is for RTCP status messages)
@@ -587,12 +608,36 @@ public class RtspServer : IDisposable
                             break; // exit out of foreach loop
                         }
                     }
-                    // TODO. Add UDP and Multicast
+
+                    // Send as RTP over UDP
+                    if (session.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && session.transport_reply.IsMulticast == false)
+                    {
+                        try
+                        {
+                            // send the whole NAL. ** We could fragment the RTP packet into smaller chuncks that fit within the MTU
+                            // Send to the IP address of the Client
+                            // Send to the UDP Port the Client gave us in the SETUP command
+                            session.udp_pair.Write_To_Data_Port(rtp_packet,session.client_hostname,session.client_transport.ClientPort.First);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("UDP Write Exception " + e.ToString());
+                            Console.WriteLine("Error writing to listener " + session.listener.RemoteAdress);
+                            write_error = true;
+                            break; // exit out of foreach loop
+                        }
+                    }
+                    
+                    // TODO. Add Multicast
                 }
                 if (write_error)
                 {
                     Console.WriteLine("Removing session " + session.session_id + " due to write error");
                     session.play = false; // stop sending data
+                    if (session.udp_pair != null) {
+                        session.udp_pair.Stop();
+                        session.udp_pair = null;
+                    }
                     session.listener.Dispose();
                     rtp_list.Remove(session); // remove the session. It is dead
                 }
@@ -609,7 +654,10 @@ public class RtspServer : IDisposable
         public bool play = false;                  // set to true when Session is in Play mode
         public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
         public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
-
+        public String client_hostname = "";        // Client Hostname/IP Address
+        public Rtsp.UDPSocket udp_pair = null;     // Pair of UDP sockets (data and control) used when sending via UDP
+//TODO        public Stopwatch time_since_last_rtsp_keepalive = new Stopwatch(); // Time since last RTSP message received - used to spot dead UDP clients
+//TODO        public Stopwatch time_since_last_rtcp_keepalive = new Stopwatch(); // Time since last RTCP message received - used to spot dead UDP clients
     }
 }
 
