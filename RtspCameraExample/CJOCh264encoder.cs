@@ -160,33 +160,34 @@ public class CJOCh264encoder : CJOCh264bitstream
 		addbits(0x1, 1); // frame_mbs_only_flag
 		addbits(0x0, 1); // direct_8x8_interfernce
 		addbits(0x0, 1); // frame_cropping_flag
-		addbits(0x1, 1); // vui_parameter_present
+//        addbits(0x1, 1); // vui_parameter_present
+        addbits(0x0, 1); // vui_parameter_present
 
 		//VUI parameters (AR, timming)
-		addbits(0x1, 1); //aspect_ratio_info_present_flag
-		addbits(0xFF, 8); //aspect_ratio_idc = Extended_SAR
+//		addbits(0x1, 1); //aspect_ratio_info_present_flag
+//		addbits(0xFF, 8); //aspect_ratio_idc = Extended_SAR
 
 		//AR
-		addbits(nSARw, 16); //sar_width
-		addbits(nSARh, 16); //sar_height
+//		addbits(nSARw, 16); //sar_width
+//		addbits(nSARh, 16); //sar_height
 
-		addbits(0x0, 1); //overscan_info_present_flag
-		addbits(0x0, 1); //video_signal_type_present_flag
-		addbits(0x0, 1); //chroma_loc_info_present_flag
-		addbits(0x1, 1); //timing_info_present_flag
+//		addbits(0x0, 1); //overscan_info_present_flag
+//		addbits(0x0, 1); //video_signal_type_present_flag
+//		addbits(0x0, 1); //chroma_loc_info_present_flag
+//		addbits(0x1, 1); //timing_info_present_flag
 
-		uint nnum_units_in_tick = TIME_SCALE_IN_HZ / (2 * nFps);
-		addbits(nnum_units_in_tick, 32); //num_units_in_tick
-		addbits(TIME_SCALE_IN_HZ, 32); //time_scale
-		addbits(0x1, 1); //fixed_frame_rate_flag
+//		uint nnum_units_in_tick = TIME_SCALE_IN_HZ / (2 * nFps);
+//		addbits(nnum_units_in_tick, 32); //num_units_in_tick
+//		addbits(TIME_SCALE_IN_HZ, 32); //time_scale
+//		addbits(0x1, 1); //fixed_frame_rate_flag
 
-		addbits(0x0, 1); //nal_hrd_parameters_present_flag
-		addbits(0x0, 1); //vcl_hrd_parameters_present_flag
-		addbits(0x0, 1); //pic_struct_present_flag
-		addbits(0x0, 1); //bitstream_restriction_flag
+//		addbits(0x0, 1); //nal_hrd_parameters_present_flag
+//		addbits(0x0, 1); //vcl_hrd_parameters_present_flag
+//		addbits(0x0, 1); //pic_struct_present_flag
+//		addbits(0x0, 1); //bitstream_restriction_flag
 		//END VUI
 
-		addbits(0x0, 1); // frame_mbs_only_flag
+//BUG?		addbits(0x0, 1); // frame_mbs_only_flag
 		addbits(0x1, 1); // rbsp stop bit
 
 		dobytealign();
@@ -231,21 +232,26 @@ public class CJOCh264encoder : CJOCh264bitstream
 	{
 		add4bytesnoemulationprevention(0x000001); // NAL header
 		addbits(0x0, 1); // forbidden_bit
-		addbits(0x3, 2); // nal_ref_idc
+		addbits(0x0, 2); // nal_ref_idc
 		addbits(0x5, 5); // nal_unit_type : 5 ( Coded slice of an IDR picture  )
 		addexpgolombunsigned(0); // first_mb_in_slice
 		addexpgolombunsigned(7); // slice_type
 		addexpgolombunsigned(0); // pic_param_set_id
 
-		byte cFrameNum = (byte)(lFrameNum % 16); //(2⁴)
-		addbits(cFrameNum, 4); // frame_num ( numbits = v = log2_max_frame_num_minus4 + 4)
+        byte cFrameNum = 0; // H264 Spec says "If the current picture is an IDR picture, frame_num shall be equal to 0. "
+                            // Also any maths here must relate to the value of log2_max_frame_num_minus4 in the SPS
 
-		uint lidr_pic_id = lFrameNum % 512;
-		//idr_pic_flag = 1
-		addexpgolombunsigned(lidr_pic_id); // idr_pic_id
+        addbits(cFrameNum, 4); // frame_num ( numbits = v = log2_max_frame_num_minus4 + 4)
+
+        // idr_pic_id range is 0..65535. All slices in the same IDR must have the same pic_id. Spec says if there are two
+        // IDRs back to back they must have different idr_pic_id values
+		uint lidr_pic_id = lFrameNum % 65536;
+
+        addexpgolombunsigned(lidr_pic_id); // idr_pic_id
+
 		addbits(0x0, 4); // pic_order_cnt_lsb (numbits = v = log2_max_fpic_order_cnt_lsb_minus4 + 4)
-		addbits(0x0, 1); //no_output_of_prior_pics_flag
-		addbits(0x0, 1); //long_term_reference_flag
+//BUG??		addbits(0x0, 1); //no_output_of_prior_pics_flag
+//BU??		addbits(0x0, 1); //long_term_reference_flag
 		addexpgolombsigned(0); //slice_qp_delta
 
 		//Probably NOT byte aligned!!!
