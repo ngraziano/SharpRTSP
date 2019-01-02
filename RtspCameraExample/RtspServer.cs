@@ -24,7 +24,7 @@ using System.Collections.Generic;
 
 public class RtspServer : IDisposable
 {
-    const int h264_width = 192;
+    const int h264_width = 192;    // Tiny needs 128x96
     const int h264_height = 128;
     const int h264_fps = 25;
 
@@ -36,6 +36,7 @@ public class RtspServer : IDisposable
 
     private TestCard video_source = null;
     private SimpleH264Encoder h264_encoder = null;
+    //private TinyH264Encoder h264_encoder = null;
 
     List<RTSPConnection> rtsp_list = new List<RTSPConnection>(); // list of RTSP Listeners
 
@@ -81,6 +82,7 @@ public class RtspServer : IDisposable
 
         // Initialise the H264 encoder
         h264_encoder = new SimpleH264Encoder(h264_width, h264_height, h264_fps);
+        //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
 
         // Start the VideoSource
         video_source = new TestCard(h264_width, h264_height, h264_fps);
@@ -177,14 +179,35 @@ public class RtspServer : IDisposable
 		if (auth != null) {
 			bool authorized = false;
 			if (message.Headers.ContainsKey("Authorization") == true ) {
+                // The Header contained Authorization
 				// Check the message has the correct Authorization
+                // If it does not have the correct Authorization then close the RTSP connection
 				authorized = auth.IsValid(message);
-			}
-			if ((message.Headers.ContainsKey("Authorization") == false)
-			    || authorized == false) {
-                // Send a 401 Authentication Required reply
+
+                if (authorized == false) {
+                    // Send a 401 Authentication Failed reply, then close the RTSP Socket
+                    Rtsp.Messages.RtspResponse authorization_response = (e.Message as Rtsp.Messages.RtspRequest).CreateResponse();
+                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader());
+                    authorization_response.ReturnCode = 401;
+                    listener.SendMessage(authorization_response);
+
+                    lock (rtsp_list) {
+                        foreach (RTSPConnection connection in rtsp_list.ToArray()){
+                            if (connection.listener == listener) {
+                                rtsp_list.Remove(connection);
+                            }
+                        }
+                    }
+                    listener.Dispose();
+                    return;
+
+                }
+            }
+            if ((message.Headers.ContainsKey("Authorization") == false)){
+                // Send a 401 Authentication Failed with extra info in WWW-Authenticate
+                // to tell the Client if we are using Basic or Digest Authentication
 				Rtsp.Messages.RtspResponse authorization_response = (e.Message as Rtsp.Messages.RtspRequest).CreateResponse();
-				authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader());
+				authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader()); // 'Basic' or 'Digest'
 				authorization_response.ReturnCode = 401;
 				listener.SendMessage(authorization_response);
 				return;
@@ -484,11 +507,16 @@ public class RtspServer : IDisposable
         lock (rtsp_list) {
             current_rtp_count = rtsp_list.Count;
             foreach (RTSPConnection connection in rtsp_list.ToArray()) { // Convert to Array to allow us to delete from rtsp_list
-                // RTSP Timeout (for UDP)
+                // RTSP Timeout (clients receiving RTP video over the RTSP session
+                // do not need to send a keepalive (so we check for Socket write errors)
+                Boolean sending_rtp_via_tcp = false;
                 if ((connection.video_client_transport != null) &&
-                    (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP) &&
-                    ((now - connection.time_since_last_rtsp_keepalive).TotalSeconds > timeout_in_seconds)) {
-                    connection.play = false;
+                    (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP))
+                {
+                    sending_rtp_via_tcp = true;
+                }
+
+                if (sending_rtp_via_tcp == false && ((now - connection.time_since_last_rtsp_keepalive).TotalSeconds > timeout_in_seconds)) {
 
                     Console.WriteLine("Removing session " + connection.video_session_id + " due to TIMEOUT");
                     connection.play = false; // stop sending data
