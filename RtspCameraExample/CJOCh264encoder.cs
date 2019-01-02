@@ -228,17 +228,18 @@ public class CJOCh264encoder : CJOCh264bitstream
 	 */
 
 	//Creates and saves the NAL SLICE (one per frame)
+    //H264 Spec Section 7.3.3 Slice Header Syntax
 	private void create_slice_header(uint lFrameNum)
 	{
 		add4bytesnoemulationprevention(0x000001); // NAL header
 		addbits(0x0, 1); // forbidden_bit
-		addbits(0x0, 2); // nal_ref_idc
+		addbits(0x3, 2); // nal_ref_idc
 		addbits(0x5, 5); // nal_unit_type : 5 ( Coded slice of an IDR picture  )
 		addexpgolombunsigned(0); // first_mb_in_slice
 		addexpgolombunsigned(7); // slice_type
 		addexpgolombunsigned(0); // pic_param_set_id
 
-        byte cFrameNum = 0; // H264 Spec says "If the current picture is an IDR picture, frame_num shall be equal to 0. "
+        byte cFrameNum = 0; // (byte)(lFrameNum % 16); // H264 Spec says "If the current picture is an IDR picture, frame_num shall be equal to 0. "
                             // Also any maths here must relate to the value of log2_max_frame_num_minus4 in the SPS
 
         addbits(cFrameNum, 4); // frame_num ( numbits = v = log2_max_frame_num_minus4 + 4)
@@ -250,8 +251,10 @@ public class CJOCh264encoder : CJOCh264bitstream
         addexpgolombunsigned(lidr_pic_id); // idr_pic_id
 
 		addbits(0x0, 4); // pic_order_cnt_lsb (numbits = v = log2_max_fpic_order_cnt_lsb_minus4 + 4)
-//BUG??		addbits(0x0, 1); //no_output_of_prior_pics_flag
-//BU??		addbits(0x0, 1); //long_term_reference_flag
+        // nal_ref_idc != 0. Insert dec_ref_pic_marking
+		addbits(0x0, 1); // no_output_of_prior_pics_flag
+		addbits(0x0, 1); // long_term_reference_flag
+
 		addexpgolombsigned(0); //slice_qp_delta
 
 		//Probably NOT byte aligned!!!
