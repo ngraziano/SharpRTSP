@@ -30,6 +30,7 @@ namespace RtspClientExample
         public delegate void Received_AAC_Delegate(String format, List<byte[]> aac, uint ObjectType, uint FrequencyIndex, uint ChannelConfiguration);
 
         public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
+        public enum MEDIA_REQUEST { VIDEO_ONLY, AUDIO_ONLY, VIDEO_AND_AUDIO };
         private enum RTSP_STATUS { WaitingToConnect, Connecting, ConnectFailed, Connected };
 
         Rtsp.RtspTcpTransport rtsp_socket = null; // RTSP connection
@@ -48,6 +49,8 @@ namespace RtspClientExample
         String realm = null;             // cached from most recent WWW-Authenticate reply
         String nonce = null;             // cached from most recent WWW-Authenticate reply
         uint   ssrc = 12345;
+        bool client_wants_video = false; // Client wants to receive Video
+        bool client_wants_audio = false; // Client wants to receive Audio
         Uri video_uri = null;            // URI used for the Video Track
         int video_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value. Bosch use 35)
         int video_data_channel = -1;     // RTP Channel Number used for the video RTP stream or the UDP port number
@@ -76,9 +79,24 @@ namespace RtspClientExample
 
         // Constructor
         public RTSPClient() {
+            bool writeLogsToConsole = true;
+            if (writeLogsToConsole)
+            {
+                var config = new NLog.Config.LoggingConfiguration();
+
+                // Targets where to log to: Console
+                var logconsole = new NLog.Targets.ConsoleTarget("logconsole");
+
+                // Rules for mapping loggers to targets            
+                config.AddRule(NLog.LogLevel.Debug, NLog.LogLevel.Fatal, logconsole);
+
+                // Apply config           
+                NLog.LogManager.Configuration = config;
+            }
         }
 
-        public void Connect(String url, RTP_TRANSPORT rtp_transport)
+
+        public void Connect(String url, RTP_TRANSPORT rtp_transport, MEDIA_REQUEST media_request = MEDIA_REQUEST.VIDEO_AND_AUDIO)
         {
 
             Rtsp.RtspUtils.RegisterUri();
@@ -103,6 +121,12 @@ namespace RtspClientExample
                 username = null;
                 password = null;
             }
+
+            // We can ask the RTSP server for Video, Audio or both. If we don't want audio we don't need to SETUP the audio channal or receive it
+            client_wants_video = false;
+            client_wants_audio = false;
+            if (media_request == MEDIA_REQUEST.VIDEO_ONLY || media_request == MEDIA_REQUEST.VIDEO_AND_AUDIO) client_wants_video = true;
+            if (media_request == MEDIA_REQUEST.AUDIO_ONLY || media_request == MEDIA_REQUEST.VIDEO_AND_AUDIO) client_wants_audio = true;
 
             // Connect to a RTSP Server. The RTSP session is a TCP connection
             rtsp_socket_status = RTSP_STATUS.Connecting;
@@ -726,6 +750,9 @@ namespace RtspClientExample
 
                     if (video && video_payload != -1) continue; // have already matched a video payload. don't match another
                     if (audio && audio_payload != -1) continue; // have already matched an audio payload. don't match another
+
+                    if (audio && (client_wants_audio == false)) continue; // client does not want audio from the RTSP server
+                    if (video && (client_wants_video == false)) continue; // client does not want video from the RTSP server
 
                     if (audio || video)
                     {

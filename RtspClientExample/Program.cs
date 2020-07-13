@@ -14,7 +14,7 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             // Internet Test - Big Buck Bunney
-            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+             String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
@@ -222,7 +222,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            c.Connect(url, RTSPClient.RTP_TRANSPORT.TCP);
+            c.Connect(url, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
