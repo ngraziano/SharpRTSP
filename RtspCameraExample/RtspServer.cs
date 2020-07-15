@@ -7,36 +7,22 @@ using Rtsp;
 using System.Text;
 using System.Collections.Generic;
 
-// RTSP Server Example (c) Roger Hardiman, 2016, 2018
+// RTSP Server Example (c) Roger Hardiman, 2016, 2018, 2020
 // Released uder the MIT Open Source Licence
 //
 // Re-uses some code from the Multiplexer example of SharpRTSP
 //
-// This example simulates a live RTSP video stream, for example a CCTV Camera
-// It creates a Video Source (a test card) that creates a YUV Image
-// The image is then encoded as H264 data using a very basic H264 Encoder
-// The H264 data (the NALs) are sent to the RTSP clients
-// Video is sent in UDP Mode or TCP Mode (ie RTP over RTSP mode)
-
-// The Tiny H264 Encoder is a 100% .NET encoder which is lossless and creates large bitstreams as
-// there is no compression. It is limited to 128x96 resolution. However it makes it easy to write a quick
-// demo without needing native APIs or cross compiled C libraries for H264
+// Creates a server to listen for RTSP Commands (eg OPTIONS, DESCRIBE, SETUP, PLAY)
+// Accepts SPS/PPS/NAL H264 video data and sends out to RTSP clients
 
 public class RtspServer : IDisposable
 {
-    const int h264_width = 192;    // Tiny needs 128x96
-    const int h264_height = 128;
-    const int h264_fps = 25;
 
     const uint global_ssrc = 0x4321FADE; // 8 hex digits
 
     private TcpListener _RTSPServerListener;
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
-
-    private TestCard video_source = null;
-    private SimpleH264Encoder h264_encoder = null;
-    //private TinyH264Encoder h264_encoder = null;
 
     byte[] raw_sps = null;
     byte[] raw_pps = null;
@@ -82,14 +68,6 @@ public class RtspServer : IDisposable
         _Stopping = new ManualResetEvent(false);
         _ListenTread = new Thread(new ThreadStart(AcceptConnection));
         _ListenTread.Start();
-
-        // Initialise the H264 encoder
-        h264_encoder = new SimpleH264Encoder(h264_width, h264_height, h264_fps);
-        //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
-
-        // Start the VideoSource
-        video_source = new TestCard(h264_width, h264_height, h264_fps);
-        video_source.ReceivedYUVFrame += video_source_ReceivedYUVFrame;
     }
 
 
@@ -250,9 +228,21 @@ public class RtspServer : IDisposable
 
             // TODO. Check the requsted_url is valid. In this example we accept any RTSP URL
 
+
+
+            // if the SPS and PPS are not defined yet, we have to return an error
+            if (raw_sps == null || raw_pps == null)
+            {
+                Rtsp.Messages.RtspResponse describe_response2 = (e.Message as Rtsp.Messages.RtspRequestDescribe).CreateResponse();
+                describe_response2.ReturnCode = 400; // 400 Bad Request
+                listener.SendMessage(describe_response2);
+                return;
+            }
+
+
             // Make the Base64 SPS and PPS
-            raw_sps = h264_encoder.GetRawSPS(); // no 0x00 0x00 0x00 0x01 or 32 bit size header
-            raw_pps = h264_encoder.GetRawPPS(); // no 0x00 0x00 0x00 0x01 or 32 bit size header
+            // raw_sps has no 0x00 0x00 0x00 0x01 or 32 bit size header
+            // raw_pps has no 0x00 0x00 0x00 0x01 or 32 bit size header
             String sps_str = Convert.ToBase64String(raw_sps);
             String pps_str = Convert.ToBase64String(raw_pps);
 
@@ -499,9 +489,15 @@ public class RtspServer : IDisposable
 
     }
 
-    // The 'Camera' (YUV TestCard) has generated a YUV image.
-    // If there are RTSP clients connected then Compress the Video Frame (with H264) and send it to the client
-    void video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
+    // Feed in Raw SPS/PPS data - no 32 bit headers, no 00 00 00 01 headers
+    public void FeedInRawSPSandPPS(byte[] sps_data, byte[] pps_data) // SPS data without any headers (00 00 00 01 or 32 bit lengths)
+    {
+        raw_sps = sps_data;
+        raw_pps = pps_data;
+    }
+
+    // Feed in Raw NALs - no 32 bit headers, no 00 00 00 01 headers
+    public void FeedInRawNAL(uint timestamp_ms, List<byte[]> nal_array)
     {
         DateTime now = DateTime.UtcNow;
         int current_rtp_play_count = 0;
@@ -537,34 +533,9 @@ public class RtspServer : IDisposable
             }
         }
 
-        // Take the YUV image and encode it into a H264 NAL
-        // This returns a NAL with no headers (no 00 00 00 01 header and no 32 bit sizes)
         Console.WriteLine(current_rtp_count + " RTSP clients connected. " + current_rtp_play_count + " RTSP clients in PLAY mode");
 
         if (current_rtp_play_count == 0) return;
-
-        // Compress the video (YUV to H264)
-        byte[] raw_video_nal = h264_encoder.CompressFrame(yuv_data);
-        Boolean isKeyframe = true; // SimpleH264encoder and TinyH24encoder only emit keyframes
-
-
-        List<byte[]> nal_array = new List<byte[]>();
-        
-        // We may want to add the SPS and PPS to the H264 stream as in-band data.
-        // This may be of use if the client did not parse the SPS/PPS in the SDP
-        // or if the H264 encoder changes properties (eg a new resolution or framerate which
-        // gives a new SPS or PPS).
-        // Also looking towards H265, the VPS/SPS/PPS do not need to be in the SDP so would be added here.
-
-        Boolean add_sps_pps_to_keyframe = true;
-
-        if (add_sps_pps_to_keyframe && isKeyframe) {
-            nal_array.Add(raw_sps);
-            nal_array.Add(raw_pps);
-        }
-
-        // add the rest of the NALs
-        nal_array.Add(raw_video_nal);
 
 
 
@@ -793,5 +764,37 @@ public class RtspServer : IDisposable
         public DateTime video_time_since_last_rtcp_keepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
 
         // TODO - Add Audio
+    }
+
+    public static class RTPPacketUtil
+    {
+
+        public static void WriteHeader(byte[] rtp_packet, int rtp_version, int rtp_padding, int rtp_extension, int rtp_csrc_count, int rtp_marker, int rtp_payload_type)
+        {
+            rtp_packet[0] = (byte)((rtp_version << 6) | (rtp_padding << 5) | (rtp_extension << 4) | rtp_csrc_count);
+            rtp_packet[1] = (byte)((rtp_marker << 7) | (rtp_payload_type & 0x7F));
+        }
+
+        public static void WriteSequenceNumber(byte[] rtp_packet, uint empty_sequence_id)
+        {
+            rtp_packet[2] = ((byte)((empty_sequence_id >> 8) & 0xFF));
+            rtp_packet[3] = ((byte)((empty_sequence_id >> 0) & 0xFF));
+        }
+
+        public static void WriteTS(byte[] rtp_packet, uint ts)
+        {
+            rtp_packet[4] = ((byte)((ts >> 24) & 0xFF));
+            rtp_packet[5] = ((byte)((ts >> 16) & 0xFF));
+            rtp_packet[6] = ((byte)((ts >> 8) & 0xFF));
+            rtp_packet[7] = ((byte)((ts >> 0) & 0xFF));
+        }
+
+        public static void WriteSSRC(byte[] rtp_packet, uint ssrc)
+        {
+            rtp_packet[8] = ((byte)((ssrc >> 24) & 0xFF));
+            rtp_packet[9] = ((byte)((ssrc >> 16) & 0xFF));
+            rtp_packet[10] = ((byte)((ssrc >> 8) & 0xFF));
+            rtp_packet[11] = ((byte)((ssrc >> 0) & 0xFF));
+        }
     }
 }
