@@ -48,6 +48,7 @@
     <Compile Include="RTPPacketUtil.cs" />
     <Compile Include="TestCard.cs" />
     <Compile Include="SimpleH264Encoder.cs" />
+    <Compile Include="SimpleG711Encoder.cs" />
     <Compile Include="TinyH264Encoder.cs" />
     <Compile Include="RtspServer.cs" />
   </ItemGroup>

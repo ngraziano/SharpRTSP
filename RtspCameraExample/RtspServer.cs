@@ -24,8 +24,11 @@ public class RtspServer : IDisposable
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
 
+    const int video_payload_type = 96; // = user defined payload, requuired for H264
     byte[] raw_sps = null;
     byte[] raw_pps = null;
+
+    const int audio_payload_type = 0; // = Hard Coded to PCMU audio
 
     List<RTSPConnection> rtsp_list = new List<RTSPConnection>(); // list of RTSP Listeners
 
@@ -98,7 +101,7 @@ public class RtspServer : IDisposable
                     new_connection.ssrc = global_ssrc;
 
                     new_connection.time_since_last_rtsp_keepalive = DateTime.UtcNow;
-                    new_connection.video_time_since_last_rtcp_keepalive = DateTime.UtcNow;
+                    new_connection.video.time_since_last_rtcp_keepalive = DateTime.UtcNow;
 
                     rtsp_list.Add(new_connection);
                 }
@@ -246,6 +249,19 @@ public class RtspServer : IDisposable
             String sps_str = Convert.ToBase64String(raw_sps);
             String pps_str = Convert.ToBase64String(raw_pps);
 
+            // Make the profile-level-id
+            // Eg a string of profile-level-id=42A01E is
+            // a Profile eg Constrained Baseline, Baseline, Extended, Main, High. This defines which features in H264 are used
+            // a Level eg 1,2,3 or 4. This defines a max resoution for the video. 2=up to SD, 3=upto 1080p. Decoders can then reserve sufficient RAM for frame buffers
+            int profile_idc = 77; // Main Profile
+            int profile_iop = 0; // bit 7 (msb) is 0 so constrained_flag is false
+            int level = 42; // Level 4.2
+
+
+            string profile_level_id_str = profile_idc.ToString("X2") // convert to hex, padded to 2 characters
+                                        + profile_iop.ToString("X2")
+                                        + level.ToString("X2");
+
             StringBuilder sdp = new StringBuilder();
 
             // Generate the SDP
@@ -258,7 +274,14 @@ public class RtspServer : IDisposable
             sdp.Append("c=IN IP4 0.0.0.0\n");
             sdp.Append("a=control:trackID=0\n");
             sdp.Append("a=rtpmap:96 H264/90000\n");
-            sdp.Append("a=fmtp:96 profile-level-id=42A01E; sprop-parameter-sets=" + sps_str + "," + pps_str + ";\n");
+            sdp.Append("a=fmtp:96 profile-level-id=" + profile_level_id_str +"; sprop-parameter-sets=" + sps_str + "," + pps_str + ";\n");
+
+            // AUDIO
+            sdp.Append("m=audio 0 RTP/AVP 0\n"); // <---- 0 means G711 ULAW
+            sdp.Append("a=control:trackID=1\n");
+            sdp.Append("a=rtpmap:0 PCMU/8000\n");
+            // sdp.Append(media header info if we had AAC or other audio codec)
+            
 
             byte[] sdp_bytes = Encoding.ASCII.GetBytes(sdp.ToString());
 
@@ -307,18 +330,20 @@ public class RtspServer : IDisposable
                 Boolean udp_supported = true;
                 if (udp_supported) {
                     // RTP over UDP mode
-                    // Create a pair of UDP sockets - One is for the Video, one is for the RTCP
+                    // Create a pair of UDP sockets - One is for the Data (eg Video/Audio), one is for the RTCP
                     udp_pair = new Rtsp.UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
                     udp_pair.DataReceived += (object local_sender, RtspChunkEventArgs local_e) => {
                         // RTCP data received
                         Console.WriteLine("RTCP data received " + local_sender.ToString() + " " + local_e.ToString());
+                        // TODO - Find the Connection and update the keepalive
                     };
                     udp_pair.Start(); // start listening for data on the UDP ports
 
                     // Pass the Port of the two sockets back in the reply
                     transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
                     transport_reply.IsMulticast = false;
-                    transport_reply.ClientPort = new Rtsp.Messages.PortCouple(udp_pair.data_port,udp_pair.control_port);
+                    transport_reply.ServerPort = new Rtsp.Messages.PortCouple(udp_pair.data_port, udp_pair.control_port);
+                    transport_reply.ClientPort = transport.ClientPort;
                 } else {
                     transport_reply = null;
                 }
@@ -342,33 +367,47 @@ public class RtspServer : IDisposable
             if (transport_reply != null)
             {
 
-                // Update the session with transport information
+                // Update the stream within the session with transport information
+                // If a Session ID is passed in we should match SessionID with other SessionIDs but we can match on RemoteAddress
                 String copy_of_session_id = "";
                 lock (rtsp_list)
                 {
                     foreach (RTSPConnection connection in rtsp_list)
                     {
                         if (connection.listener.RemoteAdress.Equals(listener.RemoteAdress)) {
-                            // ToDo - Check the Track ID to determine if this is a SETUP for the Video Stream
+                            // Check the Track ID to determine if this is a SETUP for the Video Stream
                             // or a SETUP for an Audio Stream.
+
                             // In the SDP the H264 video track is TrackID 0
+                            // and the Audio Track is TrackID 1
+                            RTPStream stream;
+                            if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=0")) stream = connection.video;
+                            else if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=1")) stream = connection.audio;
+                            else continue; // error case - track unknown
 
 
                             // found the connection
-                            // Add the transports to the connection
-                            connection.video_client_transport = transport;
-                            connection.video_transport_reply = transport_reply;
+                            // Add the transports to the stream
+                            stream.client_transport = transport;
+                            stream.transport_reply = transport_reply;
 
                             // If we are sending in UDP mode, add the UDP Socket pair and the Client Hostname
-                            connection.video_udp_pair = udp_pair;
+                            stream.udp_pair = udp_pair;
 
 
-                            connection.video_session_id = session_handle.ToString();
-                            session_handle++;
+                            // When there is Video and Audio there are two SETUP commands.
+                            // For the first SETUP command we will generate the connection.session_id and return a SessionID in the Reply.
+                            // For the 2nd command the client will send is the SessionID.
+
+                            if (connection.session_id == "") {
+                                connection.session_id = session_handle.ToString();
+                                session_handle++;
+                            }
+                            // ELSE, could check the Session passed in matches the Session we generated on last SETUP command
 
 
-                            // Copy the Session ID
-                            copy_of_session_id = connection.video_session_id;
+                            // Copy the Session ID, as we use it in the reply
+                            copy_of_session_id = connection.session_id;
                             break;
                         }
                     }
@@ -398,20 +437,30 @@ public class RtspServer : IDisposable
                 bool session_found = false;
                 foreach (RTSPConnection connection in rtsp_list)
                 {
-                    if (message.Session == connection.video_session_id) /* OR AUDIO_SESSION_ID */
+                    if (message.Session == connection.session_id)
                     {
                         // found the session
                         session_found = true;
-                        connection.play = true;  // ACTUALLY YOU COULD PAUSE JUST THE VIDEO (or JUST THE AUDIO)
 
                         string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
-                        string rtp_info = "url="+((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + connection.video_sequence_number; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                        string rtp_info = "url="+((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + connection.video.sequence_number; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                        // Add audio too
+                        rtp_info += "," + "url="+((Rtsp.Messages.RtspRequestPlay)message).RtspUri+";seq=" + connection.audio.sequence_number; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                        
+
+                        //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
 
                         // Send the reply
                         Rtsp.Messages.RtspResponse play_response = (e.Message as Rtsp.Messages.RtspRequestPlay).CreateResponse();
                         play_response.AddHeader("Range: " + range);
                         play_response.AddHeader("RTP-Info: " + rtp_info);
                         listener.SendMessage(play_response);
+
+                        connection.video.must_send_rtcp_packet = true;
+                        connection.audio.must_send_rtcp_packet = true;
+
+                        // Allow video and audio to go to this client
+                        connection.play = true;
 
                         break;
                     }
@@ -436,10 +485,10 @@ public class RtspServer : IDisposable
                 // Search for the Session in the Sessions List. Change the state of "PLAY" 
                 foreach (RTSPConnection connection in rtsp_list)
                 {
-                    if (message.Session == connection.video_session_id /* OR AUDIO SESSION ID */)
+                    if (message.Session == connection.session_id)
                     {
                         // found the session
-                        connection.play = false; // COULD HAVE PLAY/PAUSE FOR VIDEO AND AUDIO
+                        connection.play = false;
                         break;
                     }
                 }
@@ -468,13 +517,18 @@ public class RtspServer : IDisposable
                 // Search for the Session in the Sessions List.
                 foreach (RTSPConnection connection in rtsp_list.ToArray()) // Convert to ToArray so we can delete from the rtp_list
                 {
-                    if (message.Session == connection.video_session_id) // SHOULD HAVE AN AUDIO TEARDOWN AS WELL
+                    if (message.Session == connection.session_id)
                     {
                         // If this is UDP, close the transport
                         // For TCP there is no transport to close (as RTP packets were interleaved into the RTSP connection)
-                        if (connection.video_udp_pair != null) {
-                            connection.video_udp_pair.Stop();
-                            connection.video_udp_pair = null;
+                        if (connection.video.udp_pair != null) {
+                            connection.video.udp_pair.Stop();
+                            connection.video.udp_pair = null;
+                        }
+
+                        if (connection.audio.udp_pair != null) {
+                            connection.audio.udp_pair.Stop();
+                            connection.audio.udp_pair = null;
                         }
 
                         rtsp_list.Remove(connection);
@@ -485,9 +539,50 @@ public class RtspServer : IDisposable
                 }
             }
         }
-
-
     }
+
+    public void checkTimeouts(out int current_rtsp_count, out int current_rtsp_play_count) {
+        DateTime now = DateTime.UtcNow;
+        int timeout_in_seconds = 70;  // must have a RTSP message every 70 seconds or we will close the connection
+
+        lock (rtsp_list) {
+
+            current_rtsp_count = rtsp_list.Count;
+            current_rtsp_play_count = 0;
+            foreach (RTSPConnection connection in rtsp_list.ToArray()) { // Convert to Array to allow us to delete from rtsp_list
+                // RTSP Timeout (clients receiving RTP video over the RTSP session
+                // do not need to send a keepalive (so we check for Socket write errors)
+                Boolean sending_rtp_via_tcp = false;
+                if ((connection.video.client_transport != null) &&
+                    (connection.video.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP))
+                {
+                    sending_rtp_via_tcp = true;
+                }
+
+                if (sending_rtp_via_tcp == false && ((now - connection.time_since_last_rtsp_keepalive).TotalSeconds > timeout_in_seconds)) {
+
+                    Console.WriteLine("Removing session " + connection.session_id + " due to TIMEOUT");
+                    connection.play = false; // stop sending data
+                    if (connection.video.udp_pair != null)
+                    {
+                        connection.video.udp_pair.Stop();
+                        connection.video.udp_pair = null;
+                    }
+                    if (connection.audio.udp_pair != null)
+                    {
+                        connection.audio.udp_pair.Stop();
+                        connection.audio.udp_pair = null;
+                    }
+                    connection.listener.Dispose();
+
+                    rtsp_list.Remove(connection);
+                    continue;
+                }
+                else if (connection.play) current_rtsp_play_count++;
+            }
+        }
+    }
+
 
     // Feed in Raw SPS/PPS data - no 32 bit headers, no 00 00 00 01 headers
     public void FeedInRawSPSandPPS(byte[] sps_data, byte[] pps_data) // SPS data without any headers (00 00 00 01 or 32 bit lengths)
@@ -500,42 +595,14 @@ public class RtspServer : IDisposable
     public void FeedInRawNAL(uint timestamp_ms, List<byte[]> nal_array)
     {
         DateTime now = DateTime.UtcNow;
-        int current_rtp_play_count = 0;
-        int current_rtp_count = 0;
-        int timeout_in_seconds = 70;  // must have a RTSP message every 70 seconds or we will close the connection
-        lock (rtsp_list) {
-            current_rtp_count = rtsp_list.Count;
-            foreach (RTSPConnection connection in rtsp_list.ToArray()) { // Convert to Array to allow us to delete from rtsp_list
-                // RTSP Timeout (clients receiving RTP video over the RTSP session
-                // do not need to send a keepalive (so we check for Socket write errors)
-                Boolean sending_rtp_via_tcp = false;
-                if ((connection.video_client_transport != null) &&
-                    (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP))
-                {
-                    sending_rtp_via_tcp = true;
-                }
+        int current_rtsp_play_count = 0;
+        int current_rtsp_count = 0;
 
-                if (sending_rtp_via_tcp == false && ((now - connection.time_since_last_rtsp_keepalive).TotalSeconds > timeout_in_seconds)) {
+        checkTimeouts(out current_rtsp_count, out current_rtsp_play_count);
 
-                    Console.WriteLine("Removing session " + connection.video_session_id + " due to TIMEOUT");
-                    connection.play = false; // stop sending data
-                    if (connection.video_udp_pair != null)
-                    {
-                        connection.video_udp_pair.Stop();
-                        connection.video_udp_pair = null;
-                    }
-                    connection.listener.Dispose();
+        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
 
-                    rtsp_list.Remove(connection);
-                    continue;
-                }
-                else if (connection.play) current_rtp_play_count++;
-            }
-        }
-
-        Console.WriteLine(current_rtp_count + " RTSP clients connected. " + current_rtp_play_count + " RTSP clients in PLAY mode");
-
-        if (current_rtp_play_count == 0) return;
+        if (current_rtsp_play_count == 0) return;
 
 
 
@@ -556,8 +623,12 @@ public class RtspServer : IDisposable
             // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
             // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
             bool fragmenting = false;
-            int packetMTU = 65500;
+            int packetMTU = 65535 -8 -20 - 16; // 65535 -8 for UDP header, -20 for IP header, -16 normal RTP header len. ** LESS RTP EXTENSIONS !!!
             if (raw_nal.Length > packetMTU) fragmenting = true;
+
+            // INDIGO VISION DOES NOT SUPPORT FRAGMENTATION. Send as one jumbo RTP packet and let OS split over MTUs.
+            // NOTE TO SELF... perhaps this was because the SDP did not have the extra packetization flag
+            fragmenting = false;
 
 
             if (fragmenting == false)
@@ -674,29 +745,136 @@ public class RtspServer : IDisposable
                 if (connection.play == false) continue;
 
                 String connection_type = "";
-                if (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) connection_type = "TCP";
-                if (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
-                    && connection.video_client_transport.IsMulticast == false) connection_type = "UDP";
-                if (connection.video_client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
-                    && connection.video_client_transport.IsMulticast == true) connection_type = "Multicast";
-                Console.WriteLine("Sending video session " + connection.video_session_id + " " + connection_type + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence="+ connection.video_sequence_number);
+                if (connection.video.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) connection_type = "TCP";
+                if (connection.video.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && connection.video.client_transport.IsMulticast == false) connection_type = "UDP";
+                if (connection.video.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && connection.video.client_transport.IsMulticast == true) connection_type = "Multicast";
+
+
+                Console.WriteLine("Sending video session " + connection.session_id + " " + connection_type + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence="+ connection.video.sequence_number);
+
+
+                if (connection.video.must_send_rtcp_packet)
+                {
+                    // build and send RTCP Sender Report (SR) packet
+                    byte[] rtcp_sender_report = new byte[28];
+                    int version = 2;
+                    int paddingBit = 0;
+                    int reportCount = 0; // an empty report
+                    int packetType = 200; // Sender Report
+                    int length = (rtcp_sender_report.Length / 4) - 1; // num 32 bit words minus 1
+                    rtcp_sender_report[0] = (byte)((version << 6) + (paddingBit << 5) + reportCount);
+                    rtcp_sender_report[1] = (byte)(packetType);
+                    rtcp_sender_report[2] = (byte)((length >> 8) & 0xFF);
+                    rtcp_sender_report[3] = (byte)((length >> 0) & 0XFF);
+                    rtcp_sender_report[4] = (byte)((connection.ssrc >> 24) & 0xFF);
+                    rtcp_sender_report[5] = (byte)((connection.ssrc >> 16) & 0xFF);
+                    rtcp_sender_report[6] = (byte)((connection.ssrc >> 8) & 0xFF);
+                    rtcp_sender_report[7] = (byte)((connection.ssrc >> 0) & 0xFF);
+
+                    // Bytes 8, 9, 10, 11 and 12,13,14,15 are the Wall Clock
+                    // Bytes 16,17,18,19 are the RTP payload timestamp
+
+                    // NTP Most Signigicant Word is relative to 0h, 1 Jan 1900
+                    // This will wrap around in 2036
+                    DateTime ntp_start_time = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+                    TimeSpan tmpTime = now - ntp_start_time;
+                    double totalSeconds = tmpTime.TotalSeconds; // Seconds and fractions of a second
+
+
+                    UInt32 ntp_msw_seconds = (UInt32)Math.Truncate(totalSeconds); // whole number of seconds
+                    UInt32 ntp_lsw_fractions = (UInt32)((totalSeconds % 1) * UInt32.MaxValue); // fractional part, scaled between 0 and MaxInt
+
+                    // cross check...   double ntp = ntp_msw_seconds + (ntp_lsw_fractions / UInt32.MaxValue);
+
+                    rtcp_sender_report[8] = (byte)((ntp_msw_seconds >> 24) & 0xFF);
+                    rtcp_sender_report[9] = (byte)((ntp_msw_seconds >> 16) & 0xFF);
+                    rtcp_sender_report[10] = (byte)((ntp_msw_seconds >> 8) & 0xFF);
+                    rtcp_sender_report[11] = (byte)((ntp_msw_seconds >> 0) & 0xFF);
+
+                    rtcp_sender_report[12] = (byte)((ntp_lsw_fractions >> 24) & 0xFF);
+                    rtcp_sender_report[13] = (byte)((ntp_lsw_fractions >> 16) & 0xFF);
+                    rtcp_sender_report[14] = (byte)((ntp_lsw_fractions >> 8) & 0xFF);
+                    rtcp_sender_report[15] = (byte)((ntp_lsw_fractions >> 0) & 0xFF);
+
+                    rtcp_sender_report[16] = (byte)((rtp_timestamp >> 24) & 0xFF);
+                    rtcp_sender_report[17] = (byte)((rtp_timestamp >> 16) & 0xFF);
+                    rtcp_sender_report[18] = (byte)((rtp_timestamp >> 8) & 0xFF);
+                    rtcp_sender_report[19] = (byte)((rtp_timestamp >> 0) & 0xFF);
+
+                    rtcp_sender_report[20] = (byte)((connection.video.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[21] = (byte)((connection.video.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[22] = (byte)((connection.video.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[23] = (byte)((connection.video.rtp_packet_count >> 0) & 0xFF);
+
+                    rtcp_sender_report[24] = (byte)((connection.video.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[25] = (byte)((connection.video.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[26] = (byte)((connection.video.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[27] = (byte)((connection.video.octet_count >> 0) & 0xFF);
+
+                    // Bytes 28 and onwards. Would contain Reception Report messages if the size in he header was non zero
+
+
+
+                    // Send RTCP over RTSP (Interleaved)
+                    if (connection.video.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                    {
+                        int video_rtcp_channel = connection.video.transport_reply.Interleaved.Second; // second is for RTCP status messages)
+                        try
+                        {
+                            connection.listener.SendData(video_rtcp_channel, rtcp_sender_report);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.listener.RemoteAdress);
+                        }
+                    }
+
+                    // Send RTCP over UDP
+                    if (connection.video.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.video.transport_reply.IsMulticast == false)
+                    {
+                        try
+                        {
+                            // Send to the IP address of the Client
+                            // Send to the UDP Port the Client gave us in the SETUP command
+                            connection.video.udp_pair.Write_To_Data_Port(rtcp_sender_report, connection.client_hostname, connection.video.client_transport.ClientPort.Second);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("UDP Write Exception " + e.ToString());
+                            Console.WriteLine("Error writing RTCP to listener " + connection.listener.RemoteAdress);
+                        }
+                    }
+
+                    if (connection.video.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.video.transport_reply.IsMulticast == true)
+                    {
+                        // TODO. Add Multicast
+                    }
+
+
+                    // Clear the flag. A timer may set this to True again at some point to send regular Sender Reports
+                    //HACK  connection.must_send_rtcp_packet = false; // A Timer may set this to true again later in case it is used as a Keepalive (eg IndigoVision)
+                }
+
 
                 // There could be more than 1 RTP packet (if the data is fragmented)
                 Boolean write_error = false;
                 foreach (byte[] rtp_packet in rtp_packets)
                 {
                     // Add the specific data for each transmission
-                    RTPPacketUtil.WriteSequenceNumber(rtp_packet, connection.video_sequence_number);
-                    connection.video_sequence_number++;
+                    RTPPacketUtil.WriteSequenceNumber(rtp_packet, connection.video.sequence_number);
+                    connection.video.sequence_number++;
 
                     // Add the specific SSRC for each transmission
                     RTPPacketUtil.WriteSSRC(rtp_packet, connection.ssrc);
 
 
                     // Send as RTP over RTSP (Interleaved)
-                    if (connection.video_transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                    if (connection.video.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
                     {
-                        int video_channel = connection.video_transport_reply.Interleaved.First; // second is for RTCP status messages)
+                        int video_channel = connection.video.transport_reply.Interleaved.First; // second is for RTCP status messages)
                         object state = new object();
                         try
                         {
@@ -713,14 +891,14 @@ public class RtspServer : IDisposable
                     }
 
                     // Send as RTP over UDP
-                    if (connection.video_transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.video_transport_reply.IsMulticast == false)
+                    if (connection.video.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.video.transport_reply.IsMulticast == false)
                     {
                         try
                         {
                             // send the whole NAL. ** We could fragment the RTP packet into smaller chuncks that fit within the MTU
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video_udp_pair.Write_To_Data_Port(rtp_packet,connection.client_hostname,connection.video_client_transport.ClientPort.First);
+                            connection.video.udp_pair.Write_To_Data_Port(rtp_packet,connection.client_hostname,connection.video.client_transport.ClientPort.First);
                         }
                         catch (Exception e)
                         {
@@ -735,17 +913,305 @@ public class RtspServer : IDisposable
                 }
                 if (write_error)
                 {
-                    Console.WriteLine("Removing session " + connection.video_session_id + " due to write error");
+                    Console.WriteLine("Removing session " + connection.session_id + " due to write error");
                     connection.play = false; // stop sending data
-                    if (connection.video_udp_pair != null) {
-                        connection.video_udp_pair.Stop();
-                        connection.video_udp_pair = null;
+                    if (connection.video.udp_pair != null) {
+                        connection.video.udp_pair.Stop();
+                        connection.video.udp_pair = null;
+                    }
+                    if (connection.audio.udp_pair != null) {
+                        connection.audio.udp_pair.Stop();
+                        connection.audio.udp_pair = null;
                     }
                     connection.listener.Dispose();
                     rtsp_list.Remove(connection); // remove the session. It is dead
                 }
+
+                connection.video.rtp_packet_count += (UInt32)rtp_packets.Count;
+
+                for (int x = 0; x < nal_array.Count; x++)
+                {
+                    connection.video.octet_count += (UInt32)nal_array[x].Length; // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
+                }
             }
         }
+    }
+
+
+    public void FeedInAudioPacket(uint timestamp_ms, byte[] audio_packet)
+    {
+        DateTime now = DateTime.UtcNow;
+        int current_rtsp_play_count = 0;
+        int current_rtsp_count = 0;
+
+        checkTimeouts(out current_rtsp_count, out current_rtsp_play_count);
+
+        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
+
+        if (current_rtsp_play_count == 0) return;
+
+
+        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
+
+        if (current_rtsp_play_count == 0) return;
+
+
+
+        UInt32 rtp_timestamp = timestamp_ms * 8; // 8kHz clock
+
+        // Build a list of 1 or more RTP packets
+        // The last packet will have the M bit set to '1'
+        List<byte[]> rtp_packets = new List<byte[]>();
+
+        // Put the whole Audio Packet into one RTP packet.
+
+        byte[] rtp_packet = new byte[12 + audio_packet.Length]; // 12 is header size when there are no CSRCs or extensions
+        // Create an single RTP fragment
+
+        // RTP Packet Header
+        // 0 - Version, P, X, CC, M, PT and Sequence Number
+        //32 - Timestamp. H264 uses a 90kHz clock
+        //64 - SSRC
+        //96 - CSRCs (optional)
+        //nn - Extension ID and Length
+        //nn - Extension header
+
+        int rtp_version = 2;
+        int rtp_padding = 0;
+        int rtp_extension = 0;
+        int rtp_csrc_count = 0;
+        int rtp_marker = 1; // always 1 as this is the last (and only) RTP packet for this audio timestamp
+        int rtp_payload_type = audio_payload_type; // 0 for PCMU
+
+        RTPPacketUtil.WriteHeader(rtp_packet, rtp_version, rtp_padding, rtp_extension, rtp_csrc_count, rtp_marker, rtp_payload_type);
+
+        UInt32 empty_sequence_id = 0;
+        RTPPacketUtil.WriteSequenceNumber(rtp_packet, empty_sequence_id); // placeholder to be completed later
+
+        RTPPacketUtil.WriteTS(rtp_packet, rtp_timestamp);
+
+        UInt32 empty_ssrc = 0;
+        RTPPacketUtil.WriteSSRC(rtp_packet, empty_ssrc);
+
+        // Now append the audio packet
+        System.Array.Copy(audio_packet, 0, rtp_packet, 12, audio_packet.Length);
+
+
+        // SEND THE RTSP PACKET
+        lock (rtsp_list)
+        {
+
+            // Go through each RTSP connection and output the NAL on the Video Session
+            foreach (RTSPConnection connection in rtsp_list.ToArray()) // ToArray makes a temp copy of the list.
+                                                               // This lets us delete items in the foreach
+                                                               // eg when there is Write Error
+            {
+                // Only process Sessions in Play Mode
+                if (connection.play == false) continue;
+
+                // The client may have only subscribed to Video. Check if the client wants audio
+                if (connection.audio.client_transport == null) continue;
+
+                String connection_type = "";
+                if (connection.audio.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP) connection_type = "TCP";
+                if (connection.audio.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && connection.audio.client_transport.IsMulticast == false) connection_type = "UDP";
+                if (connection.audio.client_transport.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP
+                    && connection.audio.client_transport.IsMulticast == true) connection_type = "Multicast";
+
+
+                Console.WriteLine("Sending audio session " + connection.session_id + " " + connection_type + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence="+ connection.audio.sequence_number);
+
+
+                if (connection.audio.must_send_rtcp_packet)
+                {
+                    // build and send RTCP Sender Report (SR) packet
+                    byte[] rtcp_sender_report = new byte[28];
+                    int version = 2;
+                    int paddingBit = 0;
+                    int reportCount = 0; // an empty report
+                    int packetType = 200; // Sender Report
+                    int length = (rtcp_sender_report.Length / 4) - 1; // num 32 bit words minus 1
+                    rtcp_sender_report[0] = (byte)((version << 6) + (paddingBit << 5) + reportCount);
+                    rtcp_sender_report[1] = (byte)(packetType);
+                    rtcp_sender_report[2] = (byte)((length >> 8) & 0xFF);
+                    rtcp_sender_report[3] = (byte)((length >> 0) & 0XFF);
+                    rtcp_sender_report[4] = (byte)((connection.ssrc >> 24) & 0xFF);
+                    rtcp_sender_report[5] = (byte)((connection.ssrc >> 16) & 0xFF);
+                    rtcp_sender_report[6] = (byte)((connection.ssrc >> 8) & 0xFF);
+                    rtcp_sender_report[7] = (byte)((connection.ssrc >> 0) & 0xFF);
+
+                    // Bytes 8, 9, 10, 11 and 12,13,14,15 are the Wall Clock
+                    // Bytes 16,17,18,19 are the RTP payload timestamp
+
+                    // NTP Most Signigicant Word is relative to 0h, 1 Jan 1900
+                    // This will wrap around in 2036
+                    DateTime ntp_start_time = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+                    TimeSpan tmpTime = now - ntp_start_time;
+                    double totalSeconds = tmpTime.TotalSeconds; // Seconds and fractions of a second
+
+
+                    UInt32 ntp_msw_seconds = (UInt32)Math.Truncate(totalSeconds); // whole number of seconds
+                    UInt32 ntp_lsw_fractions = (UInt32)((totalSeconds % 1) * UInt32.MaxValue); // fractional part, scaled between 0 and MaxInt
+
+                    // cross check...   double ntp = ntp_msw_seconds + (ntp_lsw_fractions / UInt32.MaxValue);
+
+                    rtcp_sender_report[8] = (byte)((ntp_msw_seconds >> 24) & 0xFF);
+                    rtcp_sender_report[9] = (byte)((ntp_msw_seconds >> 16) & 0xFF);
+                    rtcp_sender_report[10] = (byte)((ntp_msw_seconds >> 8) & 0xFF);
+                    rtcp_sender_report[11] = (byte)((ntp_msw_seconds >> 0) & 0xFF);
+
+                    rtcp_sender_report[12] = (byte)((ntp_lsw_fractions >> 24) & 0xFF);
+                    rtcp_sender_report[13] = (byte)((ntp_lsw_fractions >> 16) & 0xFF);
+                    rtcp_sender_report[14] = (byte)((ntp_lsw_fractions >> 8) & 0xFF);
+                    rtcp_sender_report[15] = (byte)((ntp_lsw_fractions >> 0) & 0xFF);
+
+                    rtcp_sender_report[16] = (byte)((rtp_timestamp >> 24) & 0xFF);
+                    rtcp_sender_report[17] = (byte)((rtp_timestamp >> 16) & 0xFF);
+                    rtcp_sender_report[18] = (byte)((rtp_timestamp >> 8) & 0xFF);
+                    rtcp_sender_report[19] = (byte)((rtp_timestamp >> 0) & 0xFF);
+
+                    rtcp_sender_report[20] = (byte)((connection.audio.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[21] = (byte)((connection.audio.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[22] = (byte)((connection.audio.rtp_packet_count >> 0) & 0xFF);
+                    rtcp_sender_report[23] = (byte)((connection.audio.rtp_packet_count >> 0) & 0xFF);
+
+                    rtcp_sender_report[24] = (byte)((connection.audio.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[25] = (byte)((connection.audio.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[26] = (byte)((connection.audio.octet_count >> 0) & 0xFF);
+                    rtcp_sender_report[27] = (byte)((connection.audio.octet_count >> 0) & 0xFF);
+
+                    // Bytes 28 and onwards. Would contain Reception Report messages if the size in he header was non zero
+
+
+
+                    // Send RTCP over RTSP (Interleaved)
+                    if (connection.audio.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                    {
+                        int audio_rtcp_channel = connection.audio.transport_reply.Interleaved.Second; // second is for RTCP status messages)
+                        try
+                        {
+                            connection.listener.SendData(audio_rtcp_channel, rtcp_sender_report);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.listener.RemoteAdress);
+                        }
+                    }
+
+                    // Send RTCP over UDP
+                    if (connection.audio.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.audio.transport_reply.IsMulticast == false)
+                    {
+                        try
+                        {
+                            // Send to the IP address of the Client
+                            // Send to the UDP Port the Client gave us in the SETUP command
+                            connection.audio.udp_pair.Write_To_Data_Port(rtcp_sender_report, connection.client_hostname, connection.audio.client_transport.ClientPort.Second);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("UDP Write Exception " + e.ToString());
+                            Console.WriteLine("Error writing RTCP to listener " + connection.listener.RemoteAdress);
+                        }
+                    }
+
+                    if (connection.audio.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.audio.transport_reply.IsMulticast == true)
+                    {
+                        // TODO. Add Multicast
+                    }
+
+
+                    // Clear the flag. A timer may set this to True again at some point to send regular Sender Reports
+                    //HACK  connection.must_send_rtcp_packet = false; // A Timer may set this to true again later in case it is used as a Keepalive (eg IndigoVision)
+                }
+
+
+                // There could be more than 1 RTP packet (if the data is fragmented)
+                Boolean write_error = false;
+                {
+                    // Add the specific data for each transmission
+                    RTPPacketUtil.WriteSequenceNumber(rtp_packet, connection.audio.sequence_number);
+                    connection.audio.sequence_number++;
+
+                    // Add the specific SSRC for each transmission
+                    RTPPacketUtil.WriteSSRC(rtp_packet, connection.ssrc);
+
+
+                    // Send as RTP over RTSP (Interleaved)
+                    if (connection.audio.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.TCP)
+                    {
+                        int audio_channel = connection.audio.transport_reply.Interleaved.First; // second is for RTCP status messages)
+                        object state = new object();
+                        try
+                        {
+                            // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
+                            //session.listener.BeginSendData(audio_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
+                            connection.listener.SendData(audio_channel, rtp_packet);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            write_error = true;
+                            break; // exit out of foreach loop
+                        }
+                    }
+
+                    // Send as RTP over UDP
+                    if (connection.audio.transport_reply.LowerTransport == Rtsp.Messages.RtspTransport.LowerTransportType.UDP && connection.audio.transport_reply.IsMulticast == false)
+                    {
+                        try
+                        {
+                            // send the whole RTP packet
+                            // Send to the IP address of the Client
+                            // Send to the UDP Port the Client gave us in the SETUP command
+                            connection.audio.udp_pair.Write_To_Data_Port(rtp_packet,connection.client_hostname,connection.audio.client_transport.ClientPort.First);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("UDP Write Exception " + e.ToString());
+                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            write_error = true;
+                            break; // exit out of foreach loop
+                        }
+                    }
+                    
+                    // TODO. Add Multicast
+                }
+                if (write_error)
+                {
+                    Console.WriteLine("Removing session " + connection.session_id + " due to write error");
+                    connection.play = false; // stop sending data
+                    if (connection.video.udp_pair != null) {
+                        connection.video.udp_pair.Stop();
+                        connection.video.udp_pair = null;
+                    }
+                    if (connection.audio.udp_pair != null) {
+                        connection.audio.udp_pair.Stop();
+                        connection.audio.udp_pair = null;
+                    }
+                    connection.listener.Dispose();
+                    rtsp_list.Remove(connection); // remove the session. It is dead
+                }
+
+                connection.audio.rtp_packet_count += (UInt32)rtp_packets.Count;
+
+                connection.audio.octet_count += (UInt32)audio_packet.Length; // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
+            }
+        }
+    }
+
+    // An RTPStream can be a Video Stream, Audio Stream or a MetaData Stream
+    public class RTPStream {
+        public int trackID;
+        public bool must_send_rtcp_packet = false; // when true will send out a RTCP packet to match Wall Clock Time to RTP Payload timestamps
+        public UInt16 sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
+        public Rtsp.Messages.RtspTransport client_transport; // Transport: string from the client to the server
+        public Rtsp.Messages.RtspTransport transport_reply; // Transport: reply from the server to the client
+        public Rtsp.UDPSocket udp_pair = null;     // Pair of UDP sockets (data and control) used when sending via UDP
+        public DateTime time_since_last_rtcp_keepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
+        public UInt32 rtp_packet_count = 0;       // Used in the RTCP Sender Report to state how many RTP packets have been transmitted (for packet loss)
+        public UInt32 octet_count = 0;        // number of bytes of video that have been transmitted (for average bandwidth monitoring)
     }
 
     public class RTSPConnection
@@ -755,17 +1221,14 @@ public class RtspServer : IDisposable
         public DateTime time_since_last_rtsp_keepalive = DateTime.UtcNow; // Time since last RTSP message received - used to spot dead UDP clients
         public UInt32 ssrc = 0x12345678;           // SSRC value used with this client connection
         public String client_hostname = "";        // Client Hostname/IP Address
+        public int videoTrackID = 0;
+        public int audioTrackID = 1;
 
-        public String video_session_id = "";             // RTSP Session ID used with this client connection
-        public UInt16 video_sequence_number = 1;         // 16 bit RTP packet sequence number used with this client connection
-        public Rtsp.Messages.RtspTransport video_client_transport; // Transport: string from the client to the server
-        public Rtsp.Messages.RtspTransport video_transport_reply; // Transport: reply from the server to the client
-        public Rtsp.UDPSocket video_udp_pair = null;     // Pair of UDP sockets (data and control) used when sending via UDP
-        public DateTime video_time_since_last_rtcp_keepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
+        public String session_id = "";             // RTSP Session ID used with this client connection
 
-        // TODO - Add Audio
+        public RTPStream video = new RTPStream();
+        public RTPStream audio = new RTPStream();
     }
-
     public static class RTPPacketUtil
     {
 

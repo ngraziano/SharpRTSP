@@ -1,4 +1,11 @@
-﻿using System;
+﻿// Example software to simulate an Live RTSP Steam and an RTSP CCTV Camera in C#
+// There is a very simple Video and Audio generator
+// with a very simple (and not very efficient) H264 and G711 u-Law audio encoder
+// to feed data into the RTSP Server
+//
+// Server supports TCP and UDP clients.
+
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -17,6 +24,8 @@ namespace RtspCameraExample
         {
             RtspServer rtspServer = null;
             SimpleH264Encoder h264_encoder = null;
+            SimpleG711Encoder ulaw_encoder = null;
+            
             byte[] raw_sps = null;
             byte[] raw_pps = null;
 
@@ -30,12 +39,15 @@ namespace RtspCameraExample
 
             public Demo()
             {
-                // Our programme needs 3 things...
+                // Our programme needs several things...
                 //   1) The RTSP Server to send the NALs to RTSP Clients
                 //   2) A H264 Encoder to convert the YUV video into NALs
-                //   3) A YUV Video Source (in this case I use a dummy Test Card)
-
+                //   3) A G.711 u-Law audio encoder to convert PCM audio into G711 data
+                //   4) A YUV Video Source and PCM Audo Souce (in this case I use a dummy Test Card)
+                
+                /////////////////////////////////////////
                 // Step 1 - Start the RTSP Server
+                /////////////////////////////////////////
                 rtspServer = new RtspServer(port, username, password);
                 try
                 {
@@ -50,20 +62,34 @@ namespace RtspCameraExample
                 Console.WriteLine("RTSP URL is rtsp://" + username + ":" + password + "@" + "hostname:" + port);
 
 
+                /////////////////////////////////////////
                 // Step 2 - Create the H264 Encoder. It will feed NALs into the RTSP server
+                /////////////////////////////////////////
                 h264_encoder = new SimpleH264Encoder(width, height, fps);
                 //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
                 raw_sps = h264_encoder.GetRawSPS();
                 raw_pps = h264_encoder.GetRawPPS();
 
+                /////////////////////////////////////////
+                // Step 3 - Create the PCM to G711 Encoder.
+                /////////////////////////////////////////
+                ulaw_encoder = new SimpleG711Encoder();
 
-                // Step 3 - Start the Video Test Card (dummy YUV image)
+                /////////////////////////////////////////
+                // Step 3 - Start the Video and Audio Test Card (dummy YUV image and dummy PCM audio)
                 // It will feed YUV Images into the event handler, which will compress the video into NALs and pass them into the RTSP Server
-                TestCard video_source = new TestCard((int)width, (int)height, (int)fps);
-                video_source.ReceivedYUVFrame += Video_source_ReceivedYUVFrame; // the event handler is where all the magic happens
+                // It will feed PCM Audio into the event handler, which will compress the audio into G711 uLAW packets and pass them into the RTSP Server
+                /////////////////////////////////////////
+                TestCard av_source = new TestCard((int)width, (int)height, (int)fps);
+                av_source.ReceivedYUVFrame += Video_source_ReceivedYUVFrame; // the event handler is where all the magic happens
+                av_source.ReceivedAudioFrame += Audio_source_ReceivedAudioFrame; // the event handler is where all the magic happens
 
 
+                /////////////////////////////////////////
                 // Wait for user to terminate programme
+                // Everything else happens in Timed Events from av_source
+                // or Worker Threads in the RTSP library
+                /////////////////////////////////////////
                 String msg = "Connect RTSP client to Port=" + port;
                 if (username != null && password != null)
                 {
@@ -80,7 +106,15 @@ namespace RtspCameraExample
                     if (readline == null) Thread.Sleep(500);
                 }
 
+
+                /////////////////////////////////////////
+                // Shutdown
+                /////////////////////////////////////////
+                av_source.ReceivedYUVFrame -= Video_source_ReceivedYUVFrame;
+                av_source.ReceivedAudioFrame -= Audio_source_ReceivedAudioFrame;
+                av_source.Disconnect();
                 rtspServer.StopListen();
+
             }
 
 
@@ -112,6 +146,15 @@ namespace RtspCameraExample
                 // Pass the NAL array into the RTSP Server
                 rtspServer.FeedInRawSPSandPPS(raw_sps, raw_pps);
                 rtspServer.FeedInRawNAL(timestamp_ms, nal_array);
+            }
+
+            private void Audio_source_ReceivedAudioFrame(uint timestamp_ms, short[] audio_frame)
+            {
+                // Compress the audio into G711 and feed into the RTSP Server
+                byte[] g711_data = ulaw_encoder.EncodeULaw(audio_frame);
+                
+                // Pass the audio data into the RTSP Server
+                rtspServer.FeedInAudioPacket(timestamp_ms, g711_data);
             }
         }
     }

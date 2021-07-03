@@ -5,32 +5,39 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 
-// (c) Roger Hardiman 2016
+// (c) Roger Hardiman 2016, 2021
 
-// This class uses a System Timer to generate a YUV image at regular intervals
+// This class uses a System Timer to generate a YUV image at regular intervals and Audio at regular intervals
 // The ReceivedYUVFrame event is fired for each new YUV image
+// The ReceivedAudioFrame event is fired for each chunk of Audio
 
 public class TestCard
 {
 
     // Events that applications can receive
     public event ReceivedYUVFrameHandler ReceivedYUVFrame;
+    public event ReceivedAudioFrameHandler ReceivedAudioFrame;
 
     // Delegated functions (essentially the function prototype)
     public delegate void ReceivedYUVFrameHandler(uint timestamp, int width, int height, byte[] data);
+    public delegate void ReceivedAudioFrameHandler(uint timestamp, short[] data);
 
 
     // Local variables
-    private System.Timers.Timer frame_timer;
-    private int fps = 0;
     private Stopwatch stopwatch;
+    private System.Timers.Timer frame_timer;
     private byte[] yuv_frame = null;
     private int x_position = 0;
     private int y_position = 0;
+    private int fps = 0;
     private int width = 0;
     private int height = 0;
     private Object generate_lock = new Object();
-    private long count = 0;
+    private long frame_count = 0;
+
+    private System.Timers.Timer audio_timer;
+    private int audio_duration_ms = 20; // duration of sound samples for mono PCM audio. Hinted at in origial RTP standard from 1996 that mentions 160 audio samples
+    private long audio_count = 0;
 
     // ASCII Font
     // Created by Roger Hardiman using an online generation tool
@@ -78,20 +85,39 @@ public class TestCard
         frame_timer.AutoReset = false; // do not restart timer after the time has elapsed
         frame_timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
         {
-            // send a frame
+            // send a video frame
             Send_YUV_Frame();
-            count++;
+            frame_count++;
 
             // Some CPU cycles will have been used in Sending the YUV Frame.
             // Compute the delay required (the Timer Interval) before sending the next YUV frame
-            long time_for_next_tick_ms = (count * 1000) / fps;
+            long time_for_next_tick_ms = (frame_count * 1000) / fps;
             long time_to_wait = time_for_next_tick_ms - stopwatch.ElapsedMilliseconds;
             if (time_to_wait <= 0) time_to_wait = 1; // cannot have negative or zero intervals
             frame_timer.Interval = time_to_wait;
             frame_timer.Start();
         };
         frame_timer.Start();
-        
+
+        // Start timer. The Timer will generate each Audio frame
+        audio_timer = new System.Timers.Timer();
+        audio_timer.Interval = 1; // on first pass timer will fire straight away (cannot have zero interval)
+        audio_timer.AutoReset = false; // do not restart timer after the time has elapsed
+        audio_timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
+        {
+            // send an audio frame
+            Send_Audio_Frame();
+            audio_count++;
+
+            // Some CPU cycles will have been used in Sending the YUV Frame.
+            // Compute the delay required (the Timer Interval) before sending the next YUV frame
+            long time_for_next_tick_ms = (audio_count * audio_duration_ms); // 20ms samples is 50 audio packets per second
+            long time_to_wait = time_for_next_tick_ms - stopwatch.ElapsedMilliseconds;
+            if (time_to_wait <= 0) time_to_wait = 1; // cannot have negative or zero intervals
+            audio_timer.Interval = time_to_wait;
+            audio_timer.Start();
+        };
+        audio_timer.Start();
     }
 
     // Dispose
@@ -100,6 +126,10 @@ public class TestCard
         // Stop the frame timer
         frame_timer.Stop();
         frame_timer.Dispose();
+
+        // Stop the audio timer
+        audio_timer.Stop();
+        audio_timer.Dispose();
     }
 
 
@@ -206,4 +236,53 @@ public class TestCard
         }
     }
 
+
+    private void Send_Audio_Frame()
+    {
+        //lock (generate_lock)
+        {
+            // Get the current time
+            DateTime now_utc = DateTime.UtcNow;
+            DateTime now_local = now_utc.ToLocalTime();
+
+            long timestamp_ms = ((long)(now_utc.Ticks / TimeSpan.TicksPerMillisecond));
+
+            // 8 KHz audio / 20ms samples
+            int frame_size = (8000 * audio_duration_ms) / 1000;  // = 8000 / (1000/audio_duration_ms)
+
+            short[] audio_frame = new short[frame_size]; // This is an array of 16 bit values
+
+            // Add beep sounds.
+            // We add a 0.1 second beep every second
+            // Every 10 seconds we use a different sound.
+            // At the start of each new minute we add a 0.3 second beep
+
+            // Sound 1, 0.3 seconds at 12:00:00, 12:01:00, 12:02:00
+            // Sound 1, 0.1 seconds at 12:00:10, 12:00:20, 12:00:30 ... 12:00:50
+            // Sound 2, 0.1 seconds at 12:00:01, 12:00:02, 12:00:03 ... 12:00:09, then 12:00:11, 12:00:12
+
+            long currentSeconds = (timestamp_ms / 1000);
+            long currentMilliSeconds = timestamp_ms % 1000;
+
+            int soundToPlay = 0; // 0 = silence
+            if (((currentSeconds % 60) == 0) && (currentMilliSeconds < 300)) soundToPlay = 1;
+            else if (((currentSeconds % 10) == 0) && (currentMilliSeconds < 100)) soundToPlay = 1;
+            else if (((currentSeconds % 10) != 0) && (currentMilliSeconds < 100)) soundToPlay = 2;
+            else soundToPlay = 0;
+
+            // Add the sound
+            for (int i = 0; i < audio_frame.Length; i++)
+            {
+                if (soundToPlay == 1) audio_frame[i] = (short)(i * 30000); // random-ish garbage
+                else if (soundToPlay == 2) audio_frame[i] = (short)(i * 65000); // random-ish garbage
+                else audio_frame[i] = 0; // or silence CNG
+            }
+
+            // Fire the Event
+            if (ReceivedAudioFrame != null)
+            {
+                ReceivedAudioFrame((uint)stopwatch.ElapsedMilliseconds, audio_frame);
+            }
+        }
+    }
 }
