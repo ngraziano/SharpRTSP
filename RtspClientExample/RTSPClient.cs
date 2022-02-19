@@ -27,7 +27,7 @@ namespace RtspClientExample
         public delegate void Received_NALs_Delegate (List<byte[]> nal_units); // H264 or H265
         public delegate void Received_G711_Delegate (String format, List<byte[]> g711);
 		public delegate void Received_AMR_Delegate (String format, List<byte[]> amr);
-        public delegate void Received_AAC_Delegate(String format, List<byte[]> aac, uint ObjectType, uint FrequencyIndex, uint ChannelConfiguration);
+        public delegate void Received_AAC_Delegate(String format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration);
 
         public enum RTP_TRANSPORT { UDP, TCP, MULTICAST, UNKNOWN };
         public enum MEDIA_REQUEST { VIDEO_ONLY, AUDIO_ONLY, VIDEO_AND_AUDIO };
@@ -257,7 +257,6 @@ namespace RtspClientExample
         }
 
 
-        int rtp_count = 0; // used for statistics
         // RTP packet (or RTCP packet) has been received.
         public void Rtp_DataReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {

@@ -346,7 +346,7 @@
                 }
                 catch (Exception error)
                 {
-                    _logger.Error("Error during handle of request", error);
+                    _logger.Error(error, "Error during handle of request");
                     destination = request.SourcePort;
                     RtspResponse theDirectResponse = request.CreateResponse();
                     theDirectResponse.ReturnCode = 500;

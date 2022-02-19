@@ -4,11 +4,7 @@
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Update="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-  </ItemGroup>
+
   <ItemGroup>
     <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
       <Visible>False</Visible>
@@ -28,5 +24,7 @@
     </PackageReference>
     <PackageReference Include="NSubstitute" Version="4.3.0" />
     <PackageReference Include="NUnit" Version="3.13.2" />
+	  <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
+	  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.0.0" />
   </ItemGroup>
 </Project>

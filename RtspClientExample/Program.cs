@@ -173,7 +173,7 @@ namespace RtspClientExample
                     }
                 }
             };
-            c.Received_AAC += (string format, List<byte[]> aac, uint ObjectType, uint FrequencyIndex, uint ChannelConfiguration) => {
+            c.Received_AAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) => {
                 if (fs_a == null)
                 {
                     String filename = "rtsp_capture_" + now + ".aac";

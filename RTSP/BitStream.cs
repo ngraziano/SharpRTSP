@@ -54,10 +54,10 @@ namespace Rtsp
             }
         }
 
-        public uint Read(int num_bits) {
+        public int Read(int num_bits) {
             // Read and remove items from the front of the list of bits
             if (data.Count < num_bits) return 0;
-            uint result = 0;
+            int result = 0;
             for (int i = 0; i < num_bits; i++) {
                 result = result << 1;
                 result = result + data[0];

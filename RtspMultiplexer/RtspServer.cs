@@ -62,11 +62,11 @@
             }
             catch (SocketException error)
             {
-                _logger.Warn("Got an error listening, I have to handle the stopping which also throw an error", error);
+                _logger.Warn(error, "Got an error listening, I have to handle the stopping which also throw an error");
             }
             catch (Exception error)
             {
-                _logger.Error("Got an error listening...", error);
+                _logger.Error(error, "Got an error listening...");
                 throw;
             }
 

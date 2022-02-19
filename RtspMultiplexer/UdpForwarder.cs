@@ -189,7 +189,7 @@
             }
             catch (Exception error)
             {
-                _logger.Error("Error during video forwarding", error);
+                _logger.Error(error, "Error during video forwarding");
             }
         }
 

@@ -63,9 +63,9 @@ namespace Rtsp
 
     public class AACPayload
     {
-        public uint ObjectType = 0;
-        public uint FrequencyIndex = 0;
-        public uint ChannelConfiguration = 0;
+        public int ObjectType { get; set; } = 0;
+        public int FrequencyIndex { get; set; }  = 0;
+        public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
         public AACPayload(String config_string)
@@ -87,13 +87,13 @@ namespace Rtsp
             bs.AddHexString(config_string);
 
             // Read 5 bits
-            ObjectType = bs.Read(5);
+            ObjectType = (int)bs.Read(5);
 
             // Read 4 bits
-            FrequencyIndex = bs.Read(4);
+            FrequencyIndex = (int)bs.Read(4);
 
             // Read 4 bits
-            ChannelConfiguration = bs.Read(4);
+            ChannelConfiguration = (int)bs.Read(4);
         }
 
         public List<byte[]> Process_AAC_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
