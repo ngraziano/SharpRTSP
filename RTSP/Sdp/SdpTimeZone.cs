@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace Rtsp.Sdp
@@ -21,7 +18,7 @@ namespace Rtsp.Sdp
             SdpTimeZone returnValue = new SdpTimeZone();
 
             throw new NotImplementedException();
-     
+
 
             return returnValue;
         }

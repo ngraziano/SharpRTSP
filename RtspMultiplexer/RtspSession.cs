@@ -1,10 +1,10 @@
 ﻿namespace RtspMulticaster
 {
+    using Rtsp.Messages;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
     using System.Threading;
-    using Rtsp.Messages;
 
     public class RtspSession
     {
@@ -52,7 +52,7 @@
             get;
             set;
         }
-        
+
 
         private Dictionary<Uri, Forwarder> _listOfForwarder = new Dictionary<Uri, Forwarder>();
 
@@ -130,7 +130,7 @@
                 tearDownMessage.RequestTyped = RtspRequest.RequestType.TEARDOWN;
                 tearDownMessage.RtspUri = destinationUri;
                 RTSPDispatcher.Instance.Enqueue(tearDownMessage);
-            }        
+            }
             Stop();
         }
 
@@ -181,7 +181,7 @@
             Contract.Requires(uri != null);
             Contract.Requires(aSessionHeaderValue != null);
 
-            return GetSessionName(uri.Authority,aSessionHeaderValue);
+            return GetSessionName(uri.Authority, aSessionHeaderValue);
         }
 
         /// <summary>

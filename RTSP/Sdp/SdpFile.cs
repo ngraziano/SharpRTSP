@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
 using System.Globalization;
+using System.IO;
 
 namespace Rtsp.Sdp
 {
@@ -14,10 +12,10 @@ namespace Rtsp.Sdp
             string line = sdpStream.ReadLine();
 
             // end of file ?
-            if(string.IsNullOrEmpty(line))
+            if (string.IsNullOrEmpty(line))
                 return new KeyValuePair<string, string>(null, null);
 
-            
+
             string[] parts = line.Split(new char[] { '=' }, 2);
             if (parts.Length != 2)
                 throw new InvalidDataException();
@@ -45,7 +43,8 @@ namespace Rtsp.Sdp
                 returnValue.Version = int.Parse(value.Value, CultureInfo.InvariantCulture);
                 value = GetKeyValue(sdpStream);
             }
-            else {
+            else
+            {
                 throw new InvalidDataException();
             }
 
@@ -55,7 +54,8 @@ namespace Rtsp.Sdp
                 returnValue.Origin = Origin.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
-            else {
+            else
+            {
                 throw new InvalidDataException();
             }
 
@@ -67,7 +67,8 @@ namespace Rtsp.Sdp
                 returnValue.Session = value.Value;
                 value = GetKeyValue(sdpStream);
             }
-            else {
+            else
+            {
                 // throw new InvalidDataException(); // we should throw, but instead we just ignore the error
             }
 
@@ -152,7 +153,8 @@ namespace Rtsp.Sdp
 
             // Hack for MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
             // Skip over all other Key/Value pairs until the 'm=' key
-            while (value.Key != "m") {
+            while (value.Key != "m")
+            {
                 value = GetKeyValue(sdpStream);
             }
 
@@ -264,6 +266,6 @@ namespace Rtsp.Sdp
             }
 
         }
-    
+
     }
 }

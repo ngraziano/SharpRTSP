@@ -1,13 +1,11 @@
 ﻿namespace RtspMulticaster
 {
     using System;
-    using System.Collections.Generic;
-    using System.Text;
 
     class Program
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
-        
+
         static void Main(string[] args)
         {
             _logger.Info("Starting");

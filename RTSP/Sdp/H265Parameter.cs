@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 // Parse 'fmtp' attribute in SDP
 // Extract H265 fields
@@ -20,7 +19,7 @@ namespace Rtsp.Sdp
             {
                 List<byte[]> result = new List<byte[]>();
 
-                if (ContainsKey("sprop-vps")&& this["sprop-vps"] != null)
+                if (ContainsKey("sprop-vps") && this["sprop-vps"] != null)
                 {
                     result.AddRange(this["sprop-vps"].Split(',').Select(x => Convert.FromBase64String(x)));
                 }
@@ -43,7 +42,7 @@ namespace Rtsp.Sdp
             var result = new H265Parameters();
             foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
             {
-                if(!string.IsNullOrWhiteSpace(pair[0]))
+                if (!string.IsNullOrWhiteSpace(pair[0]))
                     result[pair[0]] = pair.Length > 1 ? pair[1] : null;
             }
             return result;

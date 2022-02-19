@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using NSubstitute;
+﻿using NSubstitute;
 using NUnit.Framework;
-using Rtsp.Messages;
-using System.IO;
 using NUnit.Framework.Constraints;
+using Rtsp.Messages;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 
 namespace Rtsp.Tests
 {
@@ -354,7 +353,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.SendData(data.Channel, data.Data);
-            
+
             var result = stream.GetBuffer();
 
             int index = 0;
@@ -392,7 +391,7 @@ namespace Rtsp.Tests
             data.Data = new byte[dataLenght];
 
 
-            ActualValueDelegate<object> test = () => testedListener.BeginSendData(data,null,null);
+            ActualValueDelegate<object> test = () => testedListener.BeginSendData(data, null, null);
             Assert.That(test, Throws.InstanceOf<ArgumentException>());
 
         }

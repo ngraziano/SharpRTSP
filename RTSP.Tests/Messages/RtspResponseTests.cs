@@ -1,9 +1,4 @@
 ﻿using NUnit.Framework;
-using Rtsp.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Rtsp.Messages.Tests
 {
@@ -52,7 +47,7 @@ namespace Rtsp.Messages.Tests
             RtspResponse testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
-            
+
             Assert.AreEqual("12345", testObject.Session);
             Assert.AreEqual(33, testObject.Timeout);
 

@@ -88,8 +88,10 @@ public class TinyH264Encoder
         foreach (byte b in slice_header) nal.Add(b);
 
         // Add each macro block
-        for (int i = 0; i < (height / 16); i++) {
-            for (int j = 0; j < (width / 16); j++) {
+        for (int i = 0; i < (height / 16); i++)
+        {
+            for (int j = 0; j < (width / 16); j++)
+            {
                 macroblock(i, j, yuv_data);
             }
         }

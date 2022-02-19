@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Diagnostics.Contracts;
-using System.Globalization;
 
 namespace Rtsp
 {
@@ -59,7 +59,7 @@ namespace Rtsp
         {
             get
             {
-                return string.Format(CultureInfo.InvariantCulture,"{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+                return string.Format(CultureInfo.InvariantCulture, "{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
             }
         }
 

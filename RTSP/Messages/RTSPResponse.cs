@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Globalization;
+using System.Linq;
 
 namespace Rtsp.Messages
 {
@@ -179,11 +177,11 @@ namespace Rtsp.Messages
             }
             set
             {
-                if(Headers.ContainsKey(RtspHeaderNames.Session))
+                if (Headers.ContainsKey(RtspHeaderNames.Session))
                     if (value != DEFAULT_TIMEOUT)
                     {
-                        
-                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First() 
+
+                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First()
                             + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
                     }
                     else
@@ -209,7 +207,7 @@ namespace Rtsp.Messages
             }
             set
             {
-                if(Timeout != DEFAULT_TIMEOUT)
+                if (Timeout != DEFAULT_TIMEOUT)
                 {
                     Headers[RtspHeaderNames.Session] = value + ";timeout=" + Timeout.ToString(CultureInfo.InvariantCulture);
                 }

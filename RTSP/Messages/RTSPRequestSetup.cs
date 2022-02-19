@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Rtsp.Messages
 {
@@ -34,7 +31,7 @@ namespace Rtsp.Messages
         public void AddTransport(RtspTransport newTransport)
         {
             string actualTransport = string.Empty;
-            if(Headers.ContainsKey(RtspHeaderNames.Transport))
+            if (Headers.ContainsKey(RtspHeaderNames.Transport))
                 actualTransport = Headers[RtspHeaderNames.Transport] + ",";
             Headers[RtspHeaderNames.Transport] = actualTransport + newTransport.ToString();
 

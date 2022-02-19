@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics.Contracts;
-using System.Globalization;
+using System.Text;
 
 namespace Rtsp.Messages
 {
@@ -162,7 +159,7 @@ mode                =    <"> *Method <"> | Method
         /// </summary>
         /// <value>The mode.</value>
         public string Mode { get; set; }
-        
+
         /// <summary>
         /// Parses the specified transport string.
         /// </summary>
@@ -205,11 +202,11 @@ mode                =    <"> *Method <"> | Method
                             returnValue.Source = subPart[1];
                         break;
                     case "INTERLEAVED":
-                    	returnValue.IsMulticast = false;
+                        returnValue.IsMulticast = false;
                         if (subPart.Length < 2)
                             throw new ArgumentException("interleaved value invalid", "aTransportString");
 
-                        returnValue.Interleaved =  PortCouple.Parse(subPart[1]);
+                        returnValue.Interleaved = PortCouple.Parse(subPart[1]);
                         break;
                     case "APPEND":
                         returnValue.IsAppend = true;

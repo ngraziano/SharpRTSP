@@ -1,5 +1,4 @@
 ﻿using RtspMulticaster;
-using System;
 using System.Collections.Generic;
 
 public class RtspPushDescription
@@ -43,7 +42,7 @@ public class RtspPushDescription
     public Forwarder GetForwarderFor(string path)
     {
         // TODO change to return only info and not all forwarder
-       return forwarders[path];
+        return forwarders[path];
     }
 
     public void Start(string session)
@@ -51,7 +50,7 @@ public class RtspPushDescription
         // TODO better session management
         if (pushSession != session)
             throw new System.Exception("Invalid state");
-        foreach(var forwarder in forwarders.Values)
+        foreach (var forwarder in forwarders.Values)
         {
             forwarder.Start();
         }

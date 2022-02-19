@@ -1,11 +1,7 @@
-﻿using Rtsp.Messages;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Security.Cryptography;
 
 namespace RtspClientExample
 {
@@ -14,7 +10,7 @@ namespace RtspClientExample
         static void Main(string[] args)
         {
             // Internet Test - Big Buck Bunney
-             String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
@@ -61,14 +57,17 @@ namespace RtspClientExample
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
-            c.Received_SPS_PPS += (byte[] sps, byte[] pps) => {
+            c.Received_SPS_PPS += (byte[] sps, byte[] pps) =>
+            {
                 h264 = true;
-                if (fs_v == null) {
+                if (fs_v == null)
+                {
                     String filename = "rtsp_capture_" + now + ".264";
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
 
-                if (fs_v != null) {
+                if (fs_v != null)
+                {
                     fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
                     fs_v.Write(sps, 0, sps.Length);
                     fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
@@ -77,7 +76,8 @@ namespace RtspClientExample
                 }
             };
 
-            c.Received_VPS_SPS_PPS += (byte[] vps, byte[] sps, byte[] pps) => {
+            c.Received_VPS_SPS_PPS += (byte[] vps, byte[] sps, byte[] pps) =>
+            {
                 h265 = true;
                 if (fs_v == null)
                 {
@@ -100,13 +100,16 @@ namespace RtspClientExample
 
 
             // Video NALs. May also include the SPS and PPS in-band for H264
-            c.Received_NALs += (List<byte[]> nal_units) => {
-                if (fs_v != null) {
+            c.Received_NALs += (List<byte[]> nal_units) =>
+            {
+                if (fs_v != null)
+                {
                     foreach (byte[] nal_unit in nal_units)
                     {
                         // Output some H264 stream information
-                        if (h264 && nal_unit.Length > 0) {
-                            int nal_ref_idc  = (nal_unit[0] >> 5) & 0x03;
+                        if (h264 && nal_unit.Length > 0)
+                        {
+                            int nal_ref_idc = (nal_unit[0] >> 5) & 0x03;
                             int nal_unit_type = nal_unit[0] & 0x1F;
                             String description = "";
                             if (nal_unit_type == 1) description = "NON IDR NAL";
@@ -141,39 +144,49 @@ namespace RtspClientExample
                 }
             };
 
-            c.Received_G711 += (string format, List<byte[]> g711) => {
-                if (fs_a == null && format.Equals("PCMU")) {
+            c.Received_G711 += (string format, List<byte[]> g711) =>
+            {
+                if (fs_a == null && format.Equals("PCMU"))
+                {
                     String filename = "rtsp_capture_" + now + ".ul";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
-                if (fs_a == null && format.Equals("PCMA")) {
+                if (fs_a == null && format.Equals("PCMA"))
+                {
                     String filename = "rtsp_capture_" + now + ".al";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
-                if (fs_a != null) {
-                    foreach (byte[] data in g711) {
+                if (fs_a != null)
+                {
+                    foreach (byte[] data in g711)
+                    {
                         fs_a.Write(data, 0, data.Length);
                     }
                 }
             };
 
-            c.Received_AMR += (string format, List<byte[]> amr) => {
-                if (fs_a == null && format.Equals("AMR")) {
+            c.Received_AMR += (string format, List<byte[]> amr) =>
+            {
+                if (fs_a == null && format.Equals("AMR"))
+                {
                     String filename = "rtsp_capture_" + now + ".amr";
                     fs_a = new FileStream(filename, FileMode.Create);
-                    byte[] header = new byte[]{0x23,0x21,0x41,0x4D,0x52,0x0A}; // #!AMR<0x0A>
-                    fs_a.Write(header,0,header.Length);
+                    byte[] header = new byte[] { 0x23, 0x21, 0x41, 0x4D, 0x52, 0x0A }; // #!AMR<0x0A>
+                    fs_a.Write(header, 0, header.Length);
                 }
 
-                if (fs_a != null) {
-                    foreach (byte[] data in amr) {
+                if (fs_a != null)
+                {
+                    foreach (byte[] data in amr)
+                    {
                         fs_a.Write(data, 0, data.Length);
                     }
                 }
             };
-            c.Received_AAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) => {
+            c.Received_AAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) =>
+            {
                 if (fs_a == null)
                 {
                     String filename = "rtsp_capture_" + now + ".aac";
@@ -186,30 +199,30 @@ namespace RtspClientExample
                     {
                         // ASDT header format
                         int protection_absent = 1;
-//                        int profile = 2; // Profile 2 = AAC Low Complexity (LC)
-//                        int sample_freq = 4; // 4 = 44100 Hz
-//                        int channel_config = 2; // 2 = Stereo
+                        //                        int profile = 2; // Profile 2 = AAC Low Complexity (LC)
+                        //                        int sample_freq = 4; // 4 = 44100 Hz
+                        //                        int channel_config = 2; // 2 = Stereo
 
                         Rtsp.BitStream bs = new Rtsp.BitStream();
-                        bs.AddValue(0xFFF,12); // (a) Start of data
-                        bs.AddValue(0,1); // (b) Version ID, 0 = MPEG4
-                        bs.AddValue(0,2); // (c) Layer always 2 bits set to 0
-                        bs.AddValue(protection_absent,1); // (d) 1 = No CRC
-                        bs.AddValue((int)ObjectType-1,2); // (e) MPEG Object Type / Profile, minus 1
-                        bs.AddValue((int)FrequencyIndex,4); // (f)
+                        bs.AddValue(0xFFF, 12); // (a) Start of data
+                        bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
+                        bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
+                        bs.AddValue(protection_absent, 1); // (d) 1 = No CRC
+                        bs.AddValue((int)ObjectType - 1, 2); // (e) MPEG Object Type / Profile, minus 1
+                        bs.AddValue((int)FrequencyIndex, 4); // (f)
                         bs.AddValue(0, 1); // (g) private bit. Always zero
-                        bs.AddValue((int)ChannelConfiguration,3); // (h)
-                        bs.AddValue(0,1); // (i) originality
-                        bs.AddValue(0,1); // (j) home
-                        bs.AddValue(0,1); // (k) copyrighted id
-                        bs.AddValue(0,1); // (l) copyright id start
-                        bs.AddValue(data.Length + 7,13); // (m) AAC data + size of the ASDT header
-                        bs.AddValue(2047,11); // (n) buffer fullness ???
+                        bs.AddValue((int)ChannelConfiguration, 3); // (h)
+                        bs.AddValue(0, 1); // (i) originality
+                        bs.AddValue(0, 1); // (j) home
+                        bs.AddValue(0, 1); // (k) copyrighted id
+                        bs.AddValue(0, 1); // (l) copyright id start
+                        bs.AddValue(data.Length + 7, 13); // (m) AAC data + size of the ASDT header
+                        bs.AddValue(2047, 11); // (n) buffer fullness ???
                         int num_acc_frames = 1;
-                        bs.AddValue(num_acc_frames-1,1); // (o) num of AAC Frames, minus 1
+                        bs.AddValue(num_acc_frames - 1, 1); // (o) num of AAC Frames, minus 1
 
                         // If Protection was On, there would be a 16 bit CRC
-                        if (protection_absent == 0) bs.AddValue(0xABCD /*CRC*/,16); // (p)
+                        if (protection_absent == 0) bs.AddValue(0xABCD /*CRC*/, 16); // (p)
 
                         byte[] header = bs.ToArray();
 
@@ -231,7 +244,8 @@ namespace RtspClientExample
             Console.WriteLine("Press ENTER to exit");
 
             String readline = null;
-            while (readline == null && c.StreamingFinished() == false) {
+            while (readline == null && c.StreamingFinished() == false)
+            {
                 readline = Console.ReadLine();
 
                 // Avoid maxing out CPU on systems that instantly return null for ReadLine

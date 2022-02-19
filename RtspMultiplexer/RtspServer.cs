@@ -1,15 +1,15 @@
 ﻿namespace RtspMulticaster
 {
+    using Rtsp;
     using System;
     using System.Diagnostics.Contracts;
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
-    using Rtsp;
-    
+
     public class RtspServer : IDisposable
     {
-        
+
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
 
@@ -38,7 +38,7 @@
         public void StartListen()
         {
             _RTSPServerListener.Start();
-            
+
             _Stopping = new ManualResetEvent(false);
             _ListenTread = new Thread(new ThreadStart(AcceptConnection));
             _ListenTread.Start();

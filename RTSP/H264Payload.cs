@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 
 namespace Rtsp
@@ -25,7 +24,8 @@ namespace Rtsp
         {
         }
 
-        public List<byte[]> Process_H264_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
+        public List<byte[]> Process_H264_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        {
 
             // Add to the list of payloads for the current Frame of video
             temporary_rtp_payloads.Add(rtp_payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame

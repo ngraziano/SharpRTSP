@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Rtsp.Messages;
 using System.Diagnostics.Contracts;
+using System.Text;
 
 namespace RtspMulticaster
 {

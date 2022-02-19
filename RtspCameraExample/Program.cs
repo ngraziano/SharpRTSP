@@ -25,7 +25,7 @@ namespace RtspCameraExample
             RtspServer rtspServer = null;
             SimpleH264Encoder h264_encoder = null;
             SimpleG711Encoder ulaw_encoder = null;
-            
+
             byte[] raw_sps = null;
             byte[] raw_pps = null;
 
@@ -44,7 +44,7 @@ namespace RtspCameraExample
                 //   2) A H264 Encoder to convert the YUV video into NALs
                 //   3) A G.711 u-Law audio encoder to convert PCM audio into G711 data
                 //   4) A YUV Video Source and PCM Audo Souce (in this case I use a dummy Test Card)
-                
+
                 /////////////////////////////////////////
                 // Step 1 - Start the RTSP Server
                 /////////////////////////////////////////
@@ -152,7 +152,7 @@ namespace RtspCameraExample
             {
                 // Compress the audio into G711 and feed into the RTSP Server
                 byte[] g711_data = ulaw_encoder.EncodeULaw(audio_frame);
-                
+
                 // Pass the audio data into the RTSP Server
                 rtspServer.FeedInAudioPacket(timestamp_ms, g711_data);
             }

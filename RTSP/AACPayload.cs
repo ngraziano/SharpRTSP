@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 
 namespace Rtsp
 {
@@ -64,7 +63,7 @@ namespace Rtsp
     public class AACPayload
     {
         public int ObjectType { get; set; } = 0;
-        public int FrequencyIndex { get; set; }  = 0;
+        public int FrequencyIndex { get; set; } = 0;
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
@@ -96,7 +95,8 @@ namespace Rtsp
             ChannelConfiguration = (int)bs.Read(4);
         }
 
-        public List<byte[]> Process_AAC_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
+        public List<byte[]> Process_AAC_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        {
 
             // RTP Payload for MPEG4-GENERIC can consist of multple blocks.
             // Each block has 3 parts
@@ -109,7 +109,8 @@ namespace Rtsp
 
             int ptr = 0;
 
-            while (true) {
+            while (true)
+            {
                 if (ptr + 4 > rtp_payload.Length) break; // 2 bytes for AU Header Length, 2 bytes of AU Header payload
 
                 // Get Size of the AU Header
@@ -118,8 +119,8 @@ namespace Rtsp
                 ptr += 2;
 
                 // Examine the AU Header. Get the size of the AAC data
-                int aac_frame_size = (((rtp_payload[ptr] << 8) + (rtp_payload[ptr+1] << 0)) >> 3); // 13 bits
-                int aac_index_delta = rtp_payload[ptr+1] & 0x03; // 3 bits
+                int aac_frame_size = (((rtp_payload[ptr] << 8) + (rtp_payload[ptr + 1] << 0)) >> 3); // 13 bits
+                int aac_index_delta = rtp_payload[ptr + 1] & 0x03; // 3 bits
                 ptr += au_headers_length;
 
                 // extract the AAC block

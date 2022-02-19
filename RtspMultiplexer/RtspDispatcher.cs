@@ -1,5 +1,7 @@
 ﻿namespace RtspMulticaster
 {
+    using Rtsp;
+    using Rtsp.Messages;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -9,8 +11,6 @@
     using System.Net;
     using System.Text;
     using System.Threading;
-    using Rtsp;
-    using Rtsp.Messages;
 
     /// <summary>
     /// This class handle the rewrite and dispatchin of RTSP messages
@@ -161,10 +161,10 @@
             {
                 destination = HandleRequest(ref message);
                 _logger.Debug("Dispatch message from {0} to {1}",
-                    message.SourcePort != null ? message.SourcePort.RemoteAdress : "UNKNOWN",destination != null ? destination.RemoteAdress : "UNKNOWN" );
+                    message.SourcePort != null ? message.SourcePort.RemoteAdress : "UNKNOWN", destination != null ? destination.RemoteAdress : "UNKNOWN");
 
                 // HandleRequest can change message type.
-                if(message is RtspRequest)
+                if (message is RtspRequest)
                 {
                     var context = new OriginContext();
                     context.OriginCSeq = message.CSeq;
@@ -191,7 +191,7 @@
                 }
 
                 HandleResponse(response);
-                
+
             }
 
             if (destination != null)
@@ -298,15 +298,15 @@
                     {
                         message = HandleRequestSetup(ref destination, requestSetup);
                     }
-                    
+
                     //Handle Play Reques
                     RtspRequestPlay requestPlay = request as RtspRequestPlay;
                     if (requestPlay != null)
                     {
                         message = HandleRequestPlay(ref destination, requestPlay);
                     }
-                    
-                    
+
+
 
                     //Update session state and handle special message
                     if (request.Session != null && request.RtspUri != null)
@@ -320,8 +320,8 @@
                             {
                                 // start here to start early
                                 //case RtspRequest.RequestType.PLAY:
-                                  // _activesSession[sessionKey].Start(request.SourcePort.RemoteAdress); 
-                                 //   break;
+                                // _activesSession[sessionKey].Start(request.SourcePort.RemoteAdress); 
+                                //   break;
                                 case RtspRequest.RequestType.TEARDOWN:
                                     _activesSession[sessionKey].Stop(request.SourcePort.RemoteAdress);
                                     if (!_activesSession[sessionKey].IsNeeded)
@@ -371,7 +371,7 @@
             RtspRequest request = message as RtspRequest;
             RtspResponse theDirectResponse;
 
-   
+
 
             switch (request.RequestTyped)
             {
@@ -396,7 +396,7 @@
                     theDirectResponse.ReturnCode = 400;
                     break;
             }
-            
+
             message = theDirectResponse;
             return destination;
         }
@@ -583,16 +583,16 @@
             // Configured the transport asked.
             forwarder.ForwardHostCommand = destination.RemoteAdress.Split(':')[0];
             RtspTransport firstNewTransport = new RtspTransport()
-                {
-                    IsMulticast = false,
-                    ClientPort = new PortCouple(forwarder.ListenVideoPort, forwarder.FromForwardCommandPort),
-                };
+            {
+                IsMulticast = false,
+                ClientPort = new PortCouple(forwarder.ListenVideoPort, forwarder.FromForwardCommandPort),
+            };
 
             RtspTransport secondTransport = new RtspTransport()
-                {
-                    IsMulticast = false,
-                    LowerTransport = RtspTransport.LowerTransportType.TCP,
-                };
+            {
+                IsMulticast = false,
+                LowerTransport = RtspTransport.LowerTransportType.TCP,
+            };
 
             requestSetup.Headers[RtspHeaderNames.Transport] = firstNewTransport.ToString() + ", " + secondTransport.ToString();
             requestSetup.Headers[RtspHeaderNames.Transport] = firstNewTransport.ToString();// +", " + secondTransport.ToString();
@@ -621,7 +621,7 @@
             {
 
                 RtspSession session = _activesSession[sessionKey];
-                
+
                 // si on est dèjà en play on n'envoie pas la commande a la source.
                 if (session.State == RtspSession.SessionState.Playing)
                 {
@@ -721,8 +721,8 @@
 
             // voir a mettre dans la message....
             string curentSession = message.Session != null ? message.Session : message.OriginalRequest.Session;
-            
-                
+
+
 
             //Update session state and handle special message
             string sessionKey = RtspSession.GetSessionName(message.OriginalRequest.RtspUri, curentSession);

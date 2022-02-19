@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Rtsp.Sdp
 {
@@ -31,10 +28,12 @@ namespace Rtsp.Sdp
         {
             get
             {
-                if(string.IsNullOrEmpty(EncodingParameters))
+                if (string.IsNullOrEmpty(EncodingParameters))
                 {
                     return string.Format("{0} {1}/{2}", PayloadNumber, EncodingName, ClockRate);
-                } else {
+                }
+                else
+                {
                     return string.Format("{0} {1}/{2}/{3}", PayloadNumber, EncodingName, ClockRate, EncodingParameters);
                 }
             }
@@ -53,7 +52,8 @@ namespace Rtsp.Sdp
         {
             var parts = value.Split(new char[] { ' ', '/' });
 
-            if (parts.Length >= 1) {
+            if (parts.Length >= 1)
+            {
                 int tmp_payloadNumber;
                 if (int.TryParse(parts[0], out tmp_payloadNumber))
                 {

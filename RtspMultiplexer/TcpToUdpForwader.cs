@@ -1,12 +1,12 @@
 ﻿namespace RtspMulticaster
 {
+    using Rtsp;
+    using Rtsp.Messages;
     using System;
     using System.Diagnostics.Contracts;
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
-    using Rtsp;
-    using Rtsp.Messages;
 
     public class TCPtoUDPForwader : Forwarder
     {
@@ -96,7 +96,7 @@
                 do
                 {
                     frame = ListenCUdpPort.Receive(ref udpEndPoint);
-                    ForwardCommand.BeginSendData(ForwardInterleavedCommand, frame, new AsyncCallback(EndSendCommand),frame);
+                    ForwardCommand.BeginSendData(ForwardInterleavedCommand, frame, new AsyncCallback(EndSendCommand), frame);
                 }
                 while (true);
                 //The break of the loop is made by close wich raise an exception

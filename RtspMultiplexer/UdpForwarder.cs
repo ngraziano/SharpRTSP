@@ -6,7 +6,7 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
-    
+
     public class UDPForwarder : Forwarder
     {
         private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
@@ -212,7 +212,7 @@
             }
             else
             {
-                _logger.Debug(CultureInfo.InvariantCulture,"Forward Command from {0} => {1}:{2}", ListenCommandPort, ForwardHostCommand, ForwardPortCommand);
+                _logger.Debug(CultureInfo.InvariantCulture, "Forward Command from {0} => {1}:{2}", ListenCommandPort, ForwardHostCommand, ForwardPortCommand);
             }
 
             byte[] frame;

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using NUnit.Framework;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using NUnit.Framework;
-using Rtsp.Sdp;
 
 namespace Rtsp.Sdp.Tests
 {
@@ -49,7 +45,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.AreEqual("Teleste MPH H.264 Encoder - HK01121135", readenSDP.SessionInformation);
                 Assert.AreEqual(1, readenSDP.Connection.NumberOfAddress, "Number of address");
                 Assert.IsInstanceOf<ConnectionIP4>(readenSDP.Connection);
-                Assert.AreEqual(16,(readenSDP.Connection as ConnectionIP4).Ttl);
+                Assert.AreEqual(16, (readenSDP.Connection as ConnectionIP4).Ttl);
                 Assert.AreEqual(1, readenSDP.Timings.Count);
                 //Assert.Fail("Timing not well implemented...");
                 Assert.AreEqual(1, readenSDP.Medias.Count);

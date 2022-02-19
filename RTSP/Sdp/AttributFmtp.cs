@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Rtsp.Sdp
 {
@@ -47,11 +46,11 @@ namespace Rtsp.Sdp
             var parts = value.Split(new char[] { ' ' }, 2);
 
             int payloadNumber;
-            if(int.TryParse(parts[0], out payloadNumber))
+            if (int.TryParse(parts[0], out payloadNumber))
             {
                 this.PayloadNumber = payloadNumber;
             }
-            if(parts.Length > 1)
+            if (parts.Length > 1)
             {
                 FormatParameter = parts[1];
 
@@ -59,7 +58,8 @@ namespace Rtsp.Sdp
                 // Then Trim each item and then Split on the first '='
                 // Add them to the dictionary
                 parameters.Clear();
-                foreach (var pair in parts[1].Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2))) {
+                foreach (var pair in parts[1].Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
+                {
                     if (!string.IsNullOrWhiteSpace(pair[0]))
                         parameters[pair[0]] = pair.Length > 1 ? pair[1] : null;
                 }

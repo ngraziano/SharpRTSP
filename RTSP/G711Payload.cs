@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 
 namespace Rtsp
 {
@@ -14,8 +12,9 @@ namespace Rtsp
         {
         }
 
-        public List<byte[]> Process_G711_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
-            
+        public List<byte[]> Process_G711_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        {
+
             List<byte[]> audio_data = new List<byte[]>();
             audio_data.Add(rtp_payload);
 
@@ -23,7 +22,8 @@ namespace Rtsp
         }
 
         /* Untested - used with G711.1 and PCMA-WB and PCMU-WB Codec Names */
-        public List<byte[]> Process_G711_1_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
+        public List<byte[]> Process_G711_1_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        {
 
             // Look at the Header. This tells us the G711 mode being used
 
@@ -36,7 +36,8 @@ namespace Rtsp
             byte mode_index = (byte)(rtp_payload[0] & 0x07);
 
             int size_of_one_frame = 0; // will be in bytes
-            switch (mode_index) {
+            switch (mode_index)
+            {
                 case 1: size_of_one_frame = 40; break;
                 case 2: size_of_one_frame = 50; break;
                 case 3: size_of_one_frame = 50; break;
@@ -53,9 +54,10 @@ namespace Rtsp
 
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
-            while (frame_start + size_of_one_frame < rtp_payload.Length) {
+            while (frame_start + size_of_one_frame < rtp_payload.Length)
+            {
                 byte[] layer_0_audio = new byte[40];
-                System.Array.Copy(rtp_payload,frame_start,layer_0_audio,0,40); // 40 octets in Layer 0 data
+                System.Array.Copy(rtp_payload, frame_start, layer_0_audio, 0, 40); // 40 octets in Layer 0 data
                 audio_data.Add(layer_0_audio);
 
                 frame_start += size_of_one_frame;

@@ -1,9 +1,9 @@
 ﻿namespace RtspMulticaster
 {
     using System;
+    using System.Net;
     using System.Net.Sockets;
     using System.Threading;
-    using System.Net;
 
     /// <summary>
     /// This class is the base class for video and control packet fowarder
@@ -44,12 +44,12 @@
         /// Forward UDP port (send data from this port)
         /// </summary>
         protected UdpClient ForwardVUdpPort
-            { get; private set; }
+        { get; private set; }
         /// <summary>
         /// Listen UDP port (receive data on this port)
         /// </summary>
         protected UdpClient ListenCUdpPort
-            { get; private set; }
+        { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Forwarder"/> class.

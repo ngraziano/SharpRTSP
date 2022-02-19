@@ -66,8 +66,8 @@ public class SimpleH264Encoder
         // copy over the YUV image
         System.Array.Copy(yuv_data, image, image.Length);
 
-//        // HACK. Set the YUV pixels all to 127
-//        for (int hack = 0; hack < image.Length; hack++) image[hack] = 127;
+        //        // HACK. Set the YUV pixels all to 127
+        //        for (int hack = 0; hack < image.Length; hack++) image[hack] = 127;
 
         h264encoder.CodeAndSaveFrame();
 

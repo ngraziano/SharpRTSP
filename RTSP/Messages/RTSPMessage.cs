@@ -88,24 +88,24 @@
                 if (value == null)
                     commandArray = new string[] { String.Empty };
                 else
-                    commandArray = value.Split(new char[] {' '}, 3);
+                    commandArray = value.Split(new char[] { ' ' }, 3);
             }
         }
 
 
-		/// <summary>
+        /// <summary>
         /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
         /// </summary>
         /// <value>The Method</value>
         public string Method
-		{
-			get
-			{
-				if (commandArray == null)
-					return string.Empty;
-				return commandArray[0];
-			}
-		}
+        {
+            get
+            {
+                if (commandArray == null)
+                    return string.Empty;
+                return commandArray[0];
+            }
+        }
 
 
         /// <summary>
@@ -183,7 +183,7 @@
                 _headers["Session"] = value;
             }
         }
-        
+
         /// <summary>
         /// Initialises the length of the data byte array from content lenth header.
         /// </summary>
@@ -244,14 +244,15 @@
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
-            lock(stream) {
+            lock (stream)
+            {
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
                 if (Data.Length > 0)
                     stream.Write(Data, 0, Data.Length);
 
-                }
+            }
             stream.Flush();
         }
 

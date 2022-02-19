@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Globalization;
-using System.Net;
 
 namespace Rtsp.Sdp
 {
@@ -26,7 +22,7 @@ namespace Rtsp.Sdp
 
         public static Connection Parse(string value)
         {
-            if(value ==null)
+            if (value == null)
                 throw new ArgumentNullException("value");
 
             string[] parts = value.Split(' ');
@@ -46,7 +42,7 @@ namespace Rtsp.Sdp
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Address type {0} not suported", parts[1]));
             }
-            
+
         }
     }
 }

@@ -1,9 +1,7 @@
 ﻿namespace Rtsp.Sdp
 {
     using System;
-    using System.Collections.Generic;
     using System.Globalization;
-    using System.Net;
 
     public class ConnectionIP4 : Connection
     {

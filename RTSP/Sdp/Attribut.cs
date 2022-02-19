@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Rtsp.Sdp
 {
@@ -20,13 +19,13 @@ namespace Rtsp.Sdp
 
         public static void RegisterNewAttributeType(string key, Type attributType)
         {
-            if(!attributType.IsSubclassOf(typeof(Attribut)))
-                throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut","attributType");
+            if (!attributType.IsSubclassOf(typeof(Attribut)))
+                throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut", "attributType");
 
             attributMap[key] = attributType;
         }
 
-        
+
 
         public Attribut()
         {
@@ -40,13 +39,13 @@ namespace Rtsp.Sdp
 
         public static Attribut ParseInvariant(string value)
         {
-            if(value == null)
+            if (value == null)
                 throw new ArgumentNullException("value");
 
             Contract.EndContractBlock();
 
-            var listValues = value.Split(new char[] {':'}, 2);
-            
+            var listValues = value.Split(new char[] { ':' }, 2);
+
 
             Attribut returnValue;
 
@@ -73,6 +72,6 @@ namespace Rtsp.Sdp
             Value = value;
         }
 
-        
+
     }
 }

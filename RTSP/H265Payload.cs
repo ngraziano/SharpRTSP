@@ -33,7 +33,8 @@ namespace Rtsp
             this.has_donl = has_donl;
         }
 
-        public List<byte[]> Process_H265_RTP_Packet(byte[] rtp_payload, int rtp_marker) {
+        public List<byte[]> Process_H265_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        {
 
             // Add payload to the List of payloads for the current Frame of Video
             // ie all the payloads with M=0 up to the final payload where M=1
@@ -180,10 +181,13 @@ namespace Rtsp
                         // Middle part of Fragment
                         // Append this payload to the fragmented_nal
 
-                        if (has_donl) {
+                        if (has_donl)
+                        {
                             // start copying after the DONL data
                             fragmented_nal.Write(rtp_payloads[payload_index], 5, rtp_payloads[payload_index].Length - 5);
-                        } else {
+                        }
+                        else
+                        {
                             // there is no DONL data
                             fragmented_nal.Write(rtp_payloads[payload_index], 3, rtp_payloads[payload_index].Length - 3);
                         }
@@ -208,7 +212,8 @@ namespace Rtsp
                         nal_units.Add(fragmented_nal.ToArray());
                     }
                 }
-                else {
+                else
+                {
                     Console.WriteLine("Unknown Payload Header Type = " + payload_header_type);
                 }
             }

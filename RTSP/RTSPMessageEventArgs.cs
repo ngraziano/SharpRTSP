@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Rtsp
 {
@@ -9,7 +6,7 @@ namespace Rtsp
     /// <summary>
     /// Event args containing information for message events.
     /// </summary>
-    public class RtspChunkEventArgs :EventArgs
+    public class RtspChunkEventArgs : EventArgs
     {
 
         /// <summary>

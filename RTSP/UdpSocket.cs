@@ -214,8 +214,9 @@ namespace Rtsp
         /// <summary>
         /// Write to the RTP Data Port
         /// </summary>
-        public void Write_To_Data_Port(byte[] data, String hostname, int port) {
-            data_socket.Send(data,data.Length, hostname, port);
+        public void Write_To_Data_Port(byte[] data, String hostname, int port)
+        {
+            data_socket.Send(data, data.Length, hostname, port);
         }
 
         /// <summary>

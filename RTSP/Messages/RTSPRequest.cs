@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics;
 
 namespace Rtsp.Messages
@@ -86,21 +83,21 @@ namespace Rtsp.Messages
                 case RequestType.RECORD:
                     returnValue = new RtspRequestRecord();
                     break;
-                    /*
-                case RequestType.REDIRECT:
-                    break;
-                
-                case RequestType.SET_PARAMETER:
-                    break;
-                     */
+                /*
+            case RequestType.REDIRECT:
+                break;
+
+            case RequestType.SET_PARAMETER:
+                break;
+                 */
                 case RequestType.UNKNOWN:
                 default:
                     returnValue = new RtspRequest();
                     break;
-            } 
+            }
 
 
-             
+
             return returnValue;
         }
 
@@ -155,7 +152,7 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (commandArray.Length < 2 || commandArray[1]=="*")
+                if (commandArray.Length < 2 || commandArray[1] == "*")
                     return null;
                 if (_RtspUri == null)
                     Uri.TryCreate(commandArray[1], UriKind.Absolute, out _RtspUri);
@@ -183,7 +180,7 @@ namespace Rtsp.Messages
             returnValue.CSeq = this.CSeq;
             if (this.Headers.ContainsKey(RtspHeaderNames.Session))
             {
-                returnValue.Headers[RtspHeaderNames.Session] = this.Headers[RtspHeaderNames.Session]; 
+                returnValue.Headers[RtspHeaderNames.Session] = this.Headers[RtspHeaderNames.Session];
             }
 
             return returnValue;

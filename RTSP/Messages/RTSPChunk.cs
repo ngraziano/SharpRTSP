@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Rtsp.Messages
 {
@@ -46,7 +43,7 @@ namespace Rtsp.Messages
         /// Nouvel objet qui est une copie de cette instance.
         /// </returns>
         public abstract object Clone();
-        
+
         #endregion
     }
 }
