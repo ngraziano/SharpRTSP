@@ -18,7 +18,7 @@ namespace Rtsp.Sdp.Tests
         public void Read1()
         {
 
-            using (var sdpFile = selfAssembly.GetManifestResourceStream("Rtsp.Tests.Sdp.Data.test1.sdp"))
+            using (var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test1.sdp"))
             using (TextReader testReader = new StreamReader(sdpFile))
             {
                 SdpFile readenSDP = SdpFile.Read(testReader);
@@ -33,7 +33,7 @@ namespace Rtsp.Sdp.Tests
         public void Read2()
         {
 
-            using (var sdpFile = selfAssembly.GetManifestResourceStream("Rtsp.Tests.Sdp.Data.test2.sdp"))
+            using (var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test2.sdp"))
             using (TextReader testReader = new StreamReader(sdpFile))
             {
                 SdpFile readenSDP = SdpFile.Read(testReader);
@@ -79,7 +79,7 @@ namespace Rtsp.Sdp.Tests
         public void Read3()
         {
 
-            using (var sdpFile = selfAssembly.GetManifestResourceStream("Rtsp.Tests.Sdp.Data.test3.sdp"))
+            using (var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test3.sdp"))
             using (TextReader testReader = new StreamReader(sdpFile))
             {
                 SdpFile readenSDP = SdpFile.Read(testReader);
