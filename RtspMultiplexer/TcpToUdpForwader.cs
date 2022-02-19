@@ -125,7 +125,7 @@
             }
             catch (Exception error)
             {
-                _logger.Error("Error during command forwarding", error);
+                _logger.Error(error, "Error during command forwarding");
             }
         }
 
@@ -155,7 +155,7 @@
             catch (Exception error)
             {
 
-                _logger.Warn("Error during frame forwarding", error);
+                _logger.Warn(error, "Error during frame forwarding");
             }
         }
 
@@ -173,7 +173,7 @@
             }
             catch (Exception error)
             {
-                _logger.Error("Error during video forwarding", error);
+                _logger.Error(error, "Error during video forwarding");
             }
         }
     }

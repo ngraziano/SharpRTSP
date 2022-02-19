@@ -191,11 +191,11 @@
             }
             catch (ObjectDisposedException error)
             {
-                _logger.Warn("Object Disposed", error);
+                _logger.Warn(error, "Object Disposed");
             }
             catch (Exception error)
             {
-                _logger.Warn("Unknow Error", error);
+                _logger.Warn(error, "Unknow Error");
 //                throw;
             }
 

@@ -254,7 +254,7 @@
             }
             catch (Exception error)
             {
-                _logger.Error("Error during command forwarding", error);
+                _logger.Error(error, "Error during command forwarding");
             }
         }
 
