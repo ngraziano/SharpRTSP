@@ -1,4 +1,5 @@
-﻿using Rtsp.Messages;
+﻿using Microsoft.Extensions.Logging;
+using Rtsp.Messages;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +11,7 @@ namespace RtspClientExample
 {
     class RTSPClient
     {
-        private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly ILogger _logger;
 
         // Events that applications can receive
         public event Received_SPS_PPS_Delegate Received_SPS_PPS;
@@ -77,22 +78,10 @@ namespace RtspClientExample
         List<Rtsp.Messages.RtspRequestSetup> setup_messages = new List<Rtsp.Messages.RtspRequestSetup>(); // setup messages still to send
 
         // Constructor
-        public RTSPClient()
+        public RTSPClient(ILogger<RTSPClient> logger)
         {
-            bool writeLogsToConsole = true;
-            if (writeLogsToConsole)
-            {
-                var config = new NLog.Config.LoggingConfiguration();
-
-                // Targets where to log to: Console
-                var logconsole = new NLog.Targets.ConsoleTarget("logconsole");
-
-                // Rules for mapping loggers to targets            
-                config.AddRule(NLog.LogLevel.Debug, NLog.LogLevel.Fatal, logconsole);
-
-                // Apply config           
-                NLog.LogManager.Configuration = config;
-            }
+            _logger = logger;
+            
         }
 
 
@@ -101,7 +90,7 @@ namespace RtspClientExample
 
             Rtsp.RtspUtils.RegisterUri();
 
-            _logger.Debug("Connecting to " + url);
+            _logger.LogDebug("Connecting to {url} ", url);
             this.url = url;
 
             // Use URI to extract username and password
@@ -141,14 +130,14 @@ namespace RtspClientExample
             catch
             {
                 rtsp_socket_status = RTSP_STATUS.ConnectFailed;
-                _logger.Warn("Error - did not connect");
+                _logger.LogWarning("Error - did not connect");
                 return;
             }
 
             if (rtsp_socket.Connected == false)
             {
                 rtsp_socket_status = RTSP_STATUS.ConnectFailed;
-                _logger.Warn("Error - did not connect");
+                _logger.LogWarning("Error - did not connect");
                 return;
             }
 
@@ -281,7 +270,7 @@ namespace RtspClientExample
 
             if (data_received.Channel == video_rtcp_channel || data_received.Channel == audio_rtcp_channel)
             {
-                _logger.Debug("Received a RTCP message on channel " + data_received.Channel);
+                _logger.LogDebug("Received a RTCP message on channel  {channel}", data_received.Channel);
 
                 // RTCP Packet
                 // - Version, Padding and Receiver Report Count
@@ -311,8 +300,7 @@ namespace RtspClientExample
                     // 204 = APP = Application Specific Method
                     // 207 = XR = Extended Reports
 
-                    _logger.Debug("RTCP Data. PacketType=" + rtcp_packet_type
-                                      + " SSRC=" + rtcp_ssrc);
+                    _logger.LogDebug("RTCP Data. PacketType={rtcp_packet_type} SSRC={ssrc}", rtcp_packet_type, rtcp_ssrc);
 
                     if (rtcp_packet_type == 200)
                     {
@@ -336,7 +324,7 @@ namespace RtspClientExample
 
                         time = time.AddSeconds((double)ntp_msw_seconds); // adds 'double' (whole&fraction)
 
-                        _logger.Debug("RTCP time (UTC) for RTP timestamp " + rtp_timestamp + " is " + time);
+                        _logger.LogDebug("RTCP time (UTC) for RTP timestamp {timestamp} is {time}", rtp_timestamp, time);
 
                         // Send a Receiver Report
                         try
@@ -364,13 +352,13 @@ namespace RtspClientExample
                             if (rtp_transport == RTP_TRANSPORT.UDP || rtp_transport == RTP_TRANSPORT.MULTICAST)
                             {
                                 // Send it via a UDP Packet
-                                _logger.Debug("TODO - Need to implement RTCP over UDP");
+                                _logger.LogDebug("TODO - Need to implement RTCP over UDP");
                             }
 
                         }
                         catch
                         {
-                            _logger.Debug("Error writing RTCP packet");
+                            _logger.LogDebug("Error writing RTCP packet");
                         }
                     }
 
@@ -415,7 +403,7 @@ namespace RtspClientExample
                     rtp_payload_start += 4 + (int)rtp_extension_size;  // extension header and extension payload
                 }
 
-                _logger.Debug("RTP Data"
+                _logger.LogDebug("RTP Data"
                                    + " V=" + rtp_version
                                    + " P=" + rtp_padding
                                    + " X=" + rtp_extension
@@ -431,14 +419,14 @@ namespace RtspClientExample
                 // Check the payload type in the RTP packet matches the Payload Type value from the SDP
                 if (data_received.Channel == video_data_channel && rtp_payload_type != video_payload)
                 {
-                    _logger.Debug("Ignoring this Video RTP payload");
+                    _logger.LogDebug("Ignoring this Video RTP payload");
                     return; // ignore this data
                 }
 
                 // Check the payload type in the RTP packet matches the Payload Type value from the SDP
                 else if (data_received.Channel == audio_data_channel && rtp_payload_type != audio_payload)
                 {
-                    _logger.Debug("Ignoring this Audio RTP payload");
+                    _logger.LogDebug("Ignoring this Audio RTP payload");
                     return; // ignore this data
                 }
                 else if (data_received.Channel == video_data_channel
@@ -635,12 +623,12 @@ namespace RtspClientExample
                 }
                 else if (data_received.Channel == video_data_channel && rtp_payload_type == 26)
                 {
-                    _logger.Warn("No parser has been written for JPEG RTP packets. Please help write one");
+                    _logger.LogWarning("No parser has been written for JPEG RTP packets. Please help write one");
                     return; // ignore this data
                 }
                 else
                 {
-                    _logger.Warn("No parser for RTP payload " + rtp_payload_type);
+                    _logger.LogWarning("No parser for RTP payload {rtp_payload_type}", rtp_payload_type);
                 }
             }
         }
@@ -651,13 +639,13 @@ namespace RtspClientExample
         {
             Rtsp.Messages.RtspResponse message = e.Message as Rtsp.Messages.RtspResponse;
 
-            _logger.Debug("Received RTSP Message " + message.OriginalRequest.ToString());
+            _logger.LogDebug("Received RTSP Message {originalReques}" , message.OriginalRequest) ;
 
             // If message has a 401 - Unauthorised Error, then we re-send the message with Authorization
             // using the most recently received 'realm' and 'nonce'
             if (message.IsOk == false)
             {
-                _logger.Debug("Got Error in RTSP Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                _logger.LogDebug("Got Error in RTSP Reply " + message.ReturnCode + " " + message.ReturnMessage);
 
                 if (message.ReturnCode == 401 && (message.OriginalRequest.Headers.ContainsKey(RtspHeaderNames.Authorization) == true))
                 {
@@ -705,7 +693,7 @@ namespace RtspClientExample
                         }
                     }
 
-                    _logger.Debug("WWW Authorize parsed for " + auth_type + " " + realm + " " + nonce);
+                    _logger.LogDebug("WWW Authorize parsed for " + auth_type + " " + realm + " " + nonce);
                 }
 
                 RtspMessage resend_message = message.OriginalRequest.Clone() as RtspMessage;
@@ -772,13 +760,13 @@ namespace RtspClientExample
                 // Got a reply for DESCRIBE
                 if (message.IsOk == false)
                 {
-                    _logger.Debug("Got Error in DESCRIBE Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    _logger.LogDebug("Got Error in DESCRIBE Reply " + message.ReturnCode + " " + message.ReturnMessage);
                     return;
                 }
 
                 // Examine the SDP
 
-                _logger.Debug(System.Text.Encoding.UTF8.GetString(message.Data));
+                _logger.LogDebug(Encoding.UTF8.GetString(message.Data));
 
                 Rtsp.Sdp.SdpFile sdp_data;
                 using (StreamReader sdp_stream = new StreamReader(new MemoryStream(message.Data)))
@@ -857,7 +845,7 @@ namespace RtspClientExample
                         // Create H264 RTP Parser
                         if (video && video_codec.Contains("H264"))
                         {
-                            h264Payload = new Rtsp.H264Payload();
+                            h264Payload = new Rtsp.H264Payload(null);
                         }
 
                         // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
@@ -1022,11 +1010,11 @@ namespace RtspClientExample
                 // Got Reply to SETUP
                 if (message.IsOk == false)
                 {
-                    _logger.Debug("Got Error in SETUP Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    _logger.LogDebug("Got Error in SETUP Reply " + message.ReturnCode + " " + message.ReturnMessage);
                     return;
                 }
 
-                _logger.Debug("Got reply from Setup. Session is " + message.Session);
+                _logger.LogDebug("Got reply from Setup. Session is " + message.Session);
 
                 session = message.Session; // Session value used with Play, Pause, Teardown and and additional Setups
                 if (message.Timeout > 0 && message.Timeout > keepalive_timer.Interval / 1000)
@@ -1105,11 +1093,11 @@ namespace RtspClientExample
                 // Got Reply to PLAY
                 if (message.IsOk == false)
                 {
-                    _logger.Debug("Got Error in PLAY Reply " + message.ReturnCode + " " + message.ReturnMessage);
+                    _logger.LogDebug("Got Error in PLAY Reply " + message.ReturnCode + " " + message.ReturnMessage);
                     return;
                 }
 
-                _logger.Debug("Got reply from Play  " + message.Command);
+                _logger.LogDebug("Got reply from Play {command} ", message.Command);
             }
 
         }

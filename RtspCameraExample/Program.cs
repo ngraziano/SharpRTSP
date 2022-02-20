@@ -5,6 +5,7 @@
 //
 // Server supports TCP and UDP clients.
 
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,10 +14,21 @@ namespace RtspCameraExample
 {
     class Program
     {
+        private static ILoggerFactory loggerFactory;
 
         static void Main(string[] args)
         {
+            loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder
+                    .AddFilter("Microsoft", LogLevel.Warning)
+                    .AddFilter("System", LogLevel.Warning)
+                    .AddFilter("RtspClientExample", LogLevel.Debug)
+                    .AddFilter("Rtsp", LogLevel.Debug)
+                    .AddConsole();
+            });
             var demo = new Demo();
+            
         }
 
 
@@ -48,7 +60,7 @@ namespace RtspCameraExample
                 /////////////////////////////////////////
                 // Step 1 - Start the RTSP Server
                 /////////////////////////////////////////
-                rtspServer = new RtspServer(port, username, password);
+                rtspServer = new RtspServer(port, username, password, loggerFactory);
                 try
                 {
                     rtspServer.StartListen();

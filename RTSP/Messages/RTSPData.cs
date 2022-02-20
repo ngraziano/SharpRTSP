@@ -1,28 +1,25 @@
-﻿namespace Rtsp.Messages
+﻿using System.Text;
+
+namespace Rtsp.Messages
 {
     /// <summary>
     /// Message wich represent data. ($ limited message)
     /// </summary>
     public class RtspData : RtspChunk
     {
-        private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
-
         /// <summary>
-        /// Logs the message to debug.
+        /// Create a string of the message for debug.
         /// </summary>
-        public override void LogMessage(NLog.LogLevel aLevel)
+        public override string ToString()
         {
-            // Default value to debug
-            if (aLevel == null)
-                aLevel = NLog.LogLevel.Debug;
-            // if the level is not logged directly return
-            if (!_logger.IsEnabled(aLevel))
-                return;
-            _logger.Log(aLevel, "Data message");
+            var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("Data message");
             if (Data == null)
-                _logger.Log(aLevel, "Data : null");
+                stringBuilder.AppendLine("Data : null");
             else
-                _logger.Log(aLevel, "Data length :-{0}-", Data.Length);
+                stringBuilder.AppendLine($"Data length :-{Data.Length}-");
+
+            return stringBuilder.ToString();
         }
 
         public int Channel { get; set; }

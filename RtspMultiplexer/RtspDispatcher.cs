@@ -463,7 +463,7 @@
                 // But perhaps it is to prevent timeout !!
                 // ARG .....
                 _logger.Info("I got an OPTION * message, I reply but I do not forward! The end session may timeout.");
-                request.LogMessage();
+                _logger.Debug("Message: {message}", request);
             }
             else
             {

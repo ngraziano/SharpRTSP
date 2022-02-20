@@ -10,12 +10,13 @@
 
     public class RtspMessage : RtspChunk
     {
-        private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
-
         /// <summary>
         /// The regex to validate the Rtsp message.
         /// </summary>
         private static readonly Regex _rtspVersionTest = new Regex(@"^RTSP/\d\.\d", RegexOptions.Compiled);
+        
+        
+         // TODO Move in factory
         /// <summary>
         /// Create the good type of Rtsp Message from the header.
         /// </summary>
@@ -39,13 +40,13 @@
                     returnValue = new RtspResponse();
                 else
                 {
-                    _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
+                   //  _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                     returnValue = new RtspMessage();
                 }
             }
             else
             {
-                _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
+                // _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                 returnValue = new RtspMessage();
             }
             returnValue.Command = aRequestLine;
@@ -138,7 +139,7 @@
             }
             else
             {
-                _logger.Warn(CultureInfo.InvariantCulture, "Invalid Header received : -{0}-", line);
+                // _logger.Warn(CultureInfo.InvariantCulture, "Invalid Header received : -{0}-", line);
             }
         }
 
@@ -259,28 +260,25 @@
 
 
         /// <summary>
-        /// Logs the message.
+        /// Create a string of the message for debug.
         /// </summary>
-        /// <param name="aLevel">A log level.</param>
-        public override void LogMessage(NLog.LogLevel aLevel)
+        public override string ToString()
         {
-            // Default value to debug
-            if (aLevel == null)
-                aLevel = NLog.LogLevel.Debug;
-            // if the level is not logged directly return
-            if (!_logger.IsEnabled(aLevel))
-                return;
+            var stringBuilder = new StringBuilder();
 
-            _logger.Log(aLevel, "Commande : {0}", Command);
+
+            stringBuilder.AppendLine($"Commande : {Command}");
             foreach (KeyValuePair<string, string> item in _headers)
             {
-                _logger.Log(aLevel, "Header : {0}: {1}", item.Key, item.Value);
+                stringBuilder.AppendLine($"Header : {item.Key}: { item.Value}");
             }
 
             if (Data.Length > 0)
             {
-                _logger.Log(aLevel, "Data :-{0}-", ASCIIEncoding.ASCII.GetString(Data));
+                stringBuilder.AppendLine($"Data :-{Encoding.ASCII.GetString(Data)}-");
             }
+
+            return stringBuilder.ToString();
         }
 
         /// <summary>

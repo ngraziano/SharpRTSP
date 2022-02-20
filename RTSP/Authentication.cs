@@ -8,7 +8,6 @@ namespace Rtsp
     // WWW-Authentication and Authorization Headers
     public class Authentication
     {
-        private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
         public enum Type { Basic, Digest };
 
@@ -65,12 +64,12 @@ namespace Rtsp
 
                 if ((decoded_username == username) && (decoded_password == password))
                 {
-                    _logger.Debug("Basic Authorization passed");
+                    // _logger.Debug("Basic Authorization passed");
                     return true;
                 }
                 else
                 {
-                    _logger.Debug("Basic Authorization failed");
+                    // _logger.Debug("Basic Authorization failed");
                     return false;
                 }
             }
@@ -133,12 +132,12 @@ namespace Rtsp
                     && (auth_header_response == expected_response)
                    )
                 {
-                    _logger.Debug("Digest Authorization passed");
+                    // _logger.Debug("Digest Authorization passed");
                     return true;
                 }
                 else
                 {
-                    _logger.Debug("Digest Authorization failed");
+                    // _logger.Debug("Digest Authorization failed");
                     return false;
                 }
             }

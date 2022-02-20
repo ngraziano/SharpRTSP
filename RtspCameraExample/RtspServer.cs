@@ -1,4 +1,5 @@
-﻿using Rtsp;
+﻿using Microsoft.Extensions.Logging;
+using Rtsp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -21,6 +22,7 @@ public class RtspServer : IDisposable
     const uint global_ssrc = 0x4321FADE; // 8 hex digits
 
     private TcpListener _RTSPServerListener;
+    private readonly ILoggerFactory _loggerFactory;
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
 
@@ -43,7 +45,7 @@ public class RtspServer : IDisposable
     /// <param name="aPortNumber">A numero port.</param>
 	/// <param name="username">username.</param>
 	/// <param name="password">password.</param>
-    public RtspServer(int portNumber, String username, String password)
+    public RtspServer(int portNumber, String username, String password, ILoggerFactory loggerFactory)
     {
         if (portNumber < System.Net.IPEndPoint.MinPort || portNumber > System.Net.IPEndPoint.MaxPort)
             throw new ArgumentOutOfRangeException("aPortNumber", portNumber, "Port number must be between System.Net.IPEndPoint.MinPort and System.Net.IPEndPoint.MaxPort");
@@ -62,6 +64,7 @@ public class RtspServer : IDisposable
 
         RtspUtils.RegisterUri();
         _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -92,7 +95,7 @@ public class RtspServer : IDisposable
 
                 // Hand the incoming TCP connection over to the RTSP classes
                 var rtsp_socket = new RtspTcpTransport(oneClient);
-                RtspListener newListener = new RtspListener(rtsp_socket);
+                RtspListener newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                 newListener.MessageReceived += RTSP_Message_Received;
                 //RTSPDispatcher.Instance.AddListener(newListener);
 
@@ -624,7 +627,7 @@ public class RtspServer : IDisposable
 
         checkTimeouts(out current_rtsp_count, out current_rtsp_play_count);
 
-        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
+       // Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
 
         if (current_rtsp_play_count == 0) return;
 
@@ -974,15 +977,9 @@ public class RtspServer : IDisposable
 
         checkTimeouts(out current_rtsp_count, out current_rtsp_play_count);
 
-        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
+        // Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
 
         if (current_rtsp_play_count == 0) return;
-
-
-        Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
-
-        if (current_rtsp_play_count == 0) return;
-
 
 
         UInt32 rtp_timestamp = timestamp_ms * 8; // 8kHz clock

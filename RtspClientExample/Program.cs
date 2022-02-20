@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -9,6 +10,16 @@ namespace RtspClientExample
     {
         static void Main(string[] args)
         {
+            var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder
+                    .AddFilter("Microsoft", LogLevel.Warning)
+                    .AddFilter("System", LogLevel.Warning)
+                    .AddFilter("RtspClientExample", LogLevel.Debug)
+                    .AddFilter("Rtsp", LogLevel.Debug)
+                    .AddConsole();
+            });
+
             // Internet Test - Big Buck Bunney
             String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
@@ -53,7 +64,7 @@ namespace RtspClientExample
             bool h265 = false;
 
             // Create a RTSP Client
-            RTSPClient c = new RTSPClient();
+            RTSPClient c = new RTSPClient(loggerFactory.CreateLogger<RTSPClient>());
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream

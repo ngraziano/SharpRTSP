@@ -8,20 +8,6 @@ namespace Rtsp.Messages
     public abstract class RtspChunk : ICloneable
     {
         /// <summary>
-        /// Logs the message to debug.
-        /// </summary>
-        public void LogMessage()
-        {
-            LogMessage(NLog.LogLevel.Debug);
-        }
-
-        /// <summary>
-        /// Logs the message.
-        /// </summary>
-        /// <param name="alevel">The log level.</param>
-        public abstract void LogMessage(NLog.LogLevel aLevel);
-
-        /// <summary>
         /// Gets or sets the data associate with the message.
         /// </summary>
         /// <value>Array of byte transmit with the message.</value>

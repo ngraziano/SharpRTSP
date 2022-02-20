@@ -1,5 +1,7 @@
 ﻿namespace Rtsp
 {
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Logging.Abstractions;
     using Rtsp.Messages;
     using System;
     using System.Collections.Generic;
@@ -15,7 +17,7 @@
     /// </summary>
     public class RtspListener : IDisposable
     {
-        private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+        private static ILogger _logger;
 
         private IRtspTransport _transport;
 
@@ -30,11 +32,15 @@
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
         /// <param name="connection">The connection.</param>
-        public RtspListener(IRtspTransport connection)
+        /// <param name="logger">Logger</param>
+        public RtspListener(IRtspTransport connection, ILogger<RtspListener> logger = null)
         {
+
             if (connection == null)
                 throw new ArgumentNullException("connection");
             Contract.EndContractBlock();
+
+            _logger = logger as ILogger ?? NullLogger.Instance;
 
             _transport = connection;
             _stream = connection.GetStream();
@@ -124,7 +130,7 @@
         {
             try
             {
-                _logger.Debug("Connection Open");
+                _logger.LogDebug("Connection Open");
                 while (_transport.Connected)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
@@ -136,8 +142,8 @@
                         {
                             // on logue le tout
                             if (currentMessage.SourcePort != null)
-                                _logger.Debug(CultureInfo.InvariantCulture, "Receive from {0}", currentMessage.SourcePort.RemoteAdress);
-                            currentMessage.LogMessage();
+                                _logger.LogDebug("Receive from {remoteAdress}", currentMessage.SourcePort.RemoteAdress);
+                            _logger.LogDebug("{message}", currentMessage);
                         }
                         if (currentMessage is RtspResponse)
                         {
@@ -154,7 +160,7 @@
                                 }
                                 else
                                 {
-                                    _logger.Warn(CultureInfo.InvariantCulture, "Receive response not asked {0}", response.CSeq);
+                                    _logger.LogWarning("Receive response not asked {cseq}", response.CSeq);
                                 }
                             }
                             OnMessageReceived(new RtspChunkEventArgs(response));
@@ -179,27 +185,27 @@
             }
             catch (IOException error)
             {
-                _logger.Warn("IO Error", error);
+                _logger.LogWarning(error, "IO Error");
                 _stream.Close();
                 _transport.Close();
             }
             catch (SocketException error)
             {
-                _logger.Warn("Socket Error", error);
+                _logger.LogWarning(error, "Socket Error");
                 _stream.Close();
                 _transport.Close();
             }
             catch (ObjectDisposedException error)
             {
-                _logger.Warn(error, "Object Disposed");
+                _logger.LogWarning(error, "Object Disposed");
             }
             catch (Exception error)
             {
-                _logger.Warn(error, "Unknow Error");
+                _logger.LogWarning(error, "Unknow Error");
                 //                throw;
             }
 
-            _logger.Debug("Connection Close");
+            _logger.LogDebug("Connection Close");
         }
 
         [Serializable]
@@ -229,7 +235,7 @@
                 if (!AutoReconnect)
                     return false;
 
-                _logger.Warn("Reconnect to a client, strange !!");
+                _logger.LogWarning("Reconnect to a client, strange !!");
                 try
                 {
                     Reconnect();
@@ -257,8 +263,7 @@
                 }
             }
 
-            _logger.Debug("Send Message");
-            message.LogMessage();
+            _logger.LogDebug("Send Message\n {message}", message);
             message.SendTo(_stream);
             return true;
         }
@@ -382,7 +387,7 @@
                                 break;
                             }
                             byteReaden += byteCount;
-                            _logger.Debug(CultureInfo.InvariantCulture, "Readen {0} byte of data", byteReaden);
+                            _logger.LogDebug("Readen {byteReaden} byte of data", byteReaden);
                         }
                         // if we haven't read all go there again else go to end. 
                         if (byteReaden >= currentMessage.Data.Length)
@@ -474,7 +479,7 @@
                 if (!AutoReconnect)
                     return null; // cannot write when transport is disconnected
 
-                _logger.Warn("Reconnect to a client, strange !!");
+                _logger.LogWarning("Reconnect to a client, strange.");
                 Reconnect();
             }
 
@@ -500,7 +505,7 @@
             catch (Exception e)
             {
                 // Error, for example stream has already been Disposed
-                _logger.Debug("Error during end send (can be ignored) " + e);
+                _logger.LogDebug(e,"Error during end send (can be ignored) ");
                 result = null;
             }
         }
@@ -523,7 +528,7 @@
                 if (!AutoReconnect)
                     throw new Exception("Connection is lost");
 
-                _logger.Warn("Reconnect to a client, strange !!");
+                _logger.LogWarning("Reconnect to a client, strange.");
                 Reconnect();
             }
 
