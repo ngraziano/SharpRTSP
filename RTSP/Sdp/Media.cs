@@ -5,29 +5,28 @@ namespace Rtsp.Sdp
 {
     public class Media
     {
-        private string mediaString;
 
         public Media(string mediaString)
         {
             // Example is   'video 0 RTP/AVP 26;
-            this.mediaString = mediaString;
-
             var parts = mediaString.Split(new char[] { ' ' }, 4);
 
             if (parts.Count() >= 1)
             {
-                if (parts[0].Equals("video")) MediaType = MediaTypes.video;
-                else if (parts[0].Equals("audio")) MediaType = MediaTypes.audio;
-                else if (parts[0].Equals("text")) MediaType = MediaTypes.text;
-                else if (parts[0].Equals("application")) MediaType = MediaTypes.application;
-                else if (parts[0].Equals("message")) MediaType = MediaTypes.message;
-                else MediaType = MediaTypes.unknown; // standard does allow for future types to be defined
+                MediaType = parts[0] switch
+                {
+                    "video" => MediaTypes.video,
+                    "audio" => MediaTypes.audio,
+                    "text" => MediaTypes.text,
+                    "application" => MediaTypes.application,
+                    "message" => MediaTypes.message,
+                    _ => MediaTypes.unknown,// standard does allow for future types to be defined
+                };
             }
 
-            int pt;
             if (parts.Count() >= 4)
             {
-                if (int.TryParse(parts[3], out pt))
+                if (int.TryParse(parts[3], out int pt))
                 {
                     PayloadType = pt;
                 }
@@ -51,7 +50,7 @@ namespace Rtsp.Sdp
 
         public int PayloadType { get; set; }
 
-        private readonly List<Attribut> attributs = new List<Attribut>();
+        private readonly List<Attribut> attributs = new();
 
         public IList<Attribut> Attributs
         {

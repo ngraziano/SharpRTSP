@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -11,12 +12,12 @@ namespace Rtsp
 
         public enum Type { Basic, Digest };
 
-        private String username = null;
-        private String password = null;
-        private String realm = null;
-        private String nonce = null;
-        private Type authentication_type = Type.Digest;
-        private readonly MD5 md5 = System.Security.Cryptography.MD5.Create();
+        private readonly string username;
+        private readonly string password;
+        private readonly string realm;
+        private readonly string nonce;
+        private readonly Type authenticationType = Type.Digest;
+        private readonly MD5 md5 = MD5.Create();
 
 
         private const char quote = '\"';
@@ -27,33 +28,33 @@ namespace Rtsp
             this.username = username;
             this.password = password;
             this.realm = realm;
-            this.authentication_type = authentication_type;
+            this.authenticationType = authentication_type;
 
             this.nonce = new Random().Next(100000000, 999999999).ToString(); // random 9 digit number            
         }
 
-        public String GetHeader()
+        public string GetHeader()
         {
-            if (authentication_type == Type.Basic)
+            if (authenticationType == Type.Basic)
             {
                 return "Basic realm=" + quote + realm + quote;
             }
-            if (authentication_type == Type.Digest)
+            if (authenticationType == Type.Digest)
             {
                 return "Digest realm=" + quote + realm + quote + ", nonce=" + quote + nonce + quote;
             }
-            return null;
+            return String.Empty;
         }
 
 
-        public bool IsValid(Rtsp.Messages.RtspMessage received_message)
+        public bool IsValid(RtspMessage received_message)
         {
 
-            string authorization = received_message.Headers["Authorization"];
+            string? authorization = received_message.Headers["Authorization"];
 
 
             // Check Username and Password
-            if (authentication_type == Type.Basic && authorization.StartsWith("Basic "))
+            if (authenticationType == Type.Basic && authorization.StartsWith("Basic "))
             {
                 string base64_str = authorization.Substring(6); // remove 'Basic '
                 byte[] data = Convert.FromBase64String(base64_str);
@@ -75,16 +76,16 @@ namespace Rtsp
             }
 
             // Check Username, URI, Nonce and the MD5 hashed Response
-            if (authentication_type == Type.Digest && authorization.StartsWith("Digest "))
+            if (authenticationType == Type.Digest && authorization.StartsWith("Digest "))
             {
                 string value_str = authorization.Substring(7); // remove 'Digest '
                 string[] values = value_str.Split(',');
-                string auth_header_username = null;
-                string auth_header_realm = null;
-                string auth_header_nonce = null;
-                string auth_header_uri = null;
-                string auth_header_response = null;
-                string message_method = null;
+                string? auth_header_username = null;
+                string? auth_header_realm = null;
+                string? auth_header_nonce = null;
+                string? auth_header_uri = null;
+                string? auth_header_response = null;
+                string? message_method = null;
                 string message_uri = null;
                 try
                 {
@@ -158,7 +159,7 @@ namespace Rtsp
 
             if (auth_type.Equals("Basic"))
             {
-                byte[] credentials = System.Text.Encoding.UTF8.GetBytes(username + ":" + password);
+                byte[] credentials = Encoding.UTF8.GetBytes(username + ":" + password);
                 String credentials_base64 = Convert.ToBase64String(credentials);
                 String basic_authorization = "Basic " + credentials_base64;
                 return basic_authorization;
@@ -192,7 +193,7 @@ namespace Rtsp
         // MD5 (lower case)
         private string CalculateMD5Hash(MD5 md5_session, string input)
         {
-            byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
             byte[] hash = md5_session.ComputeHash(inputBytes);
 
             StringBuilder output = new StringBuilder();

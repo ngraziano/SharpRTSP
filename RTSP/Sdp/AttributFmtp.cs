@@ -10,16 +10,8 @@ namespace Rtsp.Sdp
 
         private Dictionary<String, String> parameters = new Dictionary<string, string>();
 
-        public AttributFmtp()
+        public AttributFmtp() : base(NAME)
         {
-        }
-
-        public override string Key
-        {
-            get
-            {
-                return NAME;
-            }
         }
 
         public override string Value

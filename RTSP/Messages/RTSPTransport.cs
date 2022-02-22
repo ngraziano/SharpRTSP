@@ -108,17 +108,17 @@ mode                =    <"> *Method <"> | Method
         /// Gets or sets the destination.
         /// </summary>
         /// <value>The destination.</value>
-        public string Destination { get; set; }
+        public string? Destination { get; set; }
         /// <summary>
         /// Gets or sets the source.
         /// </summary>
         /// <value>The source.</value>
-        public string Source { get; set; }
+        public string? Source { get; set; }
         /// <summary>
         /// Gets or sets the interleaved.
         /// </summary>
         /// <value>The interleaved.</value>
-        public PortCouple Interleaved { get; set; }
+        public PortCouple? Interleaved { get; set; }
         /// <summary>
         /// Gets or sets a value indicating whether this instance is append.
         /// </summary>
@@ -138,27 +138,27 @@ mode                =    <"> *Method <"> | Method
         /// Gets or sets the port.
         /// </summary>
         /// <value>The port.</value>
-        public PortCouple Port { get; set; }
+        public PortCouple? Port { get; set; }
         /// <summary>
         /// Gets or sets the client port.
         /// </summary>
         /// <value>The client port.</value>
-        public PortCouple ClientPort { get; set; }
+        public PortCouple? ClientPort { get; set; }
         /// <summary>
         /// Gets or sets the server port.
         /// </summary>
         /// <value>The server port.</value>
-        public PortCouple ServerPort { get; set; }
+        public PortCouple? ServerPort { get; set; }
         /// <summary>
         /// Gets or sets the S SRC.
         /// </summary>
         /// <value>The S SRC.</value>
-        public string SSrc { get; set; }
+        public string? SSrc { get; set; }
         /// <summary>
         /// Gets or sets the mode.
         /// </summary>
         /// <value>The mode.</value>
-        public string Mode { get; set; }
+        public string? Mode { get; set; }
 
         /// <summary>
         /// Parses the specified transport string.

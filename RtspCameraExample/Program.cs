@@ -23,7 +23,7 @@ namespace RtspCameraExample
                 builder
                     .AddFilter("Microsoft", LogLevel.Warning)
                     .AddFilter("System", LogLevel.Warning)
-                    .AddFilter("RtspClientExample", LogLevel.Debug)
+                    .AddFilter("RtspCameraExample", LogLevel.Debug)
                     .AddFilter("Rtsp", LogLevel.Debug)
                     .AddConsole();
             });

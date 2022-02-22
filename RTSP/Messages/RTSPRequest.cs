@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 
 namespace Rtsp.Messages
 {
@@ -35,8 +34,7 @@ namespace Rtsp.Messages
         /// <returns>The typed request.</returns>
         internal static RequestType ParseRequest(string aStringRequest)
         {
-            RequestType returnValue;
-            if (!Enum.TryParse<RequestType>(aStringRequest, true, out returnValue))
+            if (!Enum.TryParse(aStringRequest, true, out RequestType returnValue))
                 returnValue = RequestType.UNKNOWN;
             return returnValue;
         }
@@ -48,57 +46,24 @@ namespace Rtsp.Messages
         /// <returns>the parsed request</returns>
         internal static RtspMessage GetRtspRequest(string[] aRequestParts)
         {
-            // <pex>
-            Debug.Assert(aRequestParts != (string[])null, "aRequestParts");
-            Debug.Assert(aRequestParts.Length != 0, "aRequestParts.Length == 0");
-            // </pex>
-            // we already know this is a Request
-            RtspRequest returnValue;
-            switch (ParseRequest(aRequestParts[0]))
+            return ParseRequest(aRequestParts[0]) switch
             {
-                case RequestType.OPTIONS:
-                    returnValue = new RtspRequestOptions();
-                    break;
-                case RequestType.DESCRIBE:
-                    returnValue = new RtspRequestDescribe();
-                    break;
-                case RequestType.SETUP:
-                    returnValue = new RtspRequestSetup();
-                    break;
-                case RequestType.PLAY:
-                    returnValue = new RtspRequestPlay();
-                    break;
-                case RequestType.PAUSE:
-                    returnValue = new RtspRequestPause();
-                    break;
-                case RequestType.TEARDOWN:
-                    returnValue = new RtspRequestTeardown();
-                    break;
-                case RequestType.GET_PARAMETER:
-                    returnValue = new RtspRequestGetParameter();
-                    break;
-                case RequestType.ANNOUNCE:
-                    returnValue = new RtspRequestAnnounce();
-                    break;
-                case RequestType.RECORD:
-                    returnValue = new RtspRequestRecord();
-                    break;
+                RequestType.OPTIONS => new RtspRequestOptions(),
+                RequestType.DESCRIBE => new RtspRequestDescribe(),
+                RequestType.SETUP => new RtspRequestSetup(),
+                RequestType.PLAY => new RtspRequestPlay(),
+                RequestType.PAUSE => new RtspRequestPause(),
+                RequestType.TEARDOWN => new RtspRequestTeardown(),
+                RequestType.GET_PARAMETER => new RtspRequestGetParameter(),
+                RequestType.ANNOUNCE => new RtspRequestAnnounce(),
+                RequestType.RECORD => new RtspRequestRecord(),
                 /*
-            case RequestType.REDIRECT:
-                break;
+                RequestType.REDIRECT => new RtspRequestRedirect(),
+                RequestType.SET_PARAMETER => new RtspRequestSetParameter(),
+                */
+                _ => new RtspRequest(),
+            };
 
-            case RequestType.SET_PARAMETER:
-                break;
-                 */
-                case RequestType.UNKNOWN:
-                default:
-                    returnValue = new RtspRequest();
-                    break;
-            }
-
-
-
-            return returnValue;
         }
 
         /// <summary>
@@ -142,13 +107,14 @@ namespace Rtsp.Messages
             }
         }
 
-        private Uri _RtspUri;
+        private Uri? _RtspUri;
+
         /// <summary>
         /// Gets or sets the Rtsp asked URI.
         /// </summary>
         /// <value>The Rtsp asked URI.</value>
         /// <remarks>The request with uri * is return with null URI</remarks>
-        public Uri RtspUri
+        public Uri? RtspUri
         {
             get
             {
@@ -175,17 +141,19 @@ namespace Rtsp.Messages
         /// <returns>an Rtsp response correcponding to request.</returns>
         public virtual RtspResponse CreateResponse()
         {
-            RtspResponse returnValue = new RtspResponse();
-            returnValue.ReturnCode = 200;
-            returnValue.CSeq = this.CSeq;
-            if (this.Headers.ContainsKey(RtspHeaderNames.Session))
+            RtspResponse returnValue = new RtspResponse
             {
-                returnValue.Headers[RtspHeaderNames.Session] = this.Headers[RtspHeaderNames.Session];
+                ReturnCode = 200,
+                CSeq = CSeq
+            };
+            if (Headers.ContainsKey(RtspHeaderNames.Session))
+            {
+                returnValue.Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session];
             }
 
             return returnValue;
         }
 
-        public Object ContextData { get; set; }
+        public object? ContextData { get; set; }
     }
 }

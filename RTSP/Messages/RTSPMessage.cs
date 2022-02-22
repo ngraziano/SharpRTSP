@@ -14,9 +14,9 @@
         /// The regex to validate the Rtsp message.
         /// </summary>
         private static readonly Regex _rtspVersionTest = new Regex(@"^RTSP/\d\.\d", RegexOptions.Compiled);
-        
-        
-         // TODO Move in factory
+
+
+        // TODO Move in factory
         /// <summary>
         /// Create the good type of Rtsp Message from the header.
         /// </summary>
@@ -40,7 +40,7 @@
                     returnValue = new RtspResponse();
                 else
                 {
-                   //  _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
+                    //  _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                     returnValue = new RtspMessage();
                 }
             }
@@ -62,9 +62,7 @@
             Creation = DateTime.Now;
         }
 
-        private Dictionary<string, string> _headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        internal protected string[] commandArray;
+        protected internal string[] commandArray = new string[] { string.Empty };
 
         /// <summary>
         /// Gets or sets the creation time.
@@ -113,13 +111,7 @@
         /// Gets the headers of the message.
         /// </summary>
         /// <value>The headers.</value>
-        public Dictionary<string, string> Headers
-        {
-            get
-            {
-                return _headers;
-            }
-        }
+        public Dictionary<string, string?> Headers { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Adds one header from a string.
@@ -128,14 +120,16 @@
         /// <exception cref="ArgumentNullException"><paramref name="line"/> is null</exception>
         public void AddHeader(string line)
         {
-            if (line == (string)null)
+            if (line is null)
+            {
                 throw new ArgumentNullException("line");
+            }
 
             //spliter
             string[] elements = line.Split(new char[] { ':' }, 2);
             if (elements.Length == 2)
             {
-                _headers[elements[0].Trim()] = elements[1].TrimStart();
+                Headers[elements[0].Trim()] = elements[1].TrimStart();
             }
             else
             {
@@ -152,17 +146,15 @@
         {
             get
             {
-                string returnStringValue;
-                int returnValue;
-                if (!(_headers.TryGetValue("CSeq", out returnStringValue) &&
-                    int.TryParse(returnStringValue, out returnValue)))
+                if (!(Headers.TryGetValue("CSeq", out string? returnStringValue) &&
+                    int.TryParse(returnStringValue, out int returnValue)))
                     returnValue = 0;
 
                 return returnValue;
             }
             set
             {
-                _headers["CSeq"] = value.ToString(CultureInfo.InvariantCulture);
+                Headers["CSeq"] = value.ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -170,18 +162,18 @@
         /// Gets the session ID.
         /// </summary>
         /// <value>The session ID.</value>
-        public virtual string Session
+        public virtual string? Session
         {
             get
             {
-                if (!_headers.ContainsKey("Session"))
+                if (!Headers.ContainsKey("Session"))
                     return null;
 
-                return _headers["Session"];
+                return Headers["Session"];
             }
             set
             {
-                _headers["Session"] = value;
+                Headers["Session"] = value;
             }
         }
 
@@ -190,13 +182,12 @@
         /// </summary>
         public void InitialiseDataFromContentLength()
         {
-            int dataLength;
-            if (!(_headers.ContainsKey("Content-Length")
-                && int.TryParse(_headers["Content-Length"], out dataLength)))
+            if (!(Headers.ContainsKey("Content-Length")
+                && int.TryParse(Headers["Content-Length"], out int dataLength)))
             {
                 dataLength = 0;
             }
-            this.Data = new byte[dataLength];
+            Data = new byte[dataLength];
         }
 
         /// <summary>
@@ -204,13 +195,13 @@
         /// </summary>
         public void AdjustContentLength()
         {
-            if (Data.Length > 0)
+            if (Data != null && Data.Length > 0)
             {
-                _headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
+                Headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
-                _headers.Remove("Content-Length");
+                Headers.Remove("Content-Length");
             }
         }
 
@@ -239,7 +230,7 @@
             // output header
             outputString.Append(Command);
             outputString.Append("\r\n");
-            foreach (KeyValuePair<string, string> item in _headers)
+            foreach (var item in Headers)
             {
                 outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
             }
@@ -250,7 +241,7 @@
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
-                if (Data.Length > 0)
+                if (Data != null && Data.Length > 0)
                     stream.Write(Data, 0, Data.Length);
 
             }
@@ -268,12 +259,12 @@
 
 
             stringBuilder.AppendLine($"Commande : {Command}");
-            foreach (KeyValuePair<string, string> item in _headers)
+            foreach (KeyValuePair<string, string?> item in Headers)
             {
                 stringBuilder.AppendLine($"Header : {item.Key}: { item.Value}");
             }
 
-            if (Data.Length > 0)
+            if (Data != null && Data.Length > 0)
             {
                 stringBuilder.AppendLine($"Data :-{Encoding.ASCII.GetString(Data)}-");
             }
@@ -289,17 +280,15 @@
         /// </returns>
         public override object Clone()
         {
-            RtspMessage returnValue = GetRtspMessage(this.Command);
+            RtspMessage returnValue = GetRtspMessage(Command);
 
-            foreach (var item in this.Headers)
+            foreach (var item in Headers)
             {
-                if (item.Value == null)
-                    returnValue.Headers.Add(item.Key.Clone() as string, null);
-                else
-                    returnValue.Headers.Add(item.Key.Clone() as string, item.Value.Clone() as string);
+                returnValue.Headers.Add(item.Key, item.Value);
+
             }
-            returnValue.Data = this.Data.Clone() as byte[];
-            returnValue.SourcePort = this.SourcePort;
+            returnValue.Data = Data != null ? Data.Clone() as byte[] : null;
+            returnValue.SourcePort = SourcePort;
 
             return returnValue;
         }

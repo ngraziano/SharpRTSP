@@ -21,7 +21,7 @@ public class RtspServer : IDisposable
 
     const uint global_ssrc = 0x4321FADE; // 8 hex digits
 
-    private TcpListener _RTSPServerListener;
+    private readonly TcpListener _RTSPServerListener;
     private readonly ILoggerFactory _loggerFactory;
     private ManualResetEvent _Stopping;
     private Thread _ListenTread;
@@ -32,12 +32,10 @@ public class RtspServer : IDisposable
 
     const int audio_payload_type = 0; // = Hard Coded to PCMU audio
 
-    List<RTSPConnection> rtsp_list = new List<RTSPConnection>(); // list of RTSP Listeners
+    private readonly List<RTSPConnection> rtspConnectionList = new(); // list of RTSP Listeners
 
-    Random rnd = new Random();
     int session_handle = 1;
-
-    Authentication auth = null;
+    private readonly Authentication auth;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RTSPServer"/> class.
@@ -100,7 +98,7 @@ public class RtspServer : IDisposable
                 //RTSPDispatcher.Instance.AddListener(newListener);
 
                 // Add the RtspListener to the RTSPConnections List
-                lock (rtsp_list)
+                lock (rtspConnectionList)
                 {
                     RTSPConnection new_connection = new RTSPConnection();
                     new_connection.listener = newListener;
@@ -110,7 +108,7 @@ public class RtspServer : IDisposable
                     new_connection.time_since_last_rtsp_keepalive = DateTime.UtcNow;
                     new_connection.video.time_since_last_rtcp_keepalive = DateTime.UtcNow;
 
-                    rtsp_list.Add(new_connection);
+                    rtspConnectionList.Add(new_connection);
                 }
 
                 newListener.Start();
@@ -185,13 +183,13 @@ public class RtspServer : IDisposable
                     authorization_response.ReturnCode = 401;
                     listener.SendMessage(authorization_response);
 
-                    lock (rtsp_list)
+                    lock (rtspConnectionList)
                     {
-                        foreach (RTSPConnection connection in rtsp_list.ToArray())
+                        foreach (RTSPConnection connection in rtspConnectionList.ToArray())
                         {
                             if (connection.listener == listener)
                             {
-                                rtsp_list.Remove(connection);
+                                rtspConnectionList.Remove(connection);
                             }
                         }
                     }
@@ -214,9 +212,9 @@ public class RtspServer : IDisposable
 
         // Update the RTSP Keepalive Timeout
         // We could check that the message is GET_PARAMETER or OPTIONS for a keepalive but instead we will update the timer on any message
-        lock (rtsp_list)
+        lock (rtspConnectionList)
         {
-            foreach (RTSPConnection connection in rtsp_list)
+            foreach (RTSPConnection connection in rtspConnectionList)
             {
                 if (connection.listener.RemoteAdress.Equals(listener.RemoteAdress))
                 {
@@ -388,9 +386,9 @@ public class RtspServer : IDisposable
                 // Update the stream within the session with transport information
                 // If a Session ID is passed in we should match SessionID with other SessionIDs but we can match on RemoteAddress
                 String copy_of_session_id = "";
-                lock (rtsp_list)
+                lock (rtspConnectionList)
                 {
-                    foreach (RTSPConnection connection in rtsp_list)
+                    foreach (RTSPConnection connection in rtspConnectionList)
                     {
                         if (connection.listener.RemoteAdress.Equals(listener.RemoteAdress))
                         {
@@ -451,11 +449,11 @@ public class RtspServer : IDisposable
         // Handle PLAY message (Sent with a Session ID)
         if (message is Rtsp.Messages.RtspRequestPlay)
         {
-            lock (rtsp_list)
+            lock (rtspConnectionList)
             {
                 // Search for the Session in the Sessions List. Change the state to "PLAY"
                 bool session_found = false;
-                foreach (RTSPConnection connection in rtsp_list)
+                foreach (RTSPConnection connection in rtspConnectionList)
                 {
                     if (message.Session == connection.session_id)
                     {
@@ -501,10 +499,10 @@ public class RtspServer : IDisposable
         // Handle PAUSE message (Sent with a Session ID)
         if (message is Rtsp.Messages.RtspRequestPause)
         {
-            lock (rtsp_list)
+            lock (rtspConnectionList)
             {
                 // Search for the Session in the Sessions List. Change the state of "PLAY" 
-                foreach (RTSPConnection connection in rtsp_list)
+                foreach (RTSPConnection connection in rtspConnectionList)
                 {
                     if (message.Session == connection.session_id)
                     {
@@ -533,10 +531,10 @@ public class RtspServer : IDisposable
         // Handle TEARDOWN (sent with a Session ID)
         if (message is Rtsp.Messages.RtspRequestTeardown)
         {
-            lock (rtsp_list)
+            lock (rtspConnectionList)
             {
                 // Search for the Session in the Sessions List.
-                foreach (RTSPConnection connection in rtsp_list.ToArray()) // Convert to ToArray so we can delete from the rtp_list
+                foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // Convert to ToArray so we can delete from the rtp_list
                 {
                     if (message.Session == connection.session_id)
                     {
@@ -554,7 +552,7 @@ public class RtspServer : IDisposable
                             connection.audio.udp_pair = null;
                         }
 
-                        rtsp_list.Remove(connection);
+                        rtspConnectionList.Remove(connection);
 
                         // Close the RTSP socket
                         listener.Dispose();
@@ -569,12 +567,12 @@ public class RtspServer : IDisposable
         DateTime now = DateTime.UtcNow;
         int timeout_in_seconds = 70;  // must have a RTSP message every 70 seconds or we will close the connection
 
-        lock (rtsp_list)
+        lock (rtspConnectionList)
         {
 
-            current_rtsp_count = rtsp_list.Count;
+            current_rtsp_count = rtspConnectionList.Count;
             current_rtsp_play_count = 0;
-            foreach (RTSPConnection connection in rtsp_list.ToArray())
+            foreach (RTSPConnection connection in rtspConnectionList.ToArray())
             { // Convert to Array to allow us to delete from rtsp_list
                 // RTSP Timeout (clients receiving RTP video over the RTSP session
                 // do not need to send a keepalive (so we check for Socket write errors)
@@ -602,7 +600,7 @@ public class RtspServer : IDisposable
                     }
                     connection.listener.Dispose();
 
-                    rtsp_list.Remove(connection);
+                    rtspConnectionList.Remove(connection);
                     continue;
                 }
                 else if (connection.play) current_rtsp_play_count++;
@@ -762,11 +760,11 @@ public class RtspServer : IDisposable
             }
         }
 
-        lock (rtsp_list)
+        lock (rtspConnectionList)
         {
 
             // Go through each RTSP connection and output the NAL on the Video Session
-            foreach (RTSPConnection connection in rtsp_list.ToArray()) // ToArray makes a temp copy of the list.
+            foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // ToArray makes a temp copy of the list.
                                                                        // This lets us delete items in the foreach
                                                                        // eg when there is Write Error
             {
@@ -955,7 +953,7 @@ public class RtspServer : IDisposable
                         connection.audio.udp_pair = null;
                     }
                     connection.listener.Dispose();
-                    rtsp_list.Remove(connection); // remove the session. It is dead
+                    rtspConnectionList.Remove(connection); // remove the session. It is dead
                 }
 
                 connection.video.rtp_packet_count += (UInt32)rtp_packets.Count;
@@ -1023,11 +1021,11 @@ public class RtspServer : IDisposable
 
 
         // SEND THE RTSP PACKET
-        lock (rtsp_list)
+        lock (rtspConnectionList)
         {
 
             // Go through each RTSP connection and output the NAL on the Video Session
-            foreach (RTSPConnection connection in rtsp_list.ToArray()) // ToArray makes a temp copy of the list.
+            foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // ToArray makes a temp copy of the list.
                                                                        // This lets us delete items in the foreach
                                                                        // eg when there is Write Error
             {
@@ -1218,7 +1216,7 @@ public class RtspServer : IDisposable
                         connection.audio.udp_pair = null;
                     }
                     connection.listener.Dispose();
-                    rtsp_list.Remove(connection); // remove the session. It is dead
+                    rtspConnectionList.Remove(connection); // remove the session. It is dead
                 }
 
                 connection.audio.rtp_packet_count += (UInt32)rtp_packets.Count;

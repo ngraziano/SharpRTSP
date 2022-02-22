@@ -161,9 +161,9 @@ namespace Rtsp.Messages
             get
             {
                 int returnValue = DEFAULT_TIMEOUT;
-                if (Headers.ContainsKey(RtspHeaderNames.Session))
+                if (Headers.TryGetValue(RtspHeaderNames.Session, out string? sessionString) && sessionString != null)
                 {
-                    string[] parts = Headers[RtspHeaderNames.Session].Split(';');
+                    string[] parts = sessionString.Split(';');
                     if (parts.Length > 1)
                     {
                         string[] subParts = parts[1].Split('=');
@@ -177,17 +177,17 @@ namespace Rtsp.Messages
             }
             set
             {
-                if (Headers.ContainsKey(RtspHeaderNames.Session))
+                if (Headers.TryGetValue(RtspHeaderNames.Session, out string? sessionString) && sessionString != null)
                     if (value != DEFAULT_TIMEOUT)
                     {
 
-                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First()
+                        Headers[RtspHeaderNames.Session] = sessionString.Split(';').First()
                             + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
                     }
                     else
                     {
                         //remove timeout part
-                        Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session].Split(';').First();
+                        Headers[RtspHeaderNames.Session] = sessionString.Split(';').First();
                     }
             }
         }
@@ -196,14 +196,14 @@ namespace Rtsp.Messages
         /// Gets the session ID.
         /// </summary>
         /// <value>The session ID.</value>
-        public override string Session
+        public override string? Session
         {
             get
             {
-                if (!Headers.ContainsKey(RtspHeaderNames.Session))
+                if (!Headers.TryGetValue(RtspHeaderNames.Session, out string? sessionString) || sessionString is null)
                     return null;
 
-                return Headers[RtspHeaderNames.Session].Split(';')[0];
+                return sessionString.Split(';')[0];
             }
             set
             {
@@ -222,7 +222,6 @@ namespace Rtsp.Messages
         /// Gets or sets the original request associate with the response.
         /// </summary>
         /// <value>The original request.</value>
-        public RtspRequest OriginalRequest
-        { get; set; }
+        public RtspRequest? OriginalRequest { get; set; }
     }
 }

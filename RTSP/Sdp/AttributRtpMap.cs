@@ -12,16 +12,8 @@ namespace Rtsp.Sdp
 
         public const string NAME = "rtpmap";
 
-        public AttributRtpMap()
+        public AttributRtpMap() : base(NAME)
         {
-        }
-
-        public override string Key
-        {
-            get
-            {
-                return NAME;
-            }
         }
 
         public override string Value

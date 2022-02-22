@@ -11,14 +11,13 @@ namespace Rtsp.Messages
         /// Gets or sets the data associate with the message.
         /// </summary>
         /// <value>Array of byte transmit with the message.</value>
-        public byte[] Data
-        { get; set; }
+        public byte[]? Data { get; set; }
 
         /// <summary>
         /// Gets or sets the source port wich receive the message.
         /// </summary>
         /// <value>The source port.</value>
-        public RtspListener SourcePort { get; set; }
+        public RtspListener? SourcePort { get; set; }
 
         #region ICloneable Membres
 

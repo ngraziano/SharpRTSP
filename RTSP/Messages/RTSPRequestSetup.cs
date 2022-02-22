@@ -19,11 +19,11 @@ namespace Rtsp.Messages
         public RtspTransport[] GetTransports()
         {
 
-            if (!Headers.ContainsKey(RtspHeaderNames.Transport))
+            if (!Headers.TryGetValue(RtspHeaderNames.Transport, out string? transportString) || transportString is null)
                 return new RtspTransport[] { new RtspTransport() };
 
-            string[] items = Headers[RtspHeaderNames.Transport].Split(',');
-            return Array.ConvertAll<string, RtspTransport>(items,
+            string[] items = transportString.Split(',');
+            return Array.ConvertAll(items,
                 new Converter<string, RtspTransport>(RtspTransport.Parse));
 
         }

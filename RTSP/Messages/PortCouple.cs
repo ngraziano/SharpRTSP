@@ -70,10 +70,8 @@
 
             string[] values = stringValue.Split('-');
 
-            int tempValue;
-
-            int.TryParse(values[0], out tempValue);
-            PortCouple result = new PortCouple(tempValue);
+            int.TryParse(values[0], out int tempValue);
+            PortCouple result = new(tempValue);
 
             tempValue = 0;
             if (values.Length > 1)

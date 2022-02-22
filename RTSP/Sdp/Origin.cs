@@ -27,13 +27,15 @@ namespace Rtsp.Sdp
             if (parts.Length != 6)
                 throw new FormatException("Number of element invalid in origin string.");
 
-            Origin result = new Origin();
-            result.Username = parts[0];
-            result.SessionId = parts[1];
-            result.SessionVersion = parts[2];
-            result.NetType = parts[3];
-            result.AddressType = parts[4];
-            result.UnicastAddress = parts[5];
+            Origin result = new()
+            {
+                Username = parts[0],
+                SessionId = parts[1],
+                SessionVersion = parts[2],
+                NetType = parts[3],
+                AddressType = parts[4],
+                UnicastAddress = parts[5]
+            };
 
             return result;
         }
@@ -45,7 +47,7 @@ namespace Rtsp.Sdp
         /// if the originating host does not support the concept of user IDs.
         /// This MUST NOT contain spaces</remarks>
         /// <value>The username.</value>
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the session id.
@@ -57,35 +59,35 @@ namespace Rtsp.Sdp
         /// suggested that a Network Time Protocol (NTP) format timestamp be
         /// used to ensure uniqueness</remarks>
         /// <value>The session id.</value>
-        public string SessionId { get; set; }
+        public string SessionId { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the session version.
         /// </summary>
         /// <value>The session version.</value>
-        public string SessionVersion { get; set; }
+        public string SessionVersion { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the type of the net.
         /// </summary>
         /// <value>The type of the net.</value>
-        public string NetType { get; set; }
+        public string NetType { get; set; } = string.Empty;
 
         /// <see cref="SessionId"/><summary>
         /// Gets or sets the type of the address.
         /// </summary>
         /// <value>The type of the address.</value>
-        public string AddressType { get; set; }
+        public string AddressType { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the unicast address (IP or FDQN).
         /// </summary>
         /// <value>The unicast address.</value>
-        public string UnicastAddress { get; set; }
+        public string UnicastAddress { get; set; } = string.Empty;
 
         public override string ToString()
         {
-            return String.Join(" ",
+            return string.Join(" ",
                 new string[]
                 {
                     Username,

@@ -7,7 +7,7 @@ namespace Rtsp.Sdp
 {
     public class Attribut
     {
-        private static readonly Dictionary<string, Type> attributMap = new Dictionary<string, Type>()
+        private static readonly Dictionary<string, Type> attributMap = new()
         {
             {AttributRtpMap.NAME,typeof(AttributRtpMap)},
             {AttributFmtp.NAME,typeof(AttributFmtp)},
@@ -15,7 +15,7 @@ namespace Rtsp.Sdp
 
 
         public virtual string Key { get; private set; }
-        public virtual string Value { get; protected set; }
+        public virtual string Value { get; protected set; } = string.Empty;
 
         public static void RegisterNewAttributeType(string key, Type attributType)
         {
@@ -23,12 +23,6 @@ namespace Rtsp.Sdp
                 throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut", "attributType");
 
             attributMap[key] = attributType;
-        }
-
-
-
-        public Attribut()
-        {
         }
 
         public Attribut(string key)
@@ -50,12 +44,10 @@ namespace Rtsp.Sdp
             Attribut returnValue;
 
             // Call parser of child type
-            Type childType;
-            attributMap.TryGetValue(listValues[0], out childType);
-            if (childType != null)
+            if (attributMap.TryGetValue(listValues[0], out Type childType))
             {
                 var defaultContructor = childType.GetConstructor(Type.EmptyTypes);
-                returnValue = defaultContructor.Invoke(Type.EmptyTypes) as Attribut;
+                returnValue = (defaultContructor.Invoke(Type.EmptyTypes) as Attribut)!;
             }
             else
             {

@@ -5,6 +5,8 @@
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
     <StyleCopOutputFile>StyleCopViolations.xml</StyleCopOutputFile>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <CodeContractsEnableRuntimeChecking>True</CodeContractsEnableRuntimeChecking>
