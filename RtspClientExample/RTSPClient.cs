@@ -895,11 +895,11 @@ namespace RtspClientExample
                         // Create AAC RTP Parser
                         // Example fmtp is "96 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1490"
                         // Example fmtp is ""96 streamtype=5;profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210"
-                        if (audio && audio_codec.Contains("MPEG4-GENERIC") && fmtp.GetParameter("mode").ToLower().Equals("aac-hbr"))
+                        if (audio && audio_codec.Contains("MPEG4-GENERIC") && fmtp["mode"].ToLower() == "aac-hbr")
                         {
                             // Extract config (eg 0x1490 or 0x1210)
 
-                            aacPayload = new Rtsp.AACPayload(fmtp.GetParameter("config"));
+                            aacPayload = new Rtsp.AACPayload(fmtp["config"]);
                         }
 
 
@@ -940,17 +940,17 @@ namespace RtspClientExample
                             // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
                             if (video)
                             {
-                                video_data_channel = video_udp_pair.data_port;     // Used in DataReceived event handler
-                                video_rtcp_channel = video_udp_pair.control_port;  // Used in DataReceived event handler
-                                rtp_port = video_udp_pair.data_port;
-                                rtcp_port = video_udp_pair.control_port;
+                                video_data_channel = video_udp_pair.dataPort;     // Used in DataReceived event handler
+                                video_rtcp_channel = video_udp_pair.controlPort;  // Used in DataReceived event handler
+                                rtp_port = video_udp_pair.dataPort;
+                                rtcp_port = video_udp_pair.controlPort;
                             }
                             if (audio)
                             {
-                                audio_data_channel = audio_udp_pair.data_port;     // Used in DataReceived event handler
-                                audio_rtcp_channel = audio_udp_pair.control_port;  // Used in DataReceived event handler
-                                rtp_port = audio_udp_pair.data_port;
-                                rtcp_port = audio_udp_pair.control_port;
+                                audio_data_channel = audio_udp_pair.dataPort;     // Used in DataReceived event handler
+                                audio_rtcp_channel = audio_udp_pair.controlPort;  // Used in DataReceived event handler
+                                rtp_port = audio_udp_pair.dataPort;
+                                rtcp_port = audio_udp_pair.controlPort;
                             }
                             transport = new RtspTransport()
                             {

@@ -437,10 +437,14 @@
         /// <param name="aState">A state.</param>
         public IAsyncResult? BeginSendData(RtspData aRtspData, AsyncCallback asyncCallback, object state)
         {
-            if (aRtspData == null)
-                throw new ArgumentNullException("aRtspData");
+            if (aRtspData is null)
+                throw new ArgumentNullException(nameof(aRtspData));
+            if (aRtspData.Data is null)
+                throw new ArgumentException("no data present", nameof(aRtspData));
+
             Contract.EndContractBlock();
 
+            
             return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, state);
         }
 

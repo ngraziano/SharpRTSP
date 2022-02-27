@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Rtsp.Sdp
+﻿namespace Rtsp.Sdp
 {
     public class AttributRtpMap : Attribut
     {
@@ -36,9 +34,9 @@ namespace Rtsp.Sdp
         }
 
         public int PayloadNumber { get; set; }
-        public String EncodingName { get; set; }
-        public String ClockRate { get; set; }
-        public String EncodingParameters { get; set; }
+        public string? EncodingName { get; set; }
+        public string? ClockRate { get; set; }
+        public string? EncodingParameters { get; set; }
 
         protected override void ParseValue(string value)
         {

@@ -8,7 +8,7 @@ namespace Rtsp.Sdp
     {
         public const string NAME = "fmtp";
 
-        private Dictionary<String, String> parameters = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> parameters = new ();
 
         public AttributFmtp() : base(NAME)
         {
@@ -58,10 +58,13 @@ namespace Rtsp.Sdp
             }
         }
 
-        public String GetParameter(String index)
+        public string this[string index]
         {
-            if (parameters.ContainsKey(index)) return parameters[index];
-            else return "";
+            get
+            {
+                if (parameters.ContainsKey(index)) return parameters[index];
+                else return "";
+            }
         }
 
     }

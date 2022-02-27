@@ -13,7 +13,7 @@ namespace Rtsp.Sdp
 
             // end of file ?
             if (string.IsNullOrEmpty(line))
-                return new KeyValuePair<string, string>(null, null);
+                return new (string.Empty, string.Empty);
 
 
             string[] parts = line.Split(new char[] { '=' }, 2);
@@ -22,8 +22,7 @@ namespace Rtsp.Sdp
             if (parts[0].Length != 1)
                 throw new InvalidDataException();
 
-            KeyValuePair<string, string> value = new KeyValuePair<string, string>(parts[0], parts[1]);
-            return value;
+            return new (parts[0], parts[1]);
         }
 
         /// <summary>
@@ -34,7 +33,7 @@ namespace Rtsp.Sdp
         /// <returns></returns>
         public static SdpFile Read(TextReader sdpStream)
         {
-            SdpFile returnValue = new SdpFile();
+            SdpFile returnValue = new();
             KeyValuePair<string, string> value = GetKeyValue(sdpStream);
 
             // Version mandatory
@@ -45,7 +44,7 @@ namespace Rtsp.Sdp
             }
             else
             {
-                throw new InvalidDataException();
+                throw new InvalidDataException("version missing");
             }
 
             // Origin mandatory
@@ -56,7 +55,7 @@ namespace Rtsp.Sdp
             }
             else
             {
-                throw new InvalidDataException();
+                throw new InvalidDataException("origin missing");
             }
 
             // Session mandatory.
@@ -171,7 +170,8 @@ namespace Rtsp.Sdp
 
         private static Media ReadMedia(TextReader sdpStream, ref KeyValuePair<string, string> value)
         {
-            Media returnValue = new Media(value.Value);
+            
+            Media returnValue = new(value.Value);
             value = GetKeyValue(sdpStream);
 
             // Media title
@@ -216,56 +216,32 @@ namespace Rtsp.Sdp
         public int Version { get; set; }
 
 
-        public Origin Origin { get; set; }
+        public Origin? Origin { get; set; }
 
-        public string Session { get; set; }
+        public string? Session { get; set; }
 
-        public string SessionInformation { get; set; }
+        public string? SessionInformation { get; set; }
 
-        public Uri Url { get; set; }
+        public Uri? Url { get; set; }
 
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
-        public Connection Connection { get; set; }
+        public Connection? Connection { get; set; }
 
-        public Bandwidth Bandwidth { get; set; }
+        public Bandwidth? Bandwidth { get; set; }
 
-        private readonly List<Timing> timingList = new List<Timing>();
+        public IList<Timing> Timings { get; } = new List<Timing>();
 
-        public IList<Timing> Timings
-        {
-            get
-            {
-                return timingList;
-            }
-        }
+        public SdpTimeZone? TimeZone { get; set; }
 
-        public SdpTimeZone TimeZone { get; set; }
+        public EncriptionKey? EncriptionKey { get; set; }
 
-        public EncriptionKey EncriptionKey { get; set; }
+        public IList<Attribut> Attributs { get; } = new List<Attribut>();
 
-        private readonly List<Attribut> attributs = new List<Attribut>();
-
-        public IList<Attribut> Attributs
-        {
-            get
-            {
-                return attributs;
-            }
-        }
-
-        private readonly List<Media> medias = new List<Media>();
-
-        public IList<Media> Medias
-        {
-            get
-            {
-                return medias;
-            }
-
-        }
+        public IList<Media> Medias { get; } = new List<Media>();
+        
 
     }
 }

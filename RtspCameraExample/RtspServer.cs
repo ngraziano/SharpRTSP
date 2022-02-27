@@ -53,7 +53,7 @@ public class RtspServer : IDisposable
             && String.IsNullOrEmpty(password) == false)
         {
             String realm = "SharpRTSPServer";
-            auth = new Authentication(username, password, realm, Authentication.Type.Digest);
+            auth = new AuthenticationDigest(username, password, realm);
         }
         else
         {
@@ -356,7 +356,7 @@ public class RtspServer : IDisposable
                     // Pass the Port of the two sockets back in the reply
                     transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
                     transport_reply.IsMulticast = false;
-                    transport_reply.ServerPort = new Rtsp.Messages.PortCouple(udp_pair.data_port, udp_pair.control_port);
+                    transport_reply.ServerPort = new Rtsp.Messages.PortCouple(udp_pair.dataPort, udp_pair.controlPort);
                     transport_reply.ClientPort = transport.ClientPort;
                 }
                 else
@@ -866,7 +866,7 @@ public class RtspServer : IDisposable
                         {
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video.udp_pair.Write_To_Data_Port(rtcp_sender_report, connection.client_hostname, connection.video.client_transport.ClientPort.Second);
+                            connection.video.udp_pair.WriteToDataPort(rtcp_sender_report, connection.client_hostname, connection.video.client_transport.ClientPort.Second);
                         }
                         catch (Exception e)
                         {
@@ -925,7 +925,7 @@ public class RtspServer : IDisposable
                             // send the whole NAL. ** We could fragment the RTP packet into smaller chuncks that fit within the MTU
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video.udp_pair.Write_To_Data_Port(rtp_packet, connection.client_hostname, connection.video.client_transport.ClientPort.First);
+                            connection.video.udp_pair.WriteToDataPort(rtp_packet, connection.client_hostname, connection.video.client_transport.ClientPort.First);
                         }
                         catch (Exception e)
                         {
@@ -1130,7 +1130,7 @@ public class RtspServer : IDisposable
                         {
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.audio.udp_pair.Write_To_Data_Port(rtcp_sender_report, connection.client_hostname, connection.audio.client_transport.ClientPort.Second);
+                            connection.audio.udp_pair.WriteToDataPort(rtcp_sender_report, connection.client_hostname, connection.audio.client_transport.ClientPort.Second);
                         }
                         catch (Exception e)
                         {
@@ -1188,7 +1188,7 @@ public class RtspServer : IDisposable
                             // send the whole RTP packet
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.audio.udp_pair.Write_To_Data_Port(rtp_packet, connection.client_hostname, connection.audio.client_transport.ClientPort.First);
+                            connection.audio.udp_pair.WriteToDataPort(rtp_packet, connection.client_hostname, connection.audio.client_transport.ClientPort.First);
                         }
                         catch (Exception e)
                         {

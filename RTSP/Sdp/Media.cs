@@ -40,24 +40,16 @@ namespace Rtsp.Sdp
         // RFC4566 Media Types
         public enum MediaTypes { video, audio, text, application, message, unknown };
 
-        public Connection Connection { get; set; }
+        public Connection? Connection { get; set; }
 
-        public Bandwidth Bandwidth { get; set; }
+        public Bandwidth? Bandwidth { get; set; }
 
-        public EncriptionKey EncriptionKey { get; set; }
+        public EncriptionKey? EncriptionKey { get; set; }
 
         public MediaTypes MediaType { get; set; }
 
         public int PayloadType { get; set; }
 
-        private readonly List<Attribut> attributs = new();
-
-        public IList<Attribut> Attributs
-        {
-            get
-            {
-                return attributs;
-            }
-        }
+        public IList<Attribut> Attributs { get; } = new List<Attribut>();
     }
 }
