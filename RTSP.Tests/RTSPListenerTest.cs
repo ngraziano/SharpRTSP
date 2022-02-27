@@ -286,7 +286,7 @@ namespace Rtsp.Tests
         [Test]
         public void SendDataAsync()
         {
-            const int dataLenght = 45;
+            const int dataLenght = 300;
 
             MemoryStream stream = new MemoryStream();
             _mockTransport.GetStream().Returns(stream);
