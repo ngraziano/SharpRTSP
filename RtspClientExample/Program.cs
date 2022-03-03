@@ -21,7 +21,7 @@ namespace RtspClientExample
             });
 
             // Internet Test - Big Buck Bunney
-            String url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            string url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";

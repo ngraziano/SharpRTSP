@@ -10,7 +10,7 @@ namespace Rtsp
 
     // By Roger Hardiman, RJH Technical Consultancy Ltd
 
-    public class H265Payload
+    public class H265Payload : IPayloadProcessor
     {
         // H265 / HEVC structure.
         // An 'Access Unit' is the set of NAL Units that form one Picture
@@ -33,7 +33,7 @@ namespace Rtsp
             this.has_donl = has_donl;
         }
 
-        public List<byte[]> Process_H265_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        public List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker)
         {
 
             // Add payload to the List of payloads for the current Frame of Video
@@ -43,19 +43,20 @@ namespace Rtsp
             if (rtp_marker == 1)
             {
                 // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the NALs to a file
-                List<byte[]> nal_units = Process_H265_RTP_Frame(temporary_rtp_payloads);
+                List<byte[]> nal_units = ProcessRTPFrame(temporary_rtp_payloads);
                 temporary_rtp_payloads.Clear();
 
                 return nal_units;
             }
 
-            return null; // we don't have a frame yet. Keep accumulating RTP packets
+            // we don't have a frame yet. Keep accumulating RTP packets
+            return new(); 
         }
 
 
         // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp
         // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
-        private List<byte[]> Process_H265_RTP_Frame(List<byte[]> rtp_payloads)
+        private List<byte[]> ProcessRTPFrame(List<byte[]> rtp_payloads)
         {
             Console.WriteLine("RTP Data comprised of " + rtp_payloads.Count + " rtp packets");
 

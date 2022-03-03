@@ -444,7 +444,7 @@ namespace RtspClientExample
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                    List<byte[]> nal_units = h264Payload.Process_H264_RTP_Packet(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
+                    List<byte[]> nal_units = h264Payload.ProcessRTPPacket(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
 
                     if (nal_units == null)
                     {
@@ -506,9 +506,9 @@ namespace RtspClientExample
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                    List<byte[]> nal_units = h265Payload.Process_H265_RTP_Packet(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
+                    List<byte[]> nal_units = h265Payload.ProcessRTPPacket(rtp_payload, rtp_marker); // this will cache the Packets until there is a Frame
 
-                    if (nal_units == null)
+                    if (nal_units.Count == 0)
                     {
                         // we have not passed in enough RTP packets to make a Frame of video
                     }
@@ -557,9 +557,9 @@ namespace RtspClientExample
                 {
                     // G711 PCMA or G711 PCMU
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
-                    System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
+                    Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                    List<byte[]> audio_frames = g711Payload.Process_G711_RTP_Packet(rtp_payload, rtp_marker);
+                    List<byte[]> audio_frames = g711Payload.ProcessRTPPacket(rtp_payload, rtp_marker);
 
                     if (audio_frames == null)
                     {
@@ -582,7 +582,7 @@ namespace RtspClientExample
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                    List<byte[]> audio_frames = amrPayload.Process_AMR_RTP_Packet(rtp_payload, rtp_marker);
+                    List<byte[]> audio_frames = amrPayload.ProcessRTPPacket(rtp_payload, rtp_marker);
 
                     if (audio_frames == null)
                     {
@@ -606,7 +606,7 @@ namespace RtspClientExample
                     byte[] rtp_payload = new byte[e.Message.Data.Length - rtp_payload_start]; // payload with RTP header removed
                     System.Array.Copy(e.Message.Data, rtp_payload_start, rtp_payload, 0, rtp_payload.Length); // copy payload
 
-                    List<byte[]> audio_frames = aacPayload.Process_AAC_RTP_Packet(rtp_payload, rtp_marker);
+                    List<byte[]> audio_frames = aacPayload.ProcessRTPPacket(rtp_payload, rtp_marker);
 
                     if (audio_frames == null)
                     {

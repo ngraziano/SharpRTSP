@@ -9,9 +9,9 @@ using System.Linq;
 
 namespace Rtsp.Sdp
 {
-    public class H265Parameters : IDictionary<String, String>
+    public class H265Parameters : IDictionary<string, string>
     {
-        private readonly Dictionary<String, String> parameters = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> parameters = new();
 
         public List<byte[]> SpropParameterSets
         {
@@ -37,13 +37,13 @@ namespace Rtsp.Sdp
             }
         }
 
-        public static H265Parameters Parse(String parameterString)
+        public static H265Parameters Parse(string parameterString)
         {
             var result = new H265Parameters();
             foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
             {
                 if (!string.IsNullOrWhiteSpace(pair[0]))
-                    result[pair[0]] = pair.Length > 1 ? pair[1] : null;
+                    result[pair[0]] = pair.Length > 1 ? pair[1] : string.Empty;
             }
             return result;
         }
@@ -53,7 +53,7 @@ namespace Rtsp.Sdp
             return parameters.Select(p => p.Key + (p.Value != null ? "=" + p.Value : string.Empty)).Aggregate((x, y) => x + ";" + y);
         }
 
-        public String this[String index]
+        public string this[string index]
         {
             get { return parameters[index]; }
             set { parameters[index] = value; }

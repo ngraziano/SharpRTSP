@@ -60,14 +60,14 @@ namespace Rtsp
     */
 
 
-    public class AACPayload
+    public class AACPayload : IPayloadProcessor
     {
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
-        public AACPayload(String config_string)
+        public AACPayload(string config_string)
         {
             /***
             5 bits: object type
@@ -82,20 +82,20 @@ namespace Rtsp
 
             // config is a string in hex eg 1490 or 0x1210
             // Read each ASCII character and add to a bit array
-            BitStream bs = new BitStream();
+            BitStream bs = new();
             bs.AddHexString(config_string);
 
             // Read 5 bits
-            ObjectType = (int)bs.Read(5);
+            ObjectType = bs.Read(5);
 
             // Read 4 bits
-            FrequencyIndex = (int)bs.Read(4);
+            FrequencyIndex = bs.Read(4);
 
             // Read 4 bits
-            ChannelConfiguration = (int)bs.Read(4);
+            ChannelConfiguration = bs.Read(4);
         }
 
-        public List<byte[]> Process_AAC_RTP_Packet(byte[] rtp_payload, int rtp_marker)
+        public List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker)
         {
 
             // RTP Payload for MPEG4-GENERIC can consist of multple blocks.
@@ -105,7 +105,7 @@ namespace Rtsp
             // Part 3 - Access Unit Audio Data
 
             // The rest of the RTP packet is the AMR data
-            List<byte[]> audio_data = new List<byte[]>();
+            List<byte[]> audio_data = new();
 
             int ptr = 0;
 
@@ -126,7 +126,7 @@ namespace Rtsp
                 // extract the AAC block
                 if (ptr + aac_frame_size > rtp_payload.Length) break; // not enough data to copy
                 byte[] aac_data = new byte[aac_frame_size];
-                System.Array.Copy(rtp_payload, ptr, aac_data, 0, aac_frame_size);
+                Array.Copy(rtp_payload, ptr, aac_data, 0, aac_frame_size);
                 audio_data.Add(aac_data);
                 ptr += aac_frame_size;
             }

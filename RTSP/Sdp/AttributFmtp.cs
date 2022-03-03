@@ -29,7 +29,7 @@ namespace Rtsp.Sdp
         public int PayloadNumber { get; set; }
 
         // temporary aatibute to store remaning data not parsed
-        public string FormatParameter { get; set; }
+        public string? FormatParameter { get; set; }
 
 
         // Extract the Payload Number and the Format Parameters
@@ -53,7 +53,7 @@ namespace Rtsp.Sdp
                 foreach (var pair in parts[1].Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
                 {
                     if (!string.IsNullOrWhiteSpace(pair[0]))
-                        parameters[pair[0]] = pair.Length > 1 ? pair[1] : null;
+                        parameters[pair[0]] = pair.Length > 1 ? pair[1] : string.Empty;
                 }
             }
         }
