@@ -1,7 +1,7 @@
 Sharp RTSP
 ==========
 
-![Nuget](https://img.shields.io/nuget/v/SharpRTSP)
+[![Nuget](https://img.shields.io/nuget/v/SharpRTSP)](https://www.nuget.org/packages/SharpRTSP)
 
 A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
 * RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711, AAC and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
