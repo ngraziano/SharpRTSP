@@ -152,7 +152,7 @@ namespace Rtsp.Sdp
 
             // Hack for MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
             // Skip over all other Key/Value pairs until the 'm=' key
-            while (value.Key != "m")
+            while (value.Key != "m" && value.Key != string.Empty)
             {
                 value = GetKeyValue(sdpStream);
             }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Rtsp
 {
-    internal interface IPayloadProcessor
+    public interface IPayloadProcessor
     {
         List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker);
     }

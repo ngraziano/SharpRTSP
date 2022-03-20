@@ -12,7 +12,7 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
-        private IPEndPoint _currentEndPoint;
+        private readonly IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
 
         /// <summary>

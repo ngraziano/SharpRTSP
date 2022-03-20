@@ -21,7 +21,7 @@ namespace RtspClientExample
             });
 
             // Internet Test - Big Buck Bunney
-            string url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=ld&namespace=1&service=1066";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
@@ -57,37 +57,32 @@ namespace RtspClientExample
 
             // H265 Tests
 
-            String now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            FileStream fs_v = null;   // used to write the video
-            FileStream fs_a = null;   // used to write the audio
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            FileStream? fs_v = null;   // used to write the video
+            FileStream? fs_a = null;   // used to write the audio
             bool h264 = false;
             bool h265 = false;
 
             // Create a RTSP Client
-            RTSPClient c = new RTSPClient(loggerFactory.CreateLogger<RTSPClient>());
+            RTSPClient client = new(loggerFactory.CreateLogger<RTSPClient>());
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
-            c.Received_SPS_PPS += (byte[] sps, byte[] pps) =>
+            client.ReceivedSpsPps += (byte[] sps, byte[] pps) =>
             {
                 h264 = true;
                 if (fs_v == null)
                 {
-                    String filename = "rtsp_capture_" + now + ".264";
+                    string filename = "rtsp_capture_" + now + ".264";
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
-
-                if (fs_v != null)
-                {
-                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                    fs_v.Write(sps, 0, sps.Length);
-                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                    fs_v.Write(pps, 0, pps.Length);
-                    fs_v.Flush(true);
-                }
+                WriteNalToFile(fs_v,sps);
+                WriteNalToFile(fs_v, pps);
+                fs_v.Flush(true);
+               
             };
 
-            c.Received_VPS_SPS_PPS += (byte[] vps, byte[] sps, byte[] pps) =>
+            client.ReceivedVpsSpsPps += (byte[] vps, byte[] sps, byte[] pps) =>
             {
                 h265 = true;
                 if (fs_v == null)
@@ -96,76 +91,74 @@ namespace RtspClientExample
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
 
-                if (fs_v != null)
-                {
-                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                    fs_v.Write(vps, 0, vps.Length);
-                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                    fs_v.Write(sps, 0, sps.Length);
-                    fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                    fs_v.Write(pps, 0, pps.Length);
-                    fs_v.Flush(true);
-                }
+                WriteNalToFile(fs_v, vps);
+                WriteNalToFile(fs_v, sps);
+                WriteNalToFile(fs_v, pps);
+                fs_v.Flush(true);
             };
 
 
 
             // Video NALs. May also include the SPS and PPS in-band for H264
-            c.Received_NALs += (List<byte[]> nal_units) =>
+            client.ReceivedNALs += (List<byte[]> nalUnits) =>
             {
                 if (fs_v != null)
                 {
-                    foreach (byte[] nal_unit in nal_units)
+                    foreach (byte[] nalUnit in nalUnits)
                     {
                         // Output some H264 stream information
-                        if (h264 && nal_unit.Length > 0)
+                        if (h264 && nalUnit.Length > 0)
                         {
-                            int nal_ref_idc = (nal_unit[0] >> 5) & 0x03;
-                            int nal_unit_type = nal_unit[0] & 0x1F;
-                            String description = "";
-                            if (nal_unit_type == 1) description = "NON IDR NAL";
-                            else if (nal_unit_type == 5) description = "IDR NAL";
-                            else if (nal_unit_type == 6) description = "SEI NAL";
-                            else if (nal_unit_type == 7) description = "SPS NAL";
-                            else if (nal_unit_type == 8) description = "PPS NAL";
-                            else if (nal_unit_type == 9) description = "ACCESS UNIT DELIMITER NAL";
-                            else description = "OTHER NAL";
+                            int nal_ref_idc = (nalUnit[0] >> 5) & 0x03;
+                            int nal_unit_type = nalUnit[0] & 0x1F;
+                            string description = nal_unit_type switch
+                            {
+                                1 => "NON IDR NAL",
+                                5 => "IDR NAL",
+                                6 => "SEI NAL",
+                                7 => "SPS NAL",
+                                8 => "PPS NAL",
+                                9 => "ACCESS UNIT DELIMITER NAL",
+                                _ => "OTHER NAL",
+                            };
                             Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
                         }
 
                         // Output some H265 stream information
-                        if (h265 && nal_unit.Length > 0)
+                        if (h265 && nalUnit.Length > 0)
                         {
-                            int nal_unit_type = (nal_unit[0] >> 1) & 0x3F;
-                            String description = "";
-                            if (nal_unit_type == 1) description = "NON IDR NAL";
-                            else if (nal_unit_type == 19) description = "IDR NAL";
-                            else if (nal_unit_type == 32) description = "VPS NAL";
-                            else if (nal_unit_type == 33) description = "SPS NAL";
-                            else if (nal_unit_type == 34) description = "PPS NAL";
-                            else if (nal_unit_type == 39) description = "SEI NAL";
-                            else description = "OTHER NAL";
+                            int nal_unit_type = (nalUnit[0] >> 1) & 0x3F;
+                            string description = nal_unit_type switch
+                            {
+                                1 => "NON IDR NAL",
+                                19 => "IDR NAL",
+                                32 => "VPS NAL",
+                                33 => "SPS NAL",
+                                34 => "PPS NAL",
+                                39 => "SEI NAL",
+                                _ => "OTHER NAL",
+                            };
                             Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
                         }
 
                         fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                        fs_v.Write(nal_unit, 0, nal_unit.Length);                 // Write NAL
+                        fs_v.Write(nalUnit, 0, nalUnit.Length);                 // Write NAL
                     }
                     fs_v.Flush(true);
                 }
             };
 
-            c.Received_G711 += (string format, List<byte[]> g711) =>
+            client.ReceivedG711 += (string format, List<byte[]> g711) =>
             {
                 if (fs_a == null && format.Equals("PCMU"))
                 {
-                    String filename = "rtsp_capture_" + now + ".ul";
+                    string filename = "rtsp_capture_" + now + ".ul";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
                 if (fs_a == null && format.Equals("PCMA"))
                 {
-                    String filename = "rtsp_capture_" + now + ".al";
+                    string filename = "rtsp_capture_" + now + ".al";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
@@ -178,11 +171,11 @@ namespace RtspClientExample
                 }
             };
 
-            c.Received_AMR += (string format, List<byte[]> amr) =>
+            client.ReceivedAMR += (string format, List<byte[]> amr) =>
             {
                 if (fs_a == null && format.Equals("AMR"))
                 {
-                    String filename = "rtsp_capture_" + now + ".amr";
+                    string filename = "rtsp_capture_" + now + ".amr";
                     fs_a = new FileStream(filename, FileMode.Create);
                     byte[] header = new byte[] { 0x23, 0x21, 0x41, 0x4D, 0x52, 0x0A }; // #!AMR<0x0A>
                     fs_a.Write(header, 0, header.Length);
@@ -196,11 +189,11 @@ namespace RtspClientExample
                     }
                 }
             };
-            c.Received_AAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) =>
+            client.ReceivedAAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) =>
             {
                 if (fs_a == null)
                 {
-                    String filename = "rtsp_capture_" + now + ".aac";
+                    string filename = "rtsp_capture_" + now + ".aac";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
@@ -246,7 +239,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            c.Connect(url, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
@@ -254,8 +247,8 @@ namespace RtspClientExample
 
             Console.WriteLine("Press ENTER to exit");
 
-            String readline = null;
-            while (readline == null && c.StreamingFinished() == false)
+            string? readline = null;
+            while (readline == null && client.StreamingFinished() == false)
             {
                 readline = Console.ReadLine();
 
@@ -263,9 +256,15 @@ namespace RtspClientExample
                 if (readline == null) Thread.Sleep(500);
             }
 
-            c.Stop();
+            client.Stop();
             Console.WriteLine("Finished");
 
+        }
+
+        private static void WriteNalToFile(FileStream fs_v, byte[] nal)
+        {
+            fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+            fs_v.Write(nal, 0, nal.Length);
         }
     }
 }
