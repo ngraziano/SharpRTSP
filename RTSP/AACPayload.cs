@@ -8,6 +8,7 @@ namespace Rtsp
     // It has methods to process the RTP Payload
 
     // (c) 2018 Roger Hardiman, RJH Technical Consultancy Ltd
+    // (c) 2023 Clemens Arth, Technology Consultant
 
 
     /*
@@ -109,25 +110,26 @@ namespace Rtsp
 
             int ptr = 0;
 
-            while (true) {
-                if (ptr + 4 > rtp_payload.Length) break; // 2 bytes for AU Header Length, 2 bytes of AU Header payload
+            if (ptr + 2 > rtp_payload.Length) return audio_data; // 2 bytes for AU Header Length
 
-                // Get Size of the AU Header
-                int au_headers_length_bits = (((rtp_payload[ptr] << 8) + (rtp_payload[ptr + 1] << 0))); // 16 bits
-                int au_headers_length = (int)Math.Ceiling((double)au_headers_length_bits / 8.0);
-                ptr += 2;
+            // Get Size of the AU Header
+            int au_headers_length_bits = (((rtp_payload[ptr] << 8) + (rtp_payload[ptr + 1] << 0))); // 16 bits
+            int au_headers_length = (int)Math.Ceiling((double)au_headers_length_bits / 8.0);
+            ptr += 2;
 
-                // Examine the AU Header. Get the size of the AAC data
-                int aac_frame_size = (((rtp_payload[ptr] << 8) + (rtp_payload[ptr+1] << 0)) >> 3); // 13 bits
-                int aac_index_delta = rtp_payload[ptr+1] & 0x03; // 3 bits
-                ptr += au_headers_length;
+            int cnt = 0;
+            for (int p = 0; p < au_headers_length >> 1; p++)
+            {
+                int aac_frame_size = (((rtp_payload[ptr + 2 * p] << 8) + (rtp_payload[ptr + 2 * p + 1] << 0)) >> 3); // 13 bits
+                int aac_index_delta = rtp_payload[ptr + 2 * p + 1] & 0x03; // 3 bits
 
                 // extract the AAC block
-                if (ptr + aac_frame_size > rtp_payload.Length) break; // not enough data to copy
+                if ((ptr + au_headers_length + cnt) + aac_frame_size > rtp_payload.Length) break; // not enough data to copy
                 byte[] aac_data = new byte[aac_frame_size];
-                System.Array.Copy(rtp_payload, ptr, aac_data, 0, aac_frame_size);
+                Array.Copy(rtp_payload, (ptr + au_headers_length + cnt), aac_data, 0, aac_frame_size);
                 audio_data.Add(aac_data);
-                ptr += aac_frame_size;
+
+                cnt += aac_frame_size;
             }
 
             return audio_data;
