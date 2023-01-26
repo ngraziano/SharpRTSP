@@ -1,4 +1,5 @@
 ﻿using Rtsp.Onvif;
+using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -10,11 +11,11 @@ namespace Rtsp.Rtp
     /// </summary>
     public class G711_1Payload : IPayloadProcessor
     {
-        private readonly MemoryPool<byte> _memoryPool;
+        private readonly MemoryPool<byte>? _memoryPool;
 
         public G711_1Payload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -22,7 +23,7 @@ namespace Rtsp.Rtp
             // Look at the Header. This tells us the G711 mode being used
 
             // Mode Index (MI) is
-            // 1 - R1 40 octets containg Layer 0 data
+            // 1 - R1 40 octets containing Layer 0 data
             // 2 - R2a 50 octets containing Layer 0 plus Layer 1 data
             // 3 - R2b 50 octets containing Layer 0 plus Layer 2 data
             // 4 - R3 60 octets containing Layer 0 plus Layer 1 plus Layer 2 data
@@ -43,23 +44,18 @@ namespace Rtsp.Rtp
                 return RawMediaFrame.Empty;
             }
 
-            List<ReadOnlyMemory<byte>> audioDatas = [];
-            List<IMemoryOwner<byte>> owners = [];
-
+            var memoryPool = new PooledSequence(_memoryPool);
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
             while (frame_start + sizeOfOneFrame < rtpPayload.Length)
             {
                 // Return just the basic u-Law or A-Law audio (the Layer 0 audio)
-                var owner = _memoryPool.Rent(40);
-                owners.Add(owner);
-                var memory = owner.Memory[..40];
+                var memory = memoryPool.GetMemory(40);
                 // only copy the Layer 0 data (the first 40 bytes)
                 rtpPayload[frame_start..(frame_start + 40)].CopyTo(memory.Span);
-                audioDatas.Add(memory);
                 frame_start += sizeOfOneFrame;
             }
-            return new(audioDatas, owners)
+            return new(memoryPool.GetReadOnlySequence(), memoryPool)
             {
                 ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
                 RtpTimestamp = packet.Timestamp,

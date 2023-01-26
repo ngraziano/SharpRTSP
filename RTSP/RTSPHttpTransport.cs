@@ -1,6 +1,8 @@
 ﻿using Rtsp.Messages;
+using Rtsp.Utils;
 using System;
 using System.Buffers;
+using System.Buffers.Text;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
@@ -22,12 +24,15 @@ namespace Rtsp
             private readonly string _sessionCookie = Guid.NewGuid().ToString("N")[..10];
             private readonly RtspHttpTransport _parent;
             private TcpClient? _outClient;
-            private readonly MemoryStream _sendBuffer = new();
+            private readonly PooledBufferWriter _sendBuffer;
+            private readonly MemoryPool<byte> _memoryPool;
 
-            public HttpTransportStream(RtspHttpTransport parent)
+            public HttpTransportStream(RtspHttpTransport parent, MemoryPool<byte>? memoryPool = null)
             {
                 _inStream = parent._dataClient!.GetStream();
                 _parent = parent;
+                _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+                _sendBuffer = new(_memoryPool);
             }
 
             internal bool Open()
@@ -95,7 +100,10 @@ namespace Rtsp
                     _outClient = new TcpClient();
                     _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
 
-                    string base64CodedCommandString = Convert.ToBase64String(_sendBuffer.ToArray());
+                    // TODO: optimize this to use Base64.EncodeToUtf8InPlace(Span<Byte>, Int32, Int32) Method
+                    byte[] bytes = new byte[_sendBuffer.Length];
+                    _sendBuffer.CopyTo(bytes);
+                    string base64CodedCommandString = Convert.ToBase64String(bytes);
                     byte[] base64CommandBytes = Encoding.ASCII.GetBytes(base64CodedCommandString);
 
                     string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
@@ -106,17 +114,31 @@ namespace Rtsp
                 }
                 else
                 {
-                    string base64CodedCommandString = Convert.ToBase64String(_sendBuffer.ToArray());
-                    byte[] base64CommandBytes = Encoding.ASCII.GetBytes(base64CodedCommandString);
-                    _outClient.GetStream().Write(base64CommandBytes);
+                    int originalLength = _sendBuffer.Length;
+                    int maxEncodedLength = Base64.GetMaxEncodedToUtf8Length(originalLength);
+
+                    // Rent a buffer large enough for both input and encoded output
+                    using IMemoryOwner<byte> memoryOwner = _memoryPool.Rent(maxEncodedLength);
+                    Span<byte> buffer = memoryOwner.Memory.Span.Slice(0, maxEncodedLength);
+
+                    // Copy original data to the end of the buffer
+                    int inputOffset = maxEncodedLength - originalLength;
+                    _sendBuffer.CopyTo(buffer.Slice(inputOffset, originalLength));
+
+                    // Encode in-place
+                    if (Base64.EncodeToUtf8InPlace(buffer, originalLength, out int bytesWritten) != OperationStatus.Done)
+                    {
+                        throw new InvalidOperationException("Base64 encoding failed.");
+                    }
+                    _outClient.GetStream().Write(buffer.Slice(0, bytesWritten));
                 }
 
-                _sendBuffer.SetLength(0);
+                _sendBuffer.Clear();
             }
 
             public override int Read(byte[] buffer, int offset, int count) => _inStream.Read(buffer, offset, count);
 
-            public override void Write(byte[] buffer, int offset, int count) => _sendBuffer.Write(buffer, offset, count);
+            public override void Write(byte[] buffer, int offset, int count) => _sendBuffer.Write(buffer.AsSpan(offset, count));
 
             private static int ReadUntilEndOfHeaders(Stream stream, byte[] buffer, int length)
             {

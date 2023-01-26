@@ -1,12 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Rtsp.Onvif;
+using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -21,18 +20,17 @@ namespace Rtsp.Rtp
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24; // used for diagnostics stats
 
         // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
-        private readonly List<ReadOnlyMemory<byte>> nalUnits = [];
-        private readonly List<IMemoryOwner<byte>> owners = [];
+        private readonly PooledSequence nalUnitsBuffer;
         // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
-        private readonly MemoryStream fragmentedNal = new();
-        private readonly MemoryPool<byte> _memoryPool;
+        private readonly PooledBufferWriter fragmentedNal;
 
         private DateTime _timestamp;
 
         public H264Payload(ILogger<H264Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            fragmentedNal = new(memoryPool);
+            nalUnitsBuffer = new(memoryPool);
         }
 
         // Process a RTP Packet.
@@ -114,15 +112,17 @@ namespace Rtsp.Rtp
                 if (fu_header_s == 1 && fu_header_e == 0)
                 {
                     // Start of Fragment.
-                    // Initiise the fragmented_nal byte array
+                    // Initializes the fragmented_nal byte array
                     // Build the NAL header with the original F and NRI flags but use the the Type field from the fu_header_type
                     byte reconstructed_nal_type = (byte)((nal_header_f_bit << 7) + (nal_header_nri << 5) + fu_header_type);
 
                     // Empty the stream
-                    fragmentedNal.SetLength(0);
+                    fragmentedNal.Clear();
+
+                    var buffer = fragmentedNal.GetMemory(1 + 1 + payload.Length - 2).Span;
 
                     // Add reconstructed_nal_type byte to the memory stream
-                    fragmentedNal.WriteByte(reconstructed_nal_type);
+                    fragmentedNal.Write(reconstructed_nal_type);
 
                     // copy the rest of the RTP payload to the memory stream
                     fragmentedNal.Write(payload[2..]);
@@ -146,7 +146,7 @@ namespace Rtsp.Rtp
                     // Add the NAL to the array of NAL units
                     var length = (int)fragmentedNal.Length;
                     var nalSpan = PrepareNewNal(length);
-                    fragmentedNal.GetBuffer().AsSpan()[..length].CopyTo(nalSpan);
+                    fragmentedNal.CopyTo(nalSpan);
                 }
             }
             else if (nal_header_type == 29)
@@ -162,10 +162,8 @@ namespace Rtsp.Rtp
 
         private Span<byte> PrepareNewNal(int sizeWitoutHeader)
         {
-            var owner = _memoryPool.Rent(sizeWitoutHeader + 4);
-            owners.Add(owner);
-            var memory = owner.Memory[..(sizeWitoutHeader + 4)];
-            nalUnits.Add(memory);
+            int size = sizeWitoutHeader + 4;
+            var memory = nalUnitsBuffer.GetMemory(size);
             // Add the NAL start code 00 00 00 01
             memory.Span[0] = 0;
             memory.Span[1] = 0;
@@ -195,16 +193,13 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
-            var result = new RawMediaFrame(
-                new List<ReadOnlyMemory<byte>>(nalUnits),
-                new List<IMemoryOwner<byte>>(owners)
-                )
+            var data = nalUnitsBuffer.Clone();
+            var result = new RawMediaFrame(data.GetReadOnlySequence(), data)
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = _timestamp,
             };
-            nalUnits.Clear();
-            owners.Clear();
+            nalUnitsBuffer.Clear();
             return result;
         }
     }

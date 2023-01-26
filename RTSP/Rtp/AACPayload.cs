@@ -1,4 +1,5 @@
 ﻿using Rtsp.Onvif;
+using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ namespace Rtsp.Rtp
     // It has methods to process the RTP Payload
 
     // (c) 2018 Roger Hardiman, RJH Technical Consultancy Ltd
+    // (c) 2023 Clemens Arth, Technology Consultant
 
     /*
     RFC 3640
@@ -120,8 +122,7 @@ namespace Rtsp.Rtp
             // Part 3 - Access Unit Audio Data
 
             // The rest of the RTP packet is the AMR data
-            List<ReadOnlyMemory<byte>> audioData = [];
-            List<IMemoryOwner<byte>> owners = [];
+            var buffer = new PooledSequence(_memoryPool);
 
             int position = 0;
             var rtpPayload = packet.Payload;
@@ -142,16 +143,13 @@ namespace Rtsp.Rtp
                 // extract the AAC block
                 if (position + aac_frame_size > rtpPayload.Length) break; // not enough data to copy
 
-                var owner = _memoryPool.Rent(aac_frame_size);
-                var data = owner.Memory[..aac_frame_size];
+                var data = buffer.GetMemory(aac_frame_size);
                 rtpPayload[position..(position + aac_frame_size)].CopyTo(data.Span);
-                owners.Add(owner);
-                audioData.Add(data);
 
                 position += aac_frame_size;
             }
 
-            return new(audioData, owners)
+            return new(buffer.GetReadOnlySequence(), buffer)
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
