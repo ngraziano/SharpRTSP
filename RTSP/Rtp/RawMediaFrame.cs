@@ -8,10 +8,10 @@ namespace Rtsp.Rtp
     public class RawMediaFrame : IDisposable
     {
         private bool disposedValue;
-        private readonly IEnumerable<ReadOnlyMemory<byte>> _data;
-        private readonly IEnumerable<IMemoryOwner<byte>> _owners;
+        private readonly ReadOnlySequence<byte> _data;
+        private readonly IDisposable? _memoryOwner;
 
-        public IEnumerable<ReadOnlyMemory<byte>> Data
+        public ReadOnlySequence<byte> Data
         {
             get
             {
@@ -23,13 +23,13 @@ namespace Rtsp.Rtp
         public required DateTime ClockTimestamp { get; init; }
         public required uint RtpTimestamp { get; init; }
 
-        public RawMediaFrame(IEnumerable<ReadOnlyMemory<byte>> data, IEnumerable<IMemoryOwner<byte>> owners)
+        public RawMediaFrame(ReadOnlySequence<byte> data, IDisposable? memoryOwner)
         {
             _data = data;
-            _owners = owners;
+            _memoryOwner = memoryOwner;
         }
 
-        public bool Any() => Data.Any();
+        public bool Any() => !Data.IsEmpty;
 
         protected virtual void Dispose(bool disposing)
         {
@@ -37,10 +37,7 @@ namespace Rtsp.Rtp
             {
                 if (disposing)
                 {
-                    foreach (var owner in _owners)
-                    {
-                        owner.Dispose();
-                    }
+                    _memoryOwner?.Dispose();
                 }
                 disposedValue = true;
             }
@@ -52,6 +49,6 @@ namespace Rtsp.Rtp
             GC.SuppressFinalize(this);
         }
 
-        public static RawMediaFrame Empty => new([], []) { RtpTimestamp = 0, ClockTimestamp = DateTime.MinValue };
+        public static RawMediaFrame Empty => new(ReadOnlySequence<byte>.Empty, null) { RtpTimestamp = 0, ClockTimestamp = DateTime.MinValue };
     }
 }

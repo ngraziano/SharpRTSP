@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace RtspClientExample
@@ -40,13 +41,13 @@ namespace RtspClientExample
 
     public class SimpleDataEventArgs : EventArgs
     {
-        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
+        public SimpleDataEventArgs(ReadOnlySequence<byte> data, DateTime timeStamp)
         {
             Data = data;
             TimeStamp = timeStamp;
         }
 
         public DateTime TimeStamp { get; }
-        public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
+        public ReadOnlySequence<byte> Data { get; }
     }
 }

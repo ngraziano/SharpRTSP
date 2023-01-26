@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Rtsp.Rtp;
+using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -51,12 +52,12 @@ namespace RTSP.Tests.Rtp
             var r2 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_2"));
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(r0.Data, Is.Empty);
-                Assert.That(r1.Data, Is.Empty);
-                Assert.That(r2.Data, Is.Not.Empty);
+                Assert.That(r0.Data.ToArray(), Is.Empty);
+                Assert.That(r1.Data.ToArray(), Is.Empty);
+                Assert.That(r2.Data.ToArray(), Is.Not.Empty);
             }
 
-            var jpeg = r2.Data.First();
+            var jpeg = r2.Data.First;
             var expected = ReadBytes("img_jpg_0.jpg");
 
             Assert.That(jpeg.ToArray(), Is.EqualTo(expected));

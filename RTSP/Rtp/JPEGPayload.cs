@@ -1,4 +1,5 @@
 ﻿using Rtsp.Onvif;
+using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -23,7 +24,7 @@ namespace Rtsp.Rtp
         const int JPEG_HEADER_SIZE = 8;
         const int JPEG_MAX_SIZE = 16 * 1024 * 1024;
 
-        private readonly MemoryStream _frameStream = new(64 * 1024);
+        private readonly PooledBufferWriter _frameBuffer;
         private readonly MemoryPool<byte> _memoryPool;
         private int _currentDri;
         private int _currentQ;
@@ -46,6 +47,7 @@ namespace Rtsp.Rtp
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _frameBuffer = new(_memoryPool);
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -63,17 +65,17 @@ namespace Rtsp.Rtp
             }
             ProcessJPEGRTPFrame(packet.Payload);
 
-            if (!packet.IsMarker || _frameStream.Length == 0)
+            if (!packet.IsMarker || _frameBuffer.Length == 0)
             {
                 // we don't have a frame yet. Keep accumulating RTP packets
                 return RawMediaFrame.Empty;
             }
             // End Marker is set. The frame is complete
-            var length = (int)_frameStream.Length;
+            var length = (int)_frameBuffer.Length;
             var memoryOwner = _memoryPool.Rent(length);
-            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
-            _frameStream.SetLength(0);
-            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner])
+            _frameBuffer.CopyTo(memoryOwner.Memory.Span);
+            _frameBuffer.Clear();
+            return new RawMediaFrame(new ReadOnlySequence<byte>(memoryOwner.Memory.Slice(0, length)), memoryOwner)
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = _timestamp ?? DateTime.MinValue,
@@ -148,16 +150,16 @@ namespace Rtsp.Rtp
                     ReInitializeJpegHeader();
                 }
 
-                _frameStream.Write(_jpegHeaderBytes, 0, _jpegHeaderBytes.Length);
+                _frameBuffer.Write(_jpegHeaderBytes.AsSpan());
             }
 
-            if (fragmentOffset != 0 && _frameStream.Position == 0) { return false; }
-            if (_frameStream.Position > JPEG_MAX_SIZE) { return false; }
+            if (fragmentOffset != 0 && _frameBuffer.Length == 0) { return false; }
+            if (_frameBuffer.Length > JPEG_MAX_SIZE) { return false; }
 
             int dataSize = payload.Length - offset;
             if (dataSize < 0) { return false; }
 
-            _frameStream.Write(payload[offset..]);
+            _frameBuffer.Write(payload[offset..]);
 
             return true;
         }

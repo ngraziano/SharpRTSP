@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace Rtsp.Rtp.Tests
@@ -10,10 +11,8 @@ namespace Rtsp.Rtp.Tests
         [Test()]
         public void AnyTest()
         {
-            List<ReadOnlyMemory<byte>> data = [
-                new byte[] {0x01 }.AsMemory(),
-              ];
-            RawMediaFrame rawMediaFrame = new(data, []) { ClockTimestamp = DateTime.MinValue, RtpTimestamp = 0 };
+            ReadOnlySequence<byte> data = new([0x01]);
+            using RawMediaFrame rawMediaFrame = new(data, null) { ClockTimestamp = DateTime.MinValue, RtpTimestamp = 0 };
             Assert.That(rawMediaFrame.Any(), Is.True);
         }
 
