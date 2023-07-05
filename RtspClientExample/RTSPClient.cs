@@ -412,6 +412,13 @@ namespace RtspClientExample
                                    + " SSRC=" + rtp_ssrc
                                    + " Size=" + e.Message.Data.Length);
 
+                if(rtp_padding == 1)
+                {
+                    int paddingCount = e.Message.Data[e.Message.Data.Length - 1];
+                    _logger.Debug("Padding Count=" + paddingCount);
+                    e.Message.Data = e.Message.Data.Take(e.Message.Data.Length - paddingCount).ToArray();
+                }
+
 
                 // Check the payload type in the RTP packet matches the Payload Type value from the SDP
                 if (data_received.Channel == video_data_channel && rtp_payload_type != video_payload)
