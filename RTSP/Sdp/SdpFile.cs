@@ -187,10 +187,10 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // bandwidth optional
-            if (value.Key == "b")
+            // bandwidth optional multiple value possible
+            while (value.Key == "b")
             {
-                returnValue.Bandwidth = Bandwidth.Parse(value.Value);
+                returnValue.Bandwidths.Add(Bandwidth.Parse(value.Value));
                 value = GetKeyValue(sdpStream);
             }
 

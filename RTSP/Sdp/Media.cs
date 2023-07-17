@@ -42,7 +42,7 @@ namespace Rtsp.Sdp
 
         public Connection? Connection { get; set; }
 
-        public Bandwidth? Bandwidth { get; set; }
+        public List<Bandwidth> Bandwidths { get; } = new List<Bandwidth>();
 
         public EncriptionKey? EncriptionKey { get; set; }
 

@@ -345,7 +345,7 @@ public class RtspServer : IDisposable
                     // RTP over UDP mode
                     // Create a pair of UDP sockets - One is for the Data (eg Video/Audio), one is for the RTCP
                     udp_pair = new Rtsp.UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
-                    udp_pair.DataReceived += (object local_sender, RtspChunkEventArgs local_e) =>
+                    udp_pair.DataReceived += (object local_sender, RtspDataEventArgs local_e) =>
                     {
                         // RTCP data received
                         Console.WriteLine("RTCP data received " + local_sender.ToString() + " " + local_e.ToString());
@@ -356,7 +356,7 @@ public class RtspServer : IDisposable
                     // Pass the Port of the two sockets back in the reply
                     transport_reply.LowerTransport = Rtsp.Messages.RtspTransport.LowerTransportType.UDP;
                     transport_reply.IsMulticast = false;
-                    transport_reply.ServerPort = new Rtsp.Messages.PortCouple(udp_pair.dataPort, udp_pair.controlPort);
+                    transport_reply.ServerPort = new Rtsp.Messages.PortCouple(udp_pair.DataPort, udp_pair.ControlPort);
                     transport_reply.ClientPort = transport.ClientPort;
                 }
                 else

@@ -8,18 +8,14 @@ namespace Rtsp
     public class UDPSocket
     {
 
-        private readonly UdpClient dataSocket;
-        private readonly UdpClient controlSocket;
+        protected readonly UdpClient dataSocket;
+        protected readonly UdpClient controlSocket;
 
         private Thread? data_read_thread;
         private Thread? control_read_thread;
 
-        public int dataPort;
-        public int controlPort;
-
-        bool isMulticast = false;
-        IPAddress? dataMulticastAddress;
-        IPAddress? controlMulticastAddress;
+        public int DataPort { get; protected set; }
+        public int ControlPort { get; protected set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UDPSocket"/> class.
@@ -27,21 +23,18 @@ namespace Rtsp
         /// </summary>
         public UDPSocket(int startPort, int endPort)
         {
-
-            isMulticast = false;
-
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            dataPort = startPort;
-            controlPort = startPort + 1;
+            DataPort = startPort;
+            ControlPort = startPort + 1;
 
             bool ok = false;
-            while (ok == false && (controlPort < endPort))
+            while (ok == false && (ControlPort < endPort))
             {
                 // Video/Audio port must be odd and command even (next one)
                 try
                 {
-                    dataSocket = new UdpClient(dataPort);
-                    controlSocket = new UdpClient(controlPort);
+                    dataSocket = new UdpClient(DataPort);
+                    controlSocket = new UdpClient(ControlPort);
                     ok = true;
                 }
                 catch (SocketException)
@@ -53,8 +46,8 @@ namespace Rtsp
                         controlSocket.Close();
 
                     // try next data or control port
-                    dataPort += 2;
-                    controlPort += 2;
+                    DataPort += 2;
+                    ControlPort += 2;
                 }
 
                 if (ok)
@@ -71,62 +64,12 @@ namespace Rtsp
             {
                 throw new InvalidOperationException("UDP Forwader host was not initialized, can't continue");
             }
-
-            
         }
 
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UDPSocket"/> class.
-        /// Used with Multicast mode with the Multicast Address and Port
-        /// </summary>
-        public UDPSocket(string data_multicast_address, int data_multicast_port, string control_multicast_address, int control_multicast_port)
+        protected UDPSocket(UdpClient dataSocket, UdpClient controlSocket)
         {
-
-            isMulticast = true;
-
-            // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            this.dataPort = data_multicast_port;
-            this.controlPort = control_multicast_port;
-
-            try
-            {
-                IPEndPoint data_ep = new IPEndPoint(IPAddress.Any, dataPort);
-                IPEndPoint control_ep = new IPEndPoint(IPAddress.Any, controlPort);
-
-                dataMulticastAddress = IPAddress.Parse(data_multicast_address);
-                controlMulticastAddress = IPAddress.Parse(control_multicast_address);
-
-                dataSocket = new UdpClient();
-                dataSocket.Client.Bind(data_ep);
-                dataSocket.JoinMulticastGroup(dataMulticastAddress);
-
-                controlSocket = new UdpClient();
-                controlSocket.Client.Bind(control_ep);
-                controlSocket.JoinMulticastGroup(controlMulticastAddress);
-
-
-                dataSocket.Client.ReceiveBufferSize = 100 * 1024;
-                dataSocket.Client.SendBufferSize = 65535; // default is 8192. Make it as large as possible for large RTP packets which are not fragmented
-
-
-                controlSocket.Client.DontFragment = false;
-
-            }
-            catch (SocketException)
-            {
-                // Fail to allocate port, try again
-                if (dataSocket != null)
-                    dataSocket.Close();
-                if (controlSocket != null)
-                    controlSocket.Close();
-                throw;
-            }
-
-            if (dataSocket == null || controlSocket == null)
-            {
-                throw new InvalidOperationException("UDP Forwader host was not initialized, can't continue");
-            }
+            this.dataSocket = dataSocket;
+            this.controlSocket = controlSocket;
         }
 
         /// <summary>
@@ -139,15 +82,15 @@ namespace Rtsp
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            data_read_thread = new Thread(() => DoWorkerJob(dataSocket, dataPort))
+            data_read_thread = new Thread(() => DoWorkerJob(dataSocket, DataPort, OnDataReceived))
             {
-                Name = "DataPort " + dataPort
+                Name = "DataPort " + DataPort
             };
             data_read_thread.Start();
 
-            control_read_thread = new Thread(() => DoWorkerJob(controlSocket, controlPort))
+            control_read_thread = new Thread(() => DoWorkerJob(controlSocket, ControlPort, OnControlReceived))
             {
-                Name = "ControlPort " + controlPort
+                Name = "ControlPort " + ControlPort
             };
             control_read_thread.Start();
         }
@@ -155,40 +98,46 @@ namespace Rtsp
         /// <summary>
         /// Stops this instance.
         /// </summary>
-        public void Stop()
+        public virtual void Stop()
         {
-            if (isMulticast)
-            {
-                // leave the multicast groups
-                dataSocket.DropMulticastGroup(dataMulticastAddress);
-                controlSocket.DropMulticastGroup(controlMulticastAddress);
-            }
             dataSocket.Close();
             controlSocket.Close();
         }
 
         /// <summary>
-        /// Occurs when message is received.
+        /// Occurs when data is received.
         /// </summary>
-        public event EventHandler<RtspChunkEventArgs>? DataReceived;
+        public event EventHandler<RtspDataEventArgs>? DataReceived;
 
         /// <summary>
         /// Raises the <see cref="E:DataReceived"/> event.
         /// </summary>
-        /// <param name="rtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
-        protected void OnDataReceived(RtspChunkEventArgs rtspChunkEventArgs)
+        protected void OnDataReceived(RtspDataEventArgs rtspDataEventArgs)
         {
-            DataReceived?.Invoke(this, rtspChunkEventArgs);
+            DataReceived?.Invoke(this, rtspDataEventArgs);
+        }
+
+        /// <summary>
+        /// Occurs when control is received.
+        /// </summary>
+        public event EventHandler<RtspDataEventArgs>? ControlReceived;
+
+        /// <summary>
+        /// Raises the <see cref="E:ControlReceived"/> event.
+        /// </summary>
+        protected void OnControlReceived(RtspDataEventArgs rtspDataEventArgs)
+        {
+            ControlReceived?.Invoke(this, rtspDataEventArgs);
         }
 
 
         /// <summary>
         /// Does the video job.
         /// </summary>
-        private void DoWorkerJob(UdpClient socket, int data_port)
+        private void DoWorkerJob(UdpClient socket, int data_port, Action<RtspDataEventArgs> handler)
         {
 
-            IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, data_port);
+            IPEndPoint ipEndPoint = new(IPAddress.Any, data_port);
             try
             {
                 // loop until we get an exception eg the socket closed
@@ -198,16 +147,8 @@ namespace Rtsp
 
                     // We have an RTP frame.
                     // Fire the DataReceived event with 'frame'
-                    Console.WriteLine("Received RTP data on port " + data_port);
-
-                    Rtsp.Messages.RtspChunk currentMessage = new Rtsp.Messages.RtspData();
-                    // aMessage.SourcePort = ??
-                    currentMessage.Data = frame;
-                    ((Rtsp.Messages.RtspData)currentMessage).Channel = data_port;
-
-
-                    OnDataReceived(new RtspChunkEventArgs(currentMessage));
-
+                    // Console.WriteLine("Received RTP data on port " + data_port);
+                    handler(new RtspDataEventArgs(frame));
                 }
             }
             catch (ObjectDisposedException)

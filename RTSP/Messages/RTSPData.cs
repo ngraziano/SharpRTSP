@@ -29,14 +29,11 @@ namespace Rtsp.Messages
         /// <remarks>Listner is not cloned</remarks>
         /// </summary>
         /// <returns>a clone of this instance</returns>
-        public override object Clone()
+        public override object Clone() => new RtspData
         {
-            RtspData result = new RtspData();
-            result.Channel = this.Channel;
-            if (this.Data != null)
-                result.Data = this.Data.Clone() as byte[];
-            result.SourcePort = this.SourcePort;
-            return result;
-        }
+            Channel = Channel,
+            SourcePort = SourcePort,
+            Data = Data is null ? null : Data.Clone() as byte[],
+        };
     }
 }

@@ -21,7 +21,7 @@ namespace RtspClientExample
             });
 
             // Internet Test - Big Buck Bunney
-            string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=ld&namespace=1&service=1066";
+            // string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=ld&namespace=1&service=1066";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
@@ -49,7 +49,7 @@ namespace RtspClientExample
             //String url = "rtsp://192.168.1.79:8554/amrAudioTest";
 
             // VLC Server Tests
-            // String url = "rtsp://192.168.1.150:8554/test";
+            String url = "rtsp://127.0.0.1:8554/test";
 
 
             // MJPEG Tests (Payload 26)
@@ -64,7 +64,7 @@ namespace RtspClientExample
             bool h265 = false;
 
             // Create a RTSP Client
-            RTSPClient client = new(loggerFactory.CreateLogger<RTSPClient>());
+            RTSPClient client = new(loggerFactory);
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
@@ -239,7 +239,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs

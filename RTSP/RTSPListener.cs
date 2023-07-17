@@ -18,7 +18,7 @@
     {
         private readonly ILogger _logger;
         private readonly IRtspTransport _transport;
-        private readonly Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
+        private readonly Dictionary<int, RtspRequest> _sentMessage = new();
 
         private Thread? _listenTread;
         private Stream _stream;
@@ -35,7 +35,7 @@
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
 
-            _transport = connection ?? throw new ArgumentNullException("connection");
+            _transport = connection ?? throw new ArgumentNullException(nameof(connection));
             _stream = connection.GetStream();
         }
 
@@ -458,9 +458,9 @@
         public IAsyncResult? BeginSendData(int channel, byte[] frame, AsyncCallback asyncCallback, object state)
         {
             if (frame == null)
-                throw new ArgumentNullException("frame");
+                throw new ArgumentNullException(nameof(frame));
             if (frame.Length > 0xFFFF)
-                throw new ArgumentException("frame too large", "frame");
+                throw new ArgumentException("frame too large", nameof(frame));
             Contract.EndContractBlock();
 
             if (!_transport.Connected)
@@ -506,9 +506,9 @@
         public void SendData(int channel, byte[] frame)
         {
             if (frame == null)
-                throw new ArgumentNullException("frame");
+                throw new ArgumentNullException(nameof(frame));
             if (frame.Length > 0xFFFF)
-                throw new ArgumentException("frame too large", "frame");
+                throw new ArgumentException("frame too large", nameof(frame));
             Contract.EndContractBlock();
 
             if (!_transport.Connected)
@@ -525,7 +525,7 @@
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)((frame.Length & 0x00FF));
-            System.Array.Copy(frame, 0, data, 4, frame.Length);
+            Array.Copy(frame, 0, data, 4, frame.Length);
             lock (_stream)
             {
                 _stream.Write(data, 0, data.Length);
@@ -546,9 +546,7 @@
             if (disposing)
             {
                 Stop();
-                if (_stream != null)
-                    _stream.Dispose();
-
+                _stream?.Dispose();
             }
         }
 
