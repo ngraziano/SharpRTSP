@@ -22,7 +22,7 @@ namespace RtspClientExample
 
             // Internet Test - Big Buck Bunney
             string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=hd&namespace=1&service=201";
-
+            //string url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4";
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
 
@@ -99,6 +99,7 @@ namespace RtspClientExample
 
 
 
+
             // Video NALs. May also include the SPS and PPS in-band for H264
             client.ReceivedNALs += (nalUnits) =>
             {
@@ -149,6 +150,20 @@ namespace RtspClientExample
                 }
             };
 
+            client.ReceivedMp2t += (datas) =>
+            {
+                if (fs_a == null)
+                {
+                    string filename = "rtsp_capture_" + now + ".mp2";
+                    fs_a = new FileStream(filename, FileMode.Create);
+                }
+                foreach (var data in datas)
+                {
+                    fs_a?.Write(data.Span);
+                }
+
+            };
+
             client.ReceivedG711 += (format, g711) =>
             {
                 if (fs_a == null && format.Equals("PCMU"))
@@ -192,7 +207,7 @@ namespace RtspClientExample
             };
 
 
-            client.ReceivedAAC += ( format, aac, ObjectType, FrequencyIndex, ChannelConfiguration) =>
+            client.ReceivedAAC += (format, aac, ObjectType, FrequencyIndex, ChannelConfiguration) =>
             {
                 if (fs_a == null)
                 {

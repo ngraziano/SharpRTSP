@@ -20,7 +20,8 @@ namespace RtspClientExample
         // Events that applications can receive
         public event Received_SPS_PPS_Delegate? ReceivedSpsPps;
         public event Received_VPS_SPS_PPS_Delegate? ReceivedVpsSpsPps;
-        public event Received_NALs_Delegate? ReceivedNALs;
+        public event ReceivedSimpleDataDelegate? ReceivedNALs; // H264 or H265
+        public event ReceivedSimpleDataDelegate? ReceivedMp2t;
         public event Received_G711_Delegate? ReceivedG711;
         public event Received_AMR_Delegate? ReceivedAMR;
         public event Received_AAC_Delegate? ReceivedAAC;
@@ -28,7 +29,7 @@ namespace RtspClientExample
         // Delegated functions (essentially the function prototype)
         public delegate void Received_SPS_PPS_Delegate(byte[] sps, byte[] pps); // H264
         public delegate void Received_VPS_SPS_PPS_Delegate(byte[] vps, byte[] sps, byte[] pps); // H265
-        public delegate void Received_NALs_Delegate(List<ReadOnlyMemory<byte>> nal_units); // H264 or H265
+        public delegate void ReceivedSimpleDataDelegate(List<ReadOnlyMemory<byte>> data);
         public delegate void Received_G711_Delegate(string format, List<ReadOnlyMemory<byte>> g711);
         public delegate void Received_AMR_Delegate(string format, List<ReadOnlyMemory<byte>> amr);
         public delegate void Received_AAC_Delegate(string format, List<ReadOnlyMemory<byte>> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration);
@@ -308,6 +309,8 @@ namespace RtspClientExample
                             h264_sps_pps_fired = true;
                         }
                     }
+                    // we have a frame of NAL Units. Write them to the file
+                    ReceivedNALs?.Invoke(nal_units);
                 }
 
                 if (videoPayloadProcessor is H265Payload)
@@ -345,12 +348,16 @@ namespace RtspClientExample
                             ReceivedVpsSpsPps?.Invoke(vps, sps, pps);
                             h265_vps_sps_pps_fired = true;
                         }
+
                     }
-
-
+                    // we have a frame of NAL Units. Write them to the file
+                    ReceivedNALs?.Invoke(nal_units);
                 }
-                // we have a frame of NAL Units. Write them to the file
-                ReceivedNALs?.Invoke(nal_units);
+
+                if (videoPayloadProcessor is MP2TransportPayload)
+                {
+                    ReceivedMp2t?.Invoke(nal_units);
+                }
             }
 
 
@@ -755,7 +762,7 @@ namespace RtspClientExample
             }
 
             // If we get a reply to PLAY (which was our fourth command), then we should have video being received
-            if (message.OriginalRequest != null && message.OriginalRequest is Rtsp.Messages.RtspRequestPlay)
+            if (message.OriginalRequest is RtspRequestPlay)
             {
                 _logger.LogDebug("Got reply from Play {command} ", message.Command);
             }
@@ -798,8 +805,15 @@ namespace RtspClientExample
                     video_uri = GetControlUri(media);
 
 
+                    video_payload = media.PayloadType;
                     if (media.PayloadType < 96)
                     {
+                        // PayloadType is a static value, so we can use it to determine the codec
+                        videoPayloadProcessor = media.PayloadType switch
+                        {
+                            33 => new MP2TransportPayload(),
+                            _ => null,
+                        };
                     }
                     else
                     {
@@ -814,7 +828,7 @@ namespace RtspClientExample
                         if (videoPayloadProcessor is not null)
                         {
                             // found a valid codec
-                            video_payload = media.PayloadType;
+
                         }
                     }
 
@@ -850,7 +864,7 @@ namespace RtspClientExample
                     }
 
                     // Send the SETUP RTSP command if we have a matching Payload Decoder
-                    if (video_payload != -1)
+                    if (videoPayloadProcessor is not null)
                     {
                         RtspTransport? transport = CalculateTransport(ref nextFreeRtpChannel, videoUdpPair);
 
@@ -1015,7 +1029,7 @@ namespace RtspClientExample
                     }
                     : new RtspRequestOptions
                     {
-                        RtspUri = new Uri(url)
+                       // RtspUri = new Uri(url)
                     };
 
 
