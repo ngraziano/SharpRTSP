@@ -1,9 +1,8 @@
-﻿using Rtsp.Rtp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Rtsp
+namespace Rtsp.Rtp
 {
     // This class handles the H265 Payload
     // It has methods to parse parameters in the SDP
@@ -80,10 +79,10 @@ namespace Rtsp
                  *+-------------+-----------------+
                  */
 
-                int payload_header = (payload[0] << 8) | (payload[1]);
-                int payload_header_f_bit = (payload_header >> 15) & 0x01;
-                int payload_header_type = (payload_header >> 9) & 0x3F;
-                int payload_header_layer_id = (payload_header >> 3) & 0x3F;
+                int payload_header = payload[0] << 8 | payload[1];
+                int payload_header_f_bit = payload_header >> 15 & 0x01;
+                int payload_header_type = payload_header >> 9 & 0x3F;
+                int payload_header_layer_id = payload_header >> 3 & 0x3F;
                 int payload_header_tid = payload_header & 0x7;
 
 
@@ -123,7 +122,7 @@ namespace Rtsp
                         int ptr = 2; // start after 16 bit Payload Header
 
                         // loop until the ptr has moved beyond the length of the data
-                        while (ptr < (payload.Length - 1))
+                        while (ptr < payload.Length - 1)
                         {
                             if (has_donl) ptr += 2; // step over the DONL data
                             int size = (payload[ptr] << 8) + (payload[ptr + 1] << 0);
@@ -145,9 +144,9 @@ namespace Rtsp
                     frag++;
 
                     // Parse Fragmentation Unit Header
-                    int fu_header_s = (payload[2] >> 7) & 0x01;  // start marker
-                    int fu_header_e = (payload[2] >> 6) & 0x01;  // end marker
-                    int fu_header_type = (payload[2] >> 0) & 0x3F; // fu type
+                    int fu_header_s = payload[2] >> 7 & 0x01;  // start marker
+                    int fu_header_e = payload[2] >> 6 & 0x01;  // end marker
+                    int fu_header_type = payload[2] >> 0 & 0x3F; // fu type
 
                     Console.WriteLine("Frag FU-A s=" + fu_header_s + "e=" + fu_header_e);
 
@@ -161,11 +160,11 @@ namespace Rtsp
                         fragmented_nal.SetLength(0);
 
                         // Reconstrut the NAL header from the rtp_payload_header, replacing the Type with FU Type
-                        int nal_header = (payload_header & 0x81FF); // strip out existing 'type'
-                        nal_header |= (fu_header_type << 9);
+                        int nal_header = payload_header & 0x81FF; // strip out existing 'type'
+                        nal_header |= fu_header_type << 9;
 
-                        fragmented_nal.WriteByte((byte)((nal_header >> 8) & 0xFF));
-                        fragmented_nal.WriteByte((byte)((nal_header >> 0) & 0xFF));
+                        fragmented_nal.WriteByte((byte)(nal_header >> 8 & 0xFF));
+                        fragmented_nal.WriteByte((byte)(nal_header >> 0 & 0xFF));
 
                     }
 

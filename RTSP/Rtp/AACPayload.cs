@@ -1,8 +1,7 @@
-﻿using Rtsp.Rtp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace Rtsp
+namespace Rtsp.Rtp
 {
     // This class handles the AAC-hbd (High Bitrate) Payload
     // It has methods to process the RTP Payload
@@ -119,25 +118,25 @@ namespace Rtsp
 
 
                 // Get Size of the AU Header
-                int au_headers_length_bits = (((rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0))); // 16 bits
+                int au_headers_length_bits = (rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0); // 16 bits
                 int au_headers_length = (int)Math.Ceiling(au_headers_length_bits / 8.0);
                 position += 2;
 
                 // Examine the AU Header. Get the size of the AAC data
-                int aac_frame_size = (((rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0)) >> 3); // 13 bits
+                int aac_frame_size = (rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0) >> 3; // 13 bits
                 int aac_index_delta = rtp_payload[position + 1] & 0x03; // 3 bits
                 position += au_headers_length;
 
                 // extract the AAC block
                 if (position + aac_frame_size > rtp_payload.Length) break; // not enough data to copy
 
-                audio_data.Add(rtpPayloadMemory[position..(position+aac_frame_size)]);
+                audio_data.Add(rtpPayloadMemory[position..(position + aac_frame_size)]);
                 position += aac_frame_size;
             }
 
             return audio_data;
         }
 
-      
+
     }
 }

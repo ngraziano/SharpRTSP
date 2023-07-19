@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Rtsp.Rtp;
 using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Rtsp
+namespace Rtsp.Rtp
 {
     // This class handles the H264 Payload
     // It has methods to parse parameters in the SDP
@@ -64,9 +63,9 @@ namespace Rtsp
             {
                 var payload = payloadMemory.Span;
                 // Examine the first rtp_payload and the first byte (the NAL header)
-                int nal_header_f_bit = (payload[0] >> 7) & 0x01;
-                int nal_header_nri = (payload[0] >> 5) & 0x03;
-                int nal_header_type = (payload[0] >> 0) & 0x1F;
+                int nal_header_f_bit = payload[0] >> 7 & 0x01;
+                int nal_header_nri = payload[0] >> 5 & 0x03;
+                int nal_header_type = payload[0] >> 0 & 0x1F;
 
                 // If the Nal Header Type is in the range 1..23 this is a normal NAL (not fragmented)
                 // So write the NAL to the file
@@ -89,7 +88,7 @@ namespace Rtsp
                     {
                         int ptr = 1; // start after the nal_header_type which was '24'
                         // if we have at least 2 more bytes (the 16 bit size) then consume more data
-                        while (ptr + 2 < (payload.Length - 1))
+                        while (ptr + 2 < payload.Length - 1)
                         {
                             int size = (payload[ptr] << 8) + (payload[ptr + 1] << 0);
                             ptr += 2;
@@ -124,10 +123,10 @@ namespace Rtsp
                     fu_a++;
 
                     // Parse Fragmentation Unit Header
-                    int fu_header_s = (payload[1] >> 7) & 0x01;  // start marker
-                    int fu_header_e = (payload[1] >> 6) & 0x01;  // end marker
-                    int fu_header_r = (payload[1] >> 5) & 0x01;  // reserved. should be 0
-                    int fu_header_type = (payload[1] >> 0) & 0x1F; // Original NAL unit header
+                    int fu_header_s = payload[1] >> 7 & 0x01;  // start marker
+                    int fu_header_e = payload[1] >> 6 & 0x01;  // end marker
+                    int fu_header_r = payload[1] >> 5 & 0x01;  // reserved. should be 0
+                    int fu_header_type = payload[1] >> 0 & 0x1F; // Original NAL unit header
 
                     _logger.LogDebug("Frag FU-A s={fuHeadersS} e={fuHeadersE}", fu_header_s, fu_header_e);
 

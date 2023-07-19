@@ -1,8 +1,7 @@
-﻿using Rtsp.Rtp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace Rtsp
+namespace Rtsp.Rtp
 {
     // This class handles the G711.1 Payload
     // It has methods to process the RTP Payload

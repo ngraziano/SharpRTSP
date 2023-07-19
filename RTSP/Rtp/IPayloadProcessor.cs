@@ -1,9 +1,7 @@
-﻿using Rtsp.Rtp;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
-namespace Rtsp
+namespace Rtsp.Rtp
 {
     public interface IPayloadProcessor
     {
