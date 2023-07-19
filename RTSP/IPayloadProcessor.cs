@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Rtp;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,6 +7,6 @@ namespace Rtsp
 {
     public interface IPayloadProcessor
     {
-        List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker);
+        List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet);
     }
 }

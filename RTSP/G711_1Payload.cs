@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Rtsp.Rtp;
+using System;
+using System.Collections.Generic;
 
 namespace Rtsp
 {
@@ -8,7 +10,7 @@ namespace Rtsp
     public class G711_1Payload : IPayloadProcessor
     {
         /* Untested - used with G711.1 and PCMA-WB and PCMU-WB Codec Names */
-        public List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker)
+        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
 
             // Look at the Header. This tells us the G711 mode being used
@@ -19,36 +21,39 @@ namespace Rtsp
             // 3 - R2b 50 octets containing Layer 0 plus Layer 2 data
             // 4 - R3 60 octets containing Layer 0 plus Layer 1 plus Layer 2 data
 
-            byte mode_index = (byte)(rtp_payload[0] & 0x07);
 
-            int size_of_one_frame = 0; // will be in bytes
-            switch (mode_index)
+            var rtpPaylodMemory = packet.Payload;
+            var rtpPayloadSpan = packet.Payload.Span;
+            byte modeIndex = (byte)(rtpPayloadSpan[0] & 0x07);
+            int sizeOfOneFrame = modeIndex switch
             {
-                case 1: size_of_one_frame = 40; break;
-                case 2: size_of_one_frame = 50; break;
-                case 3: size_of_one_frame = 50; break;
-                case 4: size_of_one_frame = 60; break;
-                default: return new(); // invalid Mode Index
+                1 => 40,
+                2 => 50,
+                3 => 50,
+                4 => 60,
+                _ => 0,
+            };
+            if (sizeOfOneFrame == 0)
+            {
+                // ERROR
+                return new();
             }
 
-            int number_frames = (rtp_payload.Length - 1) / size_of_one_frame;
-
-
             // Return just the basic u-Law or A-Law audio (the Layer 0 audio)
-
-            List<byte[]> audio_data = new List<byte[]>();
+            List<ReadOnlyMemory<byte>> audio_data = new();
 
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
-            while (frame_start + size_of_one_frame < rtp_payload.Length)
+            while (frame_start + sizeOfOneFrame < rtpPayloadSpan.Length)
             {
-                byte[] layer_0_audio = new byte[40];
-                System.Array.Copy(rtp_payload, frame_start, layer_0_audio, 0, 40); // 40 octets in Layer 0 data
-                audio_data.Add(layer_0_audio);
-
-                frame_start += size_of_one_frame;
+                // only copy the Layer 0 data (the first 40 bytes)
+                audio_data.Add(rtpPaylodMemory[frame_start..(frame_start + 40)]);
+                frame_start += sizeOfOneFrame;
             }
             return audio_data;
         }
+
+
+
     }
 }

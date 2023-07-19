@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -16,6 +17,8 @@ namespace Rtsp
 
         public int DataPort { get; protected set; }
         public int ControlPort { get; protected set; }
+
+        public PortCouple Ports => new(DataPort, ControlPort);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UDPSocket"/> class.

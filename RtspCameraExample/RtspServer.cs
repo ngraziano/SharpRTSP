@@ -1069,7 +1069,7 @@ public class RtspServer : IDisposable
 
                     // NTP Most Signigicant Word is relative to 0h, 1 Jan 1900
                     // This will wrap around in 2036
-                    DateTime ntp_start_time = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    DateTime ntp_start_time = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
                     TimeSpan tmpTime = now - ntp_start_time;
                     double totalSeconds = tmpTime.TotalSeconds; // Seconds and fractions of a second

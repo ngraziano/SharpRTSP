@@ -21,7 +21,7 @@ namespace RtspClientExample
             });
 
             // Internet Test - Big Buck Bunney
-            // string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=ld&namespace=1&service=1066";
+            string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=hd&namespace=1&service=201";
 
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
@@ -49,7 +49,7 @@ namespace RtspClientExample
             //String url = "rtsp://192.168.1.79:8554/amrAudioTest";
 
             // VLC Server Tests
-            String url = "rtsp://127.0.0.1:8554/test";
+            //String url = "rtsp://127.0.0.1:8554/test";
 
 
             // MJPEG Tests (Payload 26)
@@ -76,10 +76,10 @@ namespace RtspClientExample
                     string filename = "rtsp_capture_" + now + ".264";
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
-                WriteNalToFile(fs_v,sps);
+                WriteNalToFile(fs_v, sps);
                 WriteNalToFile(fs_v, pps);
                 fs_v.Flush(true);
-               
+
             };
 
             client.ReceivedVpsSpsPps += (byte[] vps, byte[] sps, byte[] pps) =>
@@ -100,12 +100,13 @@ namespace RtspClientExample
 
 
             // Video NALs. May also include the SPS and PPS in-band for H264
-            client.ReceivedNALs += (List<byte[]> nalUnits) =>
+            client.ReceivedNALs += (nalUnits) =>
             {
                 if (fs_v != null)
                 {
-                    foreach (byte[] nalUnit in nalUnits)
+                    foreach (var nalUnitMem in nalUnits)
                     {
+                        var nalUnit = nalUnitMem.Span;
                         // Output some H264 stream information
                         if (h264 && nalUnit.Length > 0)
                         {
@@ -142,13 +143,13 @@ namespace RtspClientExample
                         }
 
                         fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                        fs_v.Write(nalUnit, 0, nalUnit.Length);                 // Write NAL
+                        fs_v.Write(nalUnit);                 // Write NAL
                     }
                     fs_v.Flush(true);
                 }
             };
 
-            client.ReceivedG711 += (string format, List<byte[]> g711) =>
+            client.ReceivedG711 += (format, g711) =>
             {
                 if (fs_a == null && format.Equals("PCMU"))
                 {
@@ -164,14 +165,14 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (byte[] data in g711)
+                    foreach (var data in g711)
                     {
-                        fs_a.Write(data, 0, data.Length);
+                        fs_a.Write(data.Span);
                     }
                 }
             };
 
-            client.ReceivedAMR += (string format, List<byte[]> amr) =>
+            client.ReceivedAMR += (format, amr) =>
             {
                 if (fs_a == null && format.Equals("AMR"))
                 {
@@ -183,13 +184,15 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (byte[] data in amr)
+                    foreach (var data in amr)
                     {
-                        fs_a.Write(data, 0, data.Length);
+                        fs_a.Write(data.Span);
                     }
                 }
             };
-            client.ReceivedAAC += (string format, List<byte[]> aac, int ObjectType, int FrequencyIndex, int ChannelConfiguration) =>
+
+
+            client.ReceivedAAC += ( format, aac, ObjectType, FrequencyIndex, ChannelConfiguration) =>
             {
                 if (fs_a == null)
                 {
@@ -199,7 +202,7 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (byte[] data in aac)
+                    foreach (var data in aac)
                     {
                         // ASDT header format
                         int protection_absent = 1;
@@ -231,7 +234,7 @@ namespace RtspClientExample
                         byte[] header = bs.ToArray();
 
                         fs_a.Write(header, 0, header.Length);
-                        fs_a.Write(data, 0, data.Length);
+                        fs_a.Write(data.Span);
                     }
                 }
             };

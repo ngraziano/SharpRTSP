@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Rtsp.Rtp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,11 +16,11 @@ namespace Rtsp
         private readonly ILogger _logger;
 
         int norm, fu_a, fu_b, stap_a, stap_b, mtap16, mtap24 = 0; // used for diagnostics stats
-        
+
         // used to assemble the RTP packets that form one RTP Frame
         // Eg all the RTP Packets from M=0 through to M=1
-        private readonly List<byte[]> temporaryRtpPayloads = new(); 
-                                                                  
+        private readonly List<ReadOnlyMemory<byte>> temporaryRtpPayloads = new();
+
 
 
         private readonly MemoryStream fragmentedNal = new(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
@@ -31,13 +32,13 @@ namespace Rtsp
             _logger = logger as ILogger ?? NullLogger.Instance;
         }
 
-        public List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker)
+        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
 
             // Add to the list of payloads for the current Frame of video
-            temporaryRtpPayloads.Add(rtp_payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
+            temporaryRtpPayloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
 
-            if (rtp_marker == 1)
+            if (packet.IsMarker)
             {
                 // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the NALs to a file
                 var nalUnits = ProcessH264RTPFrame(temporaryRtpPayloads);
@@ -46,21 +47,22 @@ namespace Rtsp
                 return nalUnits;
             }
             // we don't have a frame yet. Keep accumulating RTP packets
-            return new(); 
+            return new();
         }
 
 
         // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp
         // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
-        private List<byte[]> ProcessH264RTPFrame(List<byte[]> rtp_payloads)
+        private List<ReadOnlyMemory<byte>> ProcessH264RTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
         {
             _logger.LogDebug("RTP Data comprised of {payloadCount} rtp packets", rtp_payloads.Count);
 
             // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
-            List<byte[]> nalUnits = new (); 
+            List<ReadOnlyMemory<byte>> nalUnits = new();
 
-            foreach (byte[] payload in rtp_payloads)
+            foreach (var payloadMemory in rtp_payloads)
             {
+                var payload = payloadMemory.Span;
                 // Examine the first rtp_payload and the first byte (the NAL header)
                 int nal_header_f_bit = (payload[0] >> 7) & 0x01;
                 int nal_header_nri = (payload[0] >> 5) & 0x03;
@@ -72,7 +74,7 @@ namespace Rtsp
                 {
                     _logger.LogDebug("Normal NAL");
                     norm++;
-                    nalUnits.Add(payload);
+                    nalUnits.Add(payloadMemory);
                 }
                 // There are 4 types of Aggregation Packet (split over RTP payloads)
                 else if (nal_header_type == 24)
@@ -91,10 +93,8 @@ namespace Rtsp
                         {
                             int size = (payload[ptr] << 8) + (payload[ptr + 1] << 0);
                             ptr += 2;
-                            byte[] nal = new byte[size];
-                            System.Array.Copy(payload, ptr, nal, 0, size); // copy the NAL
                             // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-                            nalUnits.Add(nal); 
+                            nalUnits.Add(payloadMemory[ptr..(ptr + size)]);
                             ptr += size;
                         }
                     }
@@ -146,7 +146,7 @@ namespace Rtsp
                         fragmentedNal.WriteByte(reconstructed_nal_type);
 
                         // copy the rest of the RTP payload to the memory stream
-                        fragmentedNal.Write(payload, 2, payload.Length - 2);
+                        fragmentedNal.Write(payload[2..]);
                     }
 
                     if (fu_header_s == 0 && fu_header_e == 0)
@@ -154,7 +154,7 @@ namespace Rtsp
                         // Middle part of Fragment
                         // Append this payload to the fragmented_nal
                         // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmentedNal.Write(payload, 2, payload.Length - 2);
+                        fragmentedNal.Write(payload[2..]);
                     }
 
                     if (fu_header_s == 0 && fu_header_e == 1)
@@ -162,7 +162,7 @@ namespace Rtsp
                         // End part of Fragment
                         // Append this payload to the fragmented_nal
                         // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmentedNal.Write(payload, 2, payload.Length - 2);
+                        fragmentedNal.Write(payload[2..]);
 
                         // Add the NAL to the array of NAL units
                         nalUnits.Add(fragmentedNal.ToArray());
@@ -182,14 +182,12 @@ namespace Rtsp
             }
 
             // Output some statistics
-            _logger.LogDebug("Norm={norm} ST-A={stapA} ST-B={stapB} M16={mtap16} M24={mtap24} FU-A={fuA} FU-B={fuB}", 
+            _logger.LogDebug("Norm={norm} ST-A={stapA} ST-B={stapB} M16={mtap16} M24={mtap24} FU-A={fuA} FU-B={fuB}",
                 norm, stap_a, stap_b, mtap16, mtap24, fu_a, fu_b);
 
             // Output all the NALs that form one RTP Frame (one frame of video)
             return nalUnits;
 
         }
-
-
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Rtsp.Rtp;
+using System;
+using System.Collections.Generic;
 
 namespace Rtsp
 {
@@ -7,15 +9,9 @@ namespace Rtsp
 
     public class G711Payload : IPayloadProcessor
     {
-        public List<byte[]> ProcessRTPPacket(byte[] rtp_payload, int rtp_marker)
+        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-
-            List<byte[]> audio_data = new()
-            {
-                rtp_payload
-            };
-
-            return audio_data;
+            return new() { packet.Payload };
         }
     }
 }
