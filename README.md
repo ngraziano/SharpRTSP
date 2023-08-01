@@ -7,10 +7,10 @@ Sharp RTSP
 A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
 * RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711, AAC and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
 * RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients
-* RTP Receiver - will recieve RTP and RTCP packets and pass them to a transport handler
+* RTP Receiver - will receieve RTP and RTCP packets and pass them to a transport handler
 * RTSP Server - will accept RTSP connections and talk to clients
 * RTP Sender - will send RTP packets to clients
-* Transport Handler - Transport hanlders for H264, H265/HEVC, G711 and AMR are provided.
+* Transport Handler - Transport handlers for H264, H265/HEVC, G711 and AMR are provided.
 
 **:warning: : This library does not handle the decoding of the video or audio (eg converting H264 into a bitmap). SharpRTSP is limited to the transport layer and generates the raw data that you need to feed into a video decoder or audio decoder. Many people use FFMPEG or use Hardware Accelerated Operating System APIs to do the decoding.**
 
@@ -189,7 +189,7 @@ This is a walkthrough of an **old version** of the RTSP Client Example which hig
 
 * STEP 5 - Handle RTP Video
 
-  This code handles each incoming RTP packet, combining RTP packets that are all part of the same frame of vdeo (using the Marker Bit).
+  This code handles each incoming RTP packet, combining RTP packets that are all part of the same frame of video (using the Marker Bit).
   Once a full frame is received it can be passed to a De-packetiser to get the compressed video data
 
   ```C#
