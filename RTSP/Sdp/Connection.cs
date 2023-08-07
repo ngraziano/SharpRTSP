@@ -5,7 +5,7 @@ namespace Rtsp.Sdp
 {
     public abstract class Connection
     {
-        public Connection()
+        protected Connection()
         {
             //Default value from spec
             NumberOfAddress = 1;
@@ -22,8 +22,8 @@ namespace Rtsp.Sdp
 
         public static Connection Parse(string value)
         {
-            if (value == null)
-                throw new ArgumentNullException("value");
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
 
             string[] parts = value.Split(' ');
 
@@ -33,16 +33,12 @@ namespace Rtsp.Sdp
             if (parts[0] != "IN")
                 throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Net type {0} not suported", parts[0]));
 
-            switch (parts[1])
+            return parts[1] switch
             {
-                case "IP4":
-                    return ConnectionIP4.Parse(parts[2]);
-                case "IP6":
-                    return ConnectionIP6.Parse(parts[2]);
-                default:
-                    throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Address type {0} not suported", parts[1]));
-            }
-
+                "IP4" => ConnectionIP4.Parse(parts[2]),
+                "IP6" => ConnectionIP6.Parse(parts[2]),
+                _ => throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Address type {0} not suported", parts[1])),
+            };
         }
     }
 }

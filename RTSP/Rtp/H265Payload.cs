@@ -24,7 +24,6 @@ namespace Rtsp.Rtp
 
         private readonly MemoryStream fragmented_nal = new (); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
 
-
         // Constructor
         public H265Payload(bool has_donl)
         {
@@ -32,9 +31,7 @@ namespace Rtsp.Rtp
         }
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
-
         {
-
             // Add payload to the List of payloads for the current Frame of Video
             // ie all the payloads with M=0 up to the final payload where M=1
             temporary_rtp_payloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
@@ -51,8 +48,6 @@ namespace Rtsp.Rtp
             // we don't have a frame yet. Keep accumulating RTP packets
             return new();
         }
-
-
 
         // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp
         // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
@@ -83,12 +78,10 @@ namespace Rtsp.Rtp
                 int payload_header_layer_id = payload_header >> 3 & 0x3F;
                 int payload_header_tid = payload_header & 0x7;
 
-
                 // There are three ways to Packetize NAL units into RTP Packets
                 //  Single NAL Unit Packet
                 //  Aggregation Packet (payload_header_type = 48)
                 //  Fragmentation Unit (payload_header_type = 49)
-
 
                 // Single NAL Unit Packet
                 // 32=VPS
@@ -163,7 +156,6 @@ namespace Rtsp.Rtp
 
                         fragmented_nal.WriteByte((byte)(nal_header >> 8 & 0xFF));
                         fragmented_nal.WriteByte((byte)(nal_header >> 0 & 0xFF));
-
                     }
 
                     // Part of Fragment
@@ -197,7 +189,6 @@ namespace Rtsp.Rtp
 
             // Output all the NALs that form one RTP Frame (one frame of video)
             return nal_units;
-
         }
     }
 }

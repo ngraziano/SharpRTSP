@@ -13,14 +13,13 @@ namespace Rtsp.Sdp
             {AttributFmtp.NAME,typeof(AttributFmtp)},
         };
 
-
-        public virtual string Key { get; private set; }
+        public virtual string Key { get; }
         public virtual string Value { get; protected set; } = string.Empty;
 
         public static void RegisterNewAttributeType(string key, Type attributType)
         {
             if (!attributType.IsSubclassOf(typeof(Attribut)))
-                throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut", "attributType");
+                throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut", nameof(attributType));
 
             attributMap[key] = attributType;
         }
@@ -30,16 +29,14 @@ namespace Rtsp.Sdp
             Key = key;
         }
 
-
         public static Attribut ParseInvariant(string value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             Contract.EndContractBlock();
 
             var listValues = value.Split(new char[] { ':' }, 2);
-
 
             Attribut returnValue;
 
@@ -54,7 +51,7 @@ namespace Rtsp.Sdp
                 returnValue = new Attribut(listValues[0]);
             }
             // Parse the value. Note most attributes have a value but recvonly does not have a value
-            if (listValues.Count() > 1) returnValue.ParseValue(listValues[1]);
+            if (listValues.Length > 1) returnValue.ParseValue(listValues[1]);
 
             return returnValue;
         }
@@ -63,7 +60,5 @@ namespace Rtsp.Sdp
         {
             Value = value;
         }
-
-
     }
 }

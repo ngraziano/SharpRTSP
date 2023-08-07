@@ -44,8 +44,7 @@
 
             if (parts.Length >= 1)
             {
-                int tmp_payloadNumber;
-                if (int.TryParse(parts[0], out tmp_payloadNumber))
+                if (int.TryParse(parts[0], out int tmp_payloadNumber))
                 {
                     PayloadNumber = tmp_payloadNumber;
                 }
@@ -62,8 +61,6 @@
             {
                 EncodingParameters = parts[3];
             }
-
-
         }
     }
 }

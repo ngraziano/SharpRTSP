@@ -15,7 +15,6 @@ namespace Rtsp.Sdp
             if (string.IsNullOrEmpty(line))
                 return new (string.Empty, string.Empty);
 
-
             string[] parts = line.Split(new char[] { '=' }, 2);
             if (parts.Length != 2)
                 throw new InvalidDataException();
@@ -130,7 +129,6 @@ namespace Rtsp.Sdp
             // timezone optional
             if (value.Key == "z")
             {
-
                 returnValue.TimeZone = SdpTimeZone.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
@@ -138,7 +136,6 @@ namespace Rtsp.Sdp
             // encryption key optional
             if (value.Key == "k")
             {
-
                 returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
@@ -164,13 +161,11 @@ namespace Rtsp.Sdp
                 returnValue.Medias.Add(newMedia);
             }
 
-
             return returnValue;
         }
 
         private static Media ReadMedia(TextReader sdpStream, ref KeyValuePair<string, string> value)
         {
-            
             Media returnValue = new(value.Value);
             value = GetKeyValue(sdpStream);
 
@@ -197,7 +192,6 @@ namespace Rtsp.Sdp
             // enkription key optional
             if (value.Key == "k")
             {
-
                 returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
@@ -212,9 +206,7 @@ namespace Rtsp.Sdp
             return returnValue;
         }
 
-
         public int Version { get; set; }
-
 
         public Origin? Origin { get; set; }
 
@@ -241,7 +233,5 @@ namespace Rtsp.Sdp
         public IList<Attribut> Attributs { get; } = new List<Attribut>();
 
         public IList<Media> Medias { get; } = new List<Media>();
-        
-
     }
 }

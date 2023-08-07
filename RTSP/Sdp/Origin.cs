@@ -8,10 +8,6 @@ namespace Rtsp.Sdp
     /// </summary>
     public class Origin
     {
-        public Origin()
-        {
-        }
-
         /// <summary>
         /// Parses the specified origin string.
         /// </summary>
@@ -20,14 +16,14 @@ namespace Rtsp.Sdp
         public static Origin Parse(string originString)
         {
             if (originString == null)
-                throw new ArgumentNullException("originString");
+                throw new ArgumentNullException(nameof(originString));
 
             string[] parts = originString.Split(' ');
 
             if (parts.Length != 6)
                 throw new FormatException("Number of element invalid in origin string.");
 
-            Origin result = new()
+            return new()
             {
                 Username = parts[0],
                 SessionId = parts[1],
@@ -36,8 +32,6 @@ namespace Rtsp.Sdp
                 AddressType = parts[4],
                 UnicastAddress = parts[5]
             };
-
-            return result;
         }
 
         /// <summary>

@@ -5,13 +5,12 @@ namespace Rtsp.Sdp
 {
     public class Media
     {
-
         public Media(string mediaString)
         {
             // Example is   'video 0 RTP/AVP 26;
             var parts = mediaString.Split(new char[] { ' ' }, 4);
 
-            if (parts.Count() >= 1)
+            if (parts.Length >= 1)
             {
                 MediaType = parts[0] switch
                 {
@@ -24,7 +23,7 @@ namespace Rtsp.Sdp
                 };
             }
 
-            if (parts.Count() >= 4)
+            if (parts.Length >= 4)
             {
                 if (int.TryParse(parts[3], out int pt))
                 {

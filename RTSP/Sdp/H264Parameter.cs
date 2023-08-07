@@ -7,7 +7,7 @@ namespace Rtsp.Sdp
 {
     public class H264Parameters : IDictionary<string, string>
     {
-        private readonly Dictionary<string, string> parameters = new ();
+        private readonly Dictionary<string, string> parameters = new();
 
         public List<byte[]> SpropParameterSets
         {
@@ -42,95 +42,38 @@ namespace Rtsp.Sdp
 
         public string this[string index]
         {
-            get { return parameters[index]; }
-            set { parameters[index] = value; }
+            get => parameters[index];
+            set => parameters[index] = value;
         }
 
-        public int Count
-        {
-            get
-            {
-                return parameters.Count;
-            }
-        }
+        public int Count => parameters.Count;
 
-        public bool IsReadOnly
-        {
-            get
-            {
-                return ((IDictionary<string, string>)parameters).IsReadOnly;
-            }
-        }
+        public bool IsReadOnly => ((IDictionary<string, string>)parameters).IsReadOnly;
 
-        public ICollection<string> Keys
-        {
-            get
-            {
-                return ((IDictionary<string, string>)parameters).Keys;
-            }
-        }
+        public ICollection<string> Keys => ((IDictionary<string, string>)parameters).Keys;
 
-        public ICollection<string> Values
-        {
-            get
-            {
-                return ((IDictionary<string, string>)parameters).Values;
-            }
-        }
+        public ICollection<string> Values => ((IDictionary<string, string>)parameters).Values;
 
-        public void Add(KeyValuePair<string, string> item)
-        {
-            ((IDictionary<string, string>)parameters).Add(item);
-        }
+        public void Add(KeyValuePair<string, string> item) => ((IDictionary<string, string>)parameters).Add(item);
 
-        public void Add(string key, string value)
-        {
-            parameters.Add(key, value);
-        }
+        public void Add(string key, string value) => parameters.Add(key, value);
 
-        public void Clear()
-        {
-            parameters.Clear();
-        }
+        public void Clear() => parameters.Clear();
 
-        public bool Contains(KeyValuePair<string, string> item)
-        {
-            return ((IDictionary<string, string>)parameters).Contains(item);
-        }
+        public bool Contains(KeyValuePair<string, string> item) => ((IDictionary<string, string>)parameters).Contains(item);
 
-        public bool ContainsKey(string key)
-        {
-            return parameters.ContainsKey(key);
-        }
+        public bool ContainsKey(string key) => parameters.ContainsKey(key);
 
-        public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
-        {
-            ((IDictionary<string, string>)parameters).CopyTo(array, arrayIndex);
-        }
+        public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex) => ((IDictionary<string, string>)parameters).CopyTo(array, arrayIndex);
 
-        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
-        {
-            return ((IDictionary<string, string>)parameters).GetEnumerator();
-        }
+        public IEnumerator<KeyValuePair<string, string>> GetEnumerator() => ((IDictionary<string, string>)parameters).GetEnumerator();
 
-        public bool Remove(KeyValuePair<string, string> item)
-        {
-            return ((IDictionary<string, string>)parameters).Remove(item);
-        }
+        public bool Remove(KeyValuePair<string, string> item) => ((IDictionary<string, string>)parameters).Remove(item);
 
-        public bool Remove(string key)
-        {
-            return parameters.Remove(key);
-        }
+        public bool Remove(string key) => parameters.Remove(key);
 
-        public bool TryGetValue(string key, out string value)
-        {
-            return parameters.TryGetValue(key, out value);
-        }
+        public bool TryGetValue(string key, out string value) => parameters.TryGetValue(key, out value);
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return ((IDictionary<string, string>)parameters).GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => ((IDictionary<string, string>)parameters).GetEnumerator();
     }
 }

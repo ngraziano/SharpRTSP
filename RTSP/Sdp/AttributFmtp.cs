@@ -31,16 +31,14 @@ namespace Rtsp.Sdp
         // temporary aatibute to store remaning data not parsed
         public string? FormatParameter { get; set; }
 
-
         // Extract the Payload Number and the Format Parameters
         protected override void ParseValue(string value)
         {
             var parts = value.Split(new char[] { ' ' }, 2);
 
-            int payloadNumber;
-            if (int.TryParse(parts[0], out payloadNumber))
+            if (int.TryParse(parts[0], out int payloadNumber))
             {
-                this.PayloadNumber = payloadNumber;
+                PayloadNumber = payloadNumber;
             }
             if (parts.Length > 1)
             {
@@ -58,14 +56,6 @@ namespace Rtsp.Sdp
             }
         }
 
-        public string this[string index]
-        {
-            get
-            {
-                if (parameters.ContainsKey(index)) return parameters[index];
-                else return "";
-            }
-        }
-
+        public string this[string index] => parameters.ContainsKey(index) ? parameters[index] : string.Empty;
     }
 }
