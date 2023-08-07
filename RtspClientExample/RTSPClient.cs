@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using static System.Net.WebRequestMethods;
 
 namespace RtspClientExample
 {
@@ -1029,7 +1028,7 @@ namespace RtspClientExample
                     }
                     : new RtspRequestOptions
                     {
-                       // RtspUri = new Uri(url)
+                        // RtspUri = new Uri(url)
                     };
 
 

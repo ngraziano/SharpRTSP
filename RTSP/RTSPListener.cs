@@ -10,6 +10,7 @@
     using System.Net.Sockets;
     using System.Text;
     using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Rtsp lister
@@ -20,7 +21,8 @@
         private readonly IRtspTransport _transport;
         private readonly Dictionary<int, RtspRequest> _sentMessage = new();
 
-        private Thread? _listenTread;
+        private CancellationTokenSource? _cancelationTokenSource;
+        private Task? _mainTask;
         private Stream _stream;
 
         private int _sequenceNumber;
@@ -56,11 +58,8 @@
         /// </summary>
         public void Start()
         {
-            _listenTread = new Thread(new ThreadStart(DoJob))
-            {
-                Name = "DoJob"
-            };
-            _listenTread.Start();
+            _cancelationTokenSource = new();
+            _mainTask = Task.Factory.StartNew(async () => await DoJobAsync(_cancelationTokenSource.Token), _cancelationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current);
         }
 
         /// <summary>
@@ -71,7 +70,7 @@
             // brutally  close the TCP socket....
             // I hope the teardown was sent elsewhere
             _transport.Close();
-
+            _cancelationTokenSource?.Cancel();
         }
 
         /// <summary>
@@ -115,19 +114,19 @@
         /// If it a response it add the associate question.
         /// The stopping is made by the closing of the TCP connection.
         /// </remarks>
-        private void DoJob()
+        private async Task DoJobAsync(CancellationToken token)
         {
             try
             {
                 _logger.LogDebug("Connection Open");
-                while (_transport.Connected)
+                while (_transport.Connected && !token.IsCancellationRequested)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk? currentMessage = ReadOneMessage(_stream);
+                    RtspChunk? currentMessage = await ReadOneMessageAsync(_stream);
 
                     if (currentMessage != null)
                     {
-                        if (!(currentMessage is RtspData))
+                        if (_logger.IsEnabled(LogLevel.Debug) && currentMessage is not RtspData)
                         {
                             // on logue le tout
                             if (currentMessage.SourcePort != null)
@@ -172,14 +171,11 @@
             catch (IOException error)
             {
                 _logger.LogWarning(error, "IO Error");
-                _stream.Close();
-                _transport.Close();
+
             }
             catch (SocketException error)
             {
                 _logger.LogWarning(error, "Socket Error");
-                _stream.Close();
-                _transport.Close();
             }
             catch (ObjectDisposedException error)
             {
@@ -189,6 +185,11 @@
             {
                 _logger.LogWarning(error, "Unknow Error");
                 //                throw;
+            }
+            finally
+            {
+                _stream.Close();
+                _transport.Close();
             }
 
             _logger.LogDebug("Connection Close");
@@ -264,18 +265,16 @@
                 return;
 
             // If it is not connected listenthread should have die.
-            if (_listenTread != null && _listenTread.IsAlive)
-                _listenTread.Join();
+            _mainTask?.Wait();
 
-            if (_stream != null)
-                _stream.Dispose();
+            _stream?.Dispose();
 
             // reconnect 
             _transport.Reconnect();
             _stream = _transport.GetStream();
 
             // If listen thread exist restart it
-            if (_listenTread != null)
+            if (_mainTask != null)
                 Start();
         }
 
@@ -284,7 +283,7 @@
         /// </summary>
         /// <param name="commandStream">The Rtsp stream.</param>
         /// <returns>Message readen</returns>
-        public RtspChunk? ReadOneMessage(Stream commandStream)
+        public async Task<RtspChunk?> ReadOneMessageAsync(Stream commandStream)
         {
             if (commandStream == null)
                 throw new ArgumentNullException("commandStream");
@@ -297,14 +296,14 @@
             int size = 0;
             int byteReaden = 0;
             List<byte> buffer = new List<byte>(256);
-            string oneLine = String.Empty;
+            string oneLine = string.Empty;
             while (currentReadingState != ReadingState.End)
             {
 
                 // if the system is not reading binary data.
                 if (currentReadingState != ReadingState.Data && currentReadingState != ReadingState.MoreInterleavedData)
                 {
-                    oneLine = String.Empty;
+                    oneLine = string.Empty;
                     bool needMoreChar = true;
                     // I do not know to make readline blocking
                     while (needMoreChar)
@@ -319,7 +318,7 @@
                                 needMoreChar = false;
                                 break;
                             case '\n':
-                                oneLine = ASCIIEncoding.UTF8.GetString(buffer.ToArray());
+                                oneLine = Encoding.UTF8.GetString(buffer.ToArray());
                                 buffer.Clear();
                                 needMoreChar = false;
                                 break;
@@ -364,7 +363,7 @@
                         if (currentMessage!.Data!.Length > 0)
                         {
                             // Read the remaning data
-                            int byteCount = commandStream.Read(currentMessage.Data, byteReaden,
+                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, byteReaden,
                                                                currentMessage.Data.Length - byteReaden);
                             if (byteCount <= 0)
                             {
@@ -407,7 +406,7 @@
                     case ReadingState.MoreInterleavedData:
                         // apparently non blocking
                         {
-                            int byteCount = commandStream.Read(currentMessage!.Data, byteReaden, size - byteReaden);
+                            int byteCount = await commandStream.ReadAsync(currentMessage!.Data, byteReaden, size - byteReaden);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -444,7 +443,7 @@
 
             Contract.EndContractBlock();
 
-            
+
             return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, state);
         }
 

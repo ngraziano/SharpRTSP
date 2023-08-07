@@ -1,8 +1,7 @@
 ﻿using Rtsp.Messages;
 using System;
-using System.Net;
 using System.Net.Sockets;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -12,8 +11,8 @@ namespace Rtsp
         protected readonly UdpClient dataSocket;
         protected readonly UdpClient controlSocket;
 
-        private Thread? data_read_thread;
-        private Thread? control_read_thread;
+        private Task? _dataReadTask;
+        private Task? _controlReadTask;
 
         public int DataPort { get; protected set; }
         public int ControlPort { get; protected set; }
@@ -80,22 +79,13 @@ namespace Rtsp
         /// </summary>
         public void Start()
         {
-            if (data_read_thread != null)
+            if (_dataReadTask != null)
             {
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            data_read_thread = new Thread(() => DoWorkerJob(dataSocket, DataPort, OnDataReceived))
-            {
-                Name = "DataPort " + DataPort
-            };
-            data_read_thread.Start();
-
-            control_read_thread = new Thread(() => DoWorkerJob(controlSocket, ControlPort, OnControlReceived))
-            {
-                Name = "ControlPort " + ControlPort
-            };
-            control_read_thread.Start();
+            _dataReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(dataSocket, OnDataReceived), TaskCreationOptions.LongRunning);
+            _controlReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(controlSocket, OnControlReceived), TaskCreationOptions.LongRunning);
         }
 
         /// <summary>
@@ -137,21 +127,16 @@ namespace Rtsp
         /// <summary>
         /// Does the video job.
         /// </summary>
-        private void DoWorkerJob(UdpClient socket, int data_port, Action<RtspDataEventArgs> handler)
+        private async Task DoWorkerJobAsync(UdpClient socket, Action<RtspDataEventArgs> handler)
         {
 
-            IPEndPoint ipEndPoint = new(IPAddress.Any, data_port);
             try
             {
                 // loop until we get an exception eg the socket closed
                 while (true)
                 {
-                    byte[] frame = socket.Receive(ref ipEndPoint);
-
-                    // We have an RTP frame.
-                    // Fire the DataReceived event with 'frame'
-                    // Console.WriteLine("Received RTP data on port " + data_port);
-                    handler(new RtspDataEventArgs(frame));
+                    var data = await socket.ReceiveAsync();
+                    handler(new RtspDataEventArgs(data.Buffer));
                 }
             }
             catch (ObjectDisposedException)

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
@@ -68,7 +67,7 @@ namespace RtspClientExample
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
-            client.ReceivedSpsPps += (byte[] sps, byte[] pps) =>
+            client.ReceivedSpsPps += (sps, pps) =>
             {
                 h264 = true;
                 if (fs_v == null)
@@ -82,7 +81,7 @@ namespace RtspClientExample
 
             };
 
-            client.ReceivedVpsSpsPps += (byte[] vps, byte[] sps, byte[] pps) =>
+            client.ReceivedVpsSpsPps += (vps, sps, pps) =>
             {
                 h265 = true;
                 if (fs_v == null)
@@ -143,10 +142,9 @@ namespace RtspClientExample
                             Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
                         }
 
-                        fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-                        fs_v.Write(nalUnit);                 // Write NAL
+                        WriteNalToFile(fs_v, nalUnit);
                     }
-                    fs_v.Flush(true);
+                    // fs_v.Flush(true);
                 }
             };
 
@@ -265,24 +263,32 @@ namespace RtspClientExample
 
             Console.WriteLine("Press ENTER to exit");
 
-            string? readline = null;
-            while (readline == null && client.StreamingFinished() == false)
+            ConsoleKeyInfo key = default;
+            while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
             {
-                readline = Console.ReadLine();
 
-                // Avoid maxing out CPU on systems that instantly return null for ReadLine
-                if (readline == null) Thread.Sleep(500);
+                while (!Console.KeyAvailable && !client.StreamingFinished())
+                {
+                    // Avoid maxing out CPU on systems that instantly return null for ReadLine
+
+                    Thread.Sleep(250);
+                }
+                if (Console.KeyAvailable)
+                {
+                    key = Console.ReadKey();
+                }
             }
 
             client.Stop();
+            fs_v?.Close();
             Console.WriteLine("Finished");
 
         }
 
-        private static void WriteNalToFile(FileStream fs_v, byte[] nal)
+        private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)
         {
             fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
-            fs_v.Write(nal, 0, nal.Length);
+            fs_v.Write(nal);
         }
     }
 }
