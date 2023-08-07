@@ -27,7 +27,6 @@
 
         private int _sequenceNumber;
 
-
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
@@ -45,13 +44,7 @@
         /// Gets the remote address.
         /// </summary>
         /// <value>The remote adress.</value>
-        public string RemoteAdress
-        {
-            get
-            {
-                return _transport.RemoteAddress;
-            }
-        }
+        public string RemoteAdress => _transport.RemoteAddress;
 
         /// <summary>
         /// Starts this instance.
@@ -159,7 +152,6 @@
                                 OnDataReceived(new RtspChunkEventArgs(currentMessage));
                                 break;
                         }
-
                     }
                     else
                     {
@@ -171,7 +163,6 @@
             catch (IOException error)
             {
                 _logger.LogWarning(error, "IO Error");
-
             }
             catch (SocketException error)
             {
@@ -214,7 +205,7 @@
         public bool SendMessage(RtspMessage message)
         {
             if (message == null)
-                throw new ArgumentNullException("message");
+                throw new ArgumentNullException(nameof(message));
             Contract.EndContractBlock();
 
             if (!_transport.Connected)
@@ -286,7 +277,7 @@
         public async Task<RtspChunk?> ReadOneMessageAsync(Stream commandStream)
         {
             if (commandStream == null)
-                throw new ArgumentNullException("commandStream");
+                throw new ArgumentNullException(nameof(commandStream));
             Contract.EndContractBlock();
 
             ReadingState currentReadingState = ReadingState.NewCommand;
@@ -295,11 +286,10 @@
 
             int size = 0;
             int byteReaden = 0;
-            List<byte> buffer = new List<byte>(256);
+            var buffer = new List<byte>(256);
             string oneLine = string.Empty;
             while (currentReadingState != ReadingState.End)
             {
-
                 // if the system is not reading binary data.
                 if (currentReadingState != ReadingState.Data && currentReadingState != ReadingState.MoreInterleavedData)
                 {
@@ -332,7 +322,10 @@
                                     needMoreChar = false;
                                 }
                                 else
+                                {
                                     goto default;
+                                }
+
                                 break;
                             default:
                                 buffer.Add((byte)currentByte);
@@ -363,8 +356,8 @@
                         if (currentMessage!.Data!.Length > 0)
                         {
                             // Read the remaning data
-                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, byteReaden,
-                                                               currentMessage.Data.Length - byteReaden);
+                            int byteCount = await commandStream.ReadAsync(
+                                currentMessage.Data.AsMemory(byteReaden, currentMessage.Data.Length - byteReaden));
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -406,7 +399,8 @@
                     case ReadingState.MoreInterleavedData:
                         // apparently non blocking
                         {
-                            int byteCount = await commandStream.ReadAsync(currentMessage!.Data, byteReaden, size - byteReaden);
+                            int byteCount = await commandStream.ReadAsync(
+                                currentMessage!.Data.AsMemory(byteReaden, size - byteReaden));
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -443,7 +437,6 @@
 
             Contract.EndContractBlock();
 
-
             return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, state);
         }
 
@@ -475,7 +468,7 @@
             data[0] = 36; // '$' character
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
-            data[3] = (byte)((frame.Length & 0x00FF));
+            data[3] = (byte)(frame.Length & 0x00FF);
             Array.Copy(frame, 0, data, 4, frame.Length);
             return _stream.BeginWrite(data, 0, data.Length, asyncCallback, state);
         }
@@ -523,14 +516,13 @@
             data[0] = 36; // '$' character
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
-            data[3] = (byte)((frame.Length & 0x00FF));
+            data[3] = (byte)(frame.Length & 0x00FF);
             Array.Copy(frame, 0, data, 4, frame.Length);
             lock (_stream)
             {
                 _stream.Write(data, 0, data.Length);
             }
         }
-
 
         #region IDisposable Membres
 

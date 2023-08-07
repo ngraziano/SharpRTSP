@@ -7,7 +7,6 @@ namespace Rtsp
     /// </summary>
     public class RtspDataEventArgs : EventArgs
     {
-
         /// <summary>
         /// Initializes a new instance of the <see cref="RTSPDataEventArgs"/> class.
         /// </summary>
