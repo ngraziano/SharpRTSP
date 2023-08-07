@@ -10,7 +10,6 @@ namespace Rtsp.Rtp
     {
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-
             // TODO check the RFC to handle the different modes
 
             // Octet-Aligned Mode (RFC 4867 Section 4.4.1)
@@ -24,6 +23,5 @@ namespace Rtsp.Rtp
             // The rest of the RTP packet is the AMR data
             return new() { packet.Payload[1..] };
         }
-
     }
 }

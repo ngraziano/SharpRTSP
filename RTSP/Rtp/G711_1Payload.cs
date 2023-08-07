@@ -11,7 +11,6 @@ namespace Rtsp.Rtp
         /* Untested - used with G711.1 and PCMA-WB and PCMU-WB Codec Names */
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-
             // Look at the Header. This tells us the G711 mode being used
 
             // Mode Index (MI) is
@@ -19,7 +18,6 @@ namespace Rtsp.Rtp
             // 2 - R2a 50 octets containing Layer 0 plus Layer 1 data
             // 3 - R2b 50 octets containing Layer 0 plus Layer 2 data
             // 4 - R3 60 octets containing Layer 0 plus Layer 1 plus Layer 2 data
-
 
             var rtpPaylodMemory = packet.Payload;
             var rtpPayloadSpan = packet.Payload.Span;
@@ -51,8 +49,5 @@ namespace Rtsp.Rtp
             }
             return audio_data;
         }
-
-
-
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 
-
 namespace Rtsp.Rtp
 {
     public class RtpPacket
@@ -28,7 +27,7 @@ namespace Rtsp.Rtp
 
         private int ExtensionSize => HasExtension ? ((rawData[HeaderSize + 2] << 8) + rawData[HeaderSize + 3] + 1) * 4 : 0;
 
-        private int PaddingSize => HasPadding ? rawData[rawData.Length - 1] : 0;
+        private int PaddingSize => HasPadding ? rawData[^1] : 0;
 
         public int PayloadSize => rawData.Length - HeaderSize - ExtensionSize - PaddingSize;
 

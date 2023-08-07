@@ -111,12 +111,9 @@ namespace Rtsp.Rtp
             var rtpPayloadMemory = packet.Payload;
             var rtp_payload = packet.Payload.Span;
 
-            while (true)
+            // 2 bytes for AU Header Length, 2 bytes of AU Header payload
+            while (position + 4 <= packet.PayloadSize)
             {
-                if (position + 4 > packet.PayloadSize) break; // 2 bytes for AU Header Length, 2 bytes of AU Header payload
-
-
-
                 // Get Size of the AU Header
                 int au_headers_length_bits = (rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0); // 16 bits
                 int au_headers_length = (int)Math.Ceiling(au_headers_length_bits / 8.0);

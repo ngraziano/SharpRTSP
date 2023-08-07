@@ -20,10 +20,7 @@ namespace Rtsp.Rtp
         // Eg all the RTP Packets from M=0 through to M=1
         private readonly List<ReadOnlyMemory<byte>> temporaryRtpPayloads = new();
 
-
-
         private readonly MemoryStream fragmentedNal = new(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
-
 
         // Constructor
         public H264Payload(ILogger<H264Payload>? logger)
@@ -33,7 +30,6 @@ namespace Rtsp.Rtp
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-
             // Add to the list of payloads for the current Frame of video
             temporaryRtpPayloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
 
@@ -48,7 +44,6 @@ namespace Rtsp.Rtp
             // we don't have a frame yet. Keep accumulating RTP packets
             return new();
         }
-
 
         // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp
         // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
@@ -125,7 +120,7 @@ namespace Rtsp.Rtp
                     // Parse Fragmentation Unit Header
                     int fu_header_s = payload[1] >> 7 & 0x01;  // start marker
                     int fu_header_e = payload[1] >> 6 & 0x01;  // end marker
-                    int fu_header_r = payload[1] >> 5 & 0x01;  // reserved. should be 0
+                    // int fu_header_r = payload[1] >> 5 & 0x01;  // reserved. should be 0
                     int fu_header_type = payload[1] >> 0 & 0x1F; // Original NAL unit header
 
                     _logger.LogDebug("Frag FU-A s={fuHeadersS} e={fuHeadersE}", fu_header_s, fu_header_e);
@@ -167,7 +162,6 @@ namespace Rtsp.Rtp
                         nalUnits.Add(fragmentedNal.ToArray());
                     }
                 }
-
                 else if (nal_header_type == 29)
                 {
                     _logger.LogDebug("Frag FU-B not supported");
@@ -177,7 +171,6 @@ namespace Rtsp.Rtp
                 {
                     _logger.LogDebug("Unknown NAL header {nalHeaderType} not supported", nal_header_type);
                 }
-
             }
 
             // Output some statistics
@@ -186,7 +179,6 @@ namespace Rtsp.Rtp
 
             // Output all the NALs that form one RTP Frame (one frame of video)
             return nalUnits;
-
         }
     }
 }

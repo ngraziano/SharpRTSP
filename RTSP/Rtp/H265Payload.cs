@@ -9,7 +9,6 @@ namespace Rtsp.Rtp
     // It has methods to process the RTP Payload
 
     // By Roger Hardiman, RJH Technical Consultancy Ltd
-
     public class H265Payload : IPayloadProcessor
     {
         // H265 / HEVC structure.
@@ -17,14 +16,13 @@ namespace Rtsp.Rtp
         // NAL Units have a 2 byte header comprising of
         // F Bit, Type, Layer ID and TID
 
-
         int single, agg, frag = 0; // used for diagnostics stats
         bool has_donl = false;
 
-        List<ReadOnlyMemory<byte>> temporary_rtp_payloads = new(); // used to assemble the RTP packets that form one RTP Frame
-                                                                   // Eg all the RTP Packets from M=0 through to M=1
+        private readonly List<ReadOnlyMemory<byte>> temporary_rtp_payloads = new(); // used to assemble the RTP packets that form one RTP Frame
+                                                                                    // Eg all the RTP Packets from M=0 through to M=1
 
-        MemoryStream fragmented_nal = new MemoryStream(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
+        private readonly MemoryStream fragmented_nal = new (); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
 
 
         // Constructor
