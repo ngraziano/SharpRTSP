@@ -15,66 +15,59 @@ namespace Rtsp.Messages
         /// <returns>The default error message associate</returns>
         private static string GetDefaultError(int aErrorCode)
         {
-            switch (aErrorCode)
+            return aErrorCode switch
             {
-
-                case 100: return "Continue";
-
-                case 200: return "OK";
-                case 201: return "Created";
-                case 250: return "Low on Storage Space";
-
-                case 300: return "Multiple Choices";
-                case 301: return "Moved Permanently";
-                case 302: return "Moved Temporarily";
-                case 303: return "See Other";
-                case 305: return "Use Proxy";
-
-                case 400: return "Bad Request";
-                case 401: return "Unauthorized";
-                case 402: return "Payment Required";
-                case 403: return "Forbidden";
-                case 404: return "Not Found";
-                case 405: return "Method Not Allowed";
-                case 406: return "Not Acceptable";
-                case 407: return "Proxy Authentication Required";
-                case 408: return "Request Timeout";
-                case 410: return "Gone";
-                case 411: return "Length Required";
-                case 412: return "Precondition Failed";
-                case 413: return "Request Entity Too Large";
-                case 414: return "Request-URI Too Long";
-                case 415: return "Unsupported Media Type";
-                case 451: return "Invalid parameter";
-                case 452: return "Illegal Conference Identifier";
-                case 453: return "Not Enough Bandwidth";
-                case 454: return "Session Not Found";
-                case 455: return "Method Not Valid In This State";
-                case 456: return "Header Field Not Valid";
-                case 457: return "Invalid Range";
-                case 458: return "Parameter Is Read-Only";
-                case 459: return "Aggregate Operation Not Allowed";
-                case 460: return "Only Aggregate Operation Allowed";
-                case 461: return "Unsupported Transport";
-                case 462: return "Destination Unreachable";
-
-                case 500: return "Internal Server Error";
-                case 501: return "Not Implemented";
-                case 502: return "Bad Gateway";
-                case 503: return "Service Unavailable";
-                case 504: return "Gateway Timeout";
-                case 505: return "RTSP Version Not Supported";
-                case 551: return "Option not support";
-                default:
-                    return "Return: " + aErrorCode.ToString(CultureInfo.InvariantCulture);
-            }
+                100 => "Continue",
+                200 => "OK",
+                201 => "Created",
+                250 => "Low on Storage Space",
+                300 => "Multiple Choices",
+                301 => "Moved Permanently",
+                302 => "Moved Temporarily",
+                303 => "See Other",
+                305 => "Use Proxy",
+                400 => "Bad Request",
+                401 => "Unauthorized",
+                402 => "Payment Required",
+                403 => "Forbidden",
+                404 => "Not Found",
+                405 => "Method Not Allowed",
+                406 => "Not Acceptable",
+                407 => "Proxy Authentication Required",
+                408 => "Request Timeout",
+                410 => "Gone",
+                411 => "Length Required",
+                412 => "Precondition Failed",
+                413 => "Request Entity Too Large",
+                414 => "Request-URI Too Long",
+                415 => "Unsupported Media Type",
+                451 => "Invalid parameter",
+                452 => "Illegal Conference Identifier",
+                453 => "Not Enough Bandwidth",
+                454 => "Session Not Found",
+                455 => "Method Not Valid In This State",
+                456 => "Header Field Not Valid",
+                457 => "Invalid Range",
+                458 => "Parameter Is Read-Only",
+                459 => "Aggregate Operation Not Allowed",
+                460 => "Only Aggregate Operation Allowed",
+                461 => "Unsupported Transport",
+                462 => "Destination Unreachable",
+                500 => "Internal Server Error",
+                501 => "Not Implemented",
+                502 => "Bad Gateway",
+                503 => "Service Unavailable",
+                504 => "Gateway Timeout",
+                505 => "RTSP Version Not Supported",
+                551 => "Option not support",
+                _ => "Return: " + aErrorCode.ToString(CultureInfo.InvariantCulture),
+            };
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspResponse"/> class.
         /// </summary>
         public RtspResponse()
-            : base()
         {
             // Initialise with a default result code.
             Command = "RTSP/1.0 200 OK";
@@ -121,9 +114,7 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (commandArray.Length < 3)
-                    return String.Empty;
-                return commandArray[2];
+                return commandArray.Length < 3 ? string.Empty: commandArray[2];
             }
             set
             {
@@ -133,7 +124,6 @@ namespace Rtsp.Messages
                     Array.Resize(ref commandArray, 3);
                 }
                 commandArray[2] = value;
-
             }
         }
 
@@ -141,15 +131,7 @@ namespace Rtsp.Messages
         /// Gets a value indicating whether this instance correspond to an OK response.
         /// </summary>
         /// <value><c>true</c> if this instance is OK; otherwise, <c>false</c>.</value>
-        public bool IsOk
-        {
-            get
-            {
-                if (ReturnCode > 0 && ReturnCode < 400)
-                    return true;
-                return false;
-            }
-        }
+        public bool IsOk => ReturnCode > 0 && ReturnCode < 400;
 
         /// <summary>
         /// Gets the timeout in second.
@@ -168,9 +150,11 @@ namespace Rtsp.Messages
                     {
                         string[] subParts = parts[1].Split('=');
                         if (subParts.Length > 1 &&
-                            subParts[0].ToUpperInvariant() == "TIMEOUT")
-                            if (!int.TryParse(subParts[1], out returnValue))
-                                returnValue = DEFAULT_TIMEOUT;
+                            string.Equals(subParts[0], "TIMEOUT", StringComparison.InvariantCultureIgnoreCase)
+                            && !int.TryParse(subParts[1], out returnValue))
+                        {
+                            returnValue = DEFAULT_TIMEOUT;
+                        }
                     }
                 }
                 return returnValue;
@@ -178,10 +162,11 @@ namespace Rtsp.Messages
             set
             {
                 if (Headers.TryGetValue(RtspHeaderNames.Session, out string? sessionString) && sessionString != null)
+                {
                     if (value != DEFAULT_TIMEOUT)
                     {
-
-                        Headers[RtspHeaderNames.Session] = sessionString.Split(';').First()
+                        Headers[RtspHeaderNames.Session] =
+                            sessionString.Split(';').First()
                             + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
                     }
                     else
@@ -189,6 +174,7 @@ namespace Rtsp.Messages
                         //remove timeout part
                         Headers[RtspHeaderNames.Session] = sessionString.Split(';').First();
                     }
+                }
             }
         }
 
