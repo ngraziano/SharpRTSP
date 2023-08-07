@@ -22,7 +22,7 @@ namespace Rtsp
         public RtspTcpTransport(TcpClient tcpConnection)
         {
             if (tcpConnection == null)
-                throw new ArgumentNullException("tcpConnection");
+                throw new ArgumentNullException(nameof(tcpConnection));
             Contract.EndContractBlock();
 
             _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
@@ -39,29 +39,19 @@ namespace Rtsp
         {
         }
 
-
         #region IRtspTransport Membres
 
         /// <summary>
         /// Gets the stream of the transport.
         /// </summary>
         /// <returns>A stream</returns>
-        public Stream GetStream()
-        {
-            return _RtspServerClient.GetStream();
-        }
+        public Stream GetStream() => _RtspServerClient.GetStream();
 
         /// <summary>
         /// Gets the remote address.
         /// </summary>
         /// <value>The remote address.</value>
-        public string RemoteAddress
-        {
-            get
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
-            }
-        }
+        public string RemoteAddress => string.Format(CultureInfo.InvariantCulture, "{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
 
         /// <summary>
         /// Closes this instance.
@@ -75,10 +65,7 @@ namespace Rtsp
         /// Gets a value indicating whether this <see cref="IRtspTransport"/> is connected.
         /// </summary>
         /// <value><c>true</c> if connected; otherwise, <c>false</c>.</value>
-        public bool Connected
-        {
-            get { return _RtspServerClient.Client != null && _RtspServerClient.Connected; }
-        }
+        public bool Connected => _RtspServerClient.Client != null && _RtspServerClient.Connected;
 
         /// <summary>
         /// Reconnect this instance.

@@ -7,7 +7,6 @@ namespace Rtsp
 {
     public class UDPSocket
     {
-
         protected readonly UdpClient dataSocket;
         protected readonly UdpClient controlSocket;
 
@@ -30,7 +29,7 @@ namespace Rtsp
             ControlPort = startPort + 1;
 
             bool ok = false;
-            while (ok == false && (ControlPort < endPort))
+            while (!ok && (ControlPort < endPort))
             {
                 // Video/Audio port must be odd and command even (next one)
                 try
@@ -42,10 +41,8 @@ namespace Rtsp
                 catch (SocketException)
                 {
                     // Fail to allocate port, try again
-                    if (dataSocket != null)
-                        dataSocket.Close();
-                    if (controlSocket != null)
-                        controlSocket.Close();
+                    dataSocket?.Close();
+                    controlSocket?.Close();
 
                     // try next data or control port
                     DataPort += 2;
@@ -58,7 +55,6 @@ namespace Rtsp
                     dataSocket!.Client.SendBufferSize = 65535; // default is 8192. Make it as large as possible for large RTP packets which are not fragmented
 
                     controlSocket!.Client.DontFragment = false;
-
                 }
             }
 
@@ -123,13 +119,11 @@ namespace Rtsp
             ControlReceived?.Invoke(this, rtspDataEventArgs);
         }
 
-
         /// <summary>
         /// Does the video job.
         /// </summary>
-        private async Task DoWorkerJobAsync(UdpClient socket, Action<RtspDataEventArgs> handler)
+        private static async Task DoWorkerJobAsync(UdpClient socket, Action<RtspDataEventArgs> handler)
         {
-
             try
             {
                 // loop until we get an exception eg the socket closed
@@ -162,6 +156,5 @@ namespace Rtsp
         {
             dataSocket.Send(data, data.Length, hostname, port);
         }
-
     }
 }

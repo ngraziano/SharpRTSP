@@ -62,20 +62,21 @@
         /// </summary>
         /// <param name="stringValue">A string value.</param>
         /// <returns>The port couple</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="stringValue"/> is <c>null</c>.</exception>
         public static PortCouple Parse(string stringValue)
         {
             if (stringValue == null)
-                throw new ArgumentNullException("stringValue");
+                throw new ArgumentNullException(nameof(stringValue));
             Contract.Requires(!string.IsNullOrEmpty(stringValue));
 
             string[] values = stringValue.Split('-');
 
-            int.TryParse(values[0], out int tempValue);
+            _ = int.TryParse(values[0], out int tempValue);
             PortCouple result = new(tempValue);
 
             tempValue = 0;
             if (values.Length > 1)
-                int.TryParse(values[1], out tempValue);
+                _ = int.TryParse(values[1], out tempValue);
 
             result.Second = tempValue;
 
@@ -83,19 +84,21 @@
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override string ToString()
         {
             if (IsSecondPortPresent)
-                return First.ToString(CultureInfo.InvariantCulture) + "-" + Second.ToString(CultureInfo.InvariantCulture);
+            {
+                return FormattableString.Invariant($"{First}-{Second}");
+            }
             else
+            {
                 return First.ToString(CultureInfo.InvariantCulture);
+            }
         }
-
-
     }
 }

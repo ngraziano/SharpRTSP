@@ -2,8 +2,6 @@
 {
     public class RtspRequestOptions : RtspRequest
     {
-
-        // Constructor
         public RtspRequestOptions()
         {
             Command = "OPTIONS * RTSP/1.0";
@@ -23,6 +21,5 @@
 
             return response;
         }
-
     }
 }

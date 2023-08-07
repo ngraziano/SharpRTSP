@@ -1,16 +1,14 @@
 ﻿using System;
+using System.Linq;
 
 namespace Rtsp.Messages
 {
     public class RtspRequestSetup : RtspRequest
     {
-
-        // Constructor
         public RtspRequestSetup()
         {
             Command = "SETUP * RTSP/1.0";
         }
-
 
         /// <summary>
         /// Gets the transports associate with the request.
@@ -18,14 +16,10 @@ namespace Rtsp.Messages
         /// <value>The transport.</value>
         public RtspTransport[] GetTransports()
         {
-
             if (!Headers.TryGetValue(RtspHeaderNames.Transport, out string? transportString) || transportString is null)
                 return new RtspTransport[] { new RtspTransport() };
 
-            string[] items = transportString.Split(',');
-            return Array.ConvertAll(items,
-                new Converter<string, RtspTransport>(RtspTransport.Parse));
-
+            return transportString.Split(',').Select(RtspTransport.Parse).ToArray();
         }
 
         public void AddTransport(RtspTransport newTransport)
@@ -34,10 +28,6 @@ namespace Rtsp.Messages
             if (Headers.ContainsKey(RtspHeaderNames.Transport))
                 actualTransport = Headers[RtspHeaderNames.Transport] + ",";
             Headers[RtspHeaderNames.Transport] = actualTransport + newTransport.ToString();
-
-
-
         }
-
     }
 }

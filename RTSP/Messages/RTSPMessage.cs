@@ -13,8 +13,7 @@
         /// <summary>
         /// The regex to validate the Rtsp message.
         /// </summary>
-        private static readonly Regex _rtspVersionTest = new Regex(@"^RTSP/\d\.\d", RegexOptions.Compiled);
-
+        private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled);
 
         // TODO Move in factory
         /// <summary>
@@ -35,9 +34,13 @@
                 // A response is : RTSP-Version SP Status-Code SP Reason-Phrase
                 // RTSP-Version = "RTSP" "/" 1*DIGIT "." 1*DIGIT
                 if (_rtspVersionTest.IsMatch(requestParts[2]))
+                {
                     returnValue = RtspRequest.GetRtspRequest(requestParts);
+                }
                 else if (_rtspVersionTest.IsMatch(requestParts[0]))
+                {
                     returnValue = new RtspResponse();
+                }
                 else
                 {
                     //  _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
@@ -58,7 +61,7 @@
         /// </summary>
         public RtspMessage()
         {
-            Data = new byte[0];
+            Data = Array.Empty<byte>();
             Creation = DateTime.Now;
         }
 
@@ -68,7 +71,7 @@
         /// Gets or sets the creation time.
         /// </summary>
         /// <value>The creation time.</value>
-        public DateTime Creation { get; private set; }
+        public DateTime Creation { get; }
 
         /// <summary>
         /// Gets or sets the command of the message (first line).
@@ -76,36 +79,15 @@
         /// <value>The command.</value>
         public string Command
         {
-            get
-            {
-                if (commandArray == null)
-                    return string.Empty;
-                return string.Join(" ", commandArray);
-            }
-            set
-            {
-                if (value == null)
-                    commandArray = new string[] { String.Empty };
-                else
-                    commandArray = value.Split(new char[] { ' ' }, 3);
-            }
+            get => commandArray is null ? string.Empty : string.Join(" ", commandArray);
+            set => commandArray = value is null ? new string[] { string.Empty } : value.Split(new char[] { ' ' }, 3);
         }
-
 
         /// <summary>
         /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
         /// </summary>
         /// <value>The Method</value>
-        public string Method
-        {
-            get
-            {
-                if (commandArray == null)
-                    return string.Empty;
-                return commandArray[0];
-            }
-        }
-
+        public string Method => commandArray is null ? string.Empty : commandArray[0];
 
         /// <summary>
         /// Gets the headers of the message.
@@ -122,7 +104,7 @@
         {
             if (line is null)
             {
-                throw new ArgumentNullException("line");
+                throw new ArgumentNullException(nameof(line));
             }
 
             //spliter
@@ -148,7 +130,9 @@
             {
                 if (!(Headers.TryGetValue("CSeq", out string? returnStringValue) &&
                     int.TryParse(returnStringValue, out int returnValue)))
+                {
                     returnValue = 0;
+                }
 
                 return returnValue;
             }
@@ -195,7 +179,7 @@
         /// </summary>
         public void AdjustContentLength()
         {
-            if (Data != null && Data.Length > 0)
+            if (Data?.Length > 0)
             {
                 Headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
             }
@@ -214,16 +198,18 @@
         public void SendTo(Stream stream)
         {
             // <pex>
-            if (stream == null)
-                throw new ArgumentNullException("stream");
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
             if (!stream.CanWrite)
+            {
                 throw
-                  new ArgumentException("Stream CanWrite == false, can't send message to it", "stream");
+                  new ArgumentException("Stream CanWrite == false, can't send message to it", nameof(stream));
+            }
             // </pex>
             Contract.EndContractBlock();
 
-            Encoding encoder = ASCIIEncoding.UTF8;
-            StringBuilder outputString = new StringBuilder();
+            Encoding encoder = Encoding.UTF8;
+            var outputString = new StringBuilder();
 
             AdjustContentLength();
 
@@ -241,14 +227,11 @@
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
-                if (Data != null && Data.Length > 0)
-                    stream.Write(Data, 0, Data.Length);
-
+                if (Data?.Length > 0)
+                    stream.Write(Data.AsSpan());
             }
             stream.Flush();
         }
-
-
 
         /// <summary>
         /// Create a string of the message for debug.
@@ -257,14 +240,13 @@
         {
             var stringBuilder = new StringBuilder();
 
-
             stringBuilder.AppendLine($"Commande : {Command}");
             foreach (KeyValuePair<string, string?> item in Headers)
             {
-                stringBuilder.AppendLine($"Header : {item.Key}: { item.Value}");
+                stringBuilder.AppendLine($"Header : {item.Key}: {item.Value}");
             }
 
-            if (Data != null && Data.Length > 0)
+            if (Data?.Length > 0)
             {
                 stringBuilder.AppendLine($"Data :-{Encoding.ASCII.GetString(Data)}-");
             }
@@ -285,13 +267,11 @@
             foreach (var item in Headers)
             {
                 returnValue.Headers.Add(item.Key, item.Value);
-
             }
             returnValue.Data = Data != null ? Data.Clone() as byte[] : null;
             returnValue.SourcePort = SourcePort;
 
             return returnValue;
         }
-
     }
 }

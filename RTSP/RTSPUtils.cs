@@ -5,7 +5,7 @@ namespace Rtsp
     public static class RtspUtils
     {
         /// <summary>
-        /// Registers the URI.
+        /// Registers the rtsp scheùe for uri.
         /// </summary>
         public static void RegisterUri()
         {

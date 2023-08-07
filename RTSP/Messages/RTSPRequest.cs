@@ -7,7 +7,6 @@ namespace Rtsp.Messages
     /// </summary>
     public class RtspRequest : RtspMessage
     {
-
         /// <summary>
         /// Request type.
         /// </summary>
@@ -63,7 +62,6 @@ namespace Rtsp.Messages
                 */
                 _ => new RtspRequest(),
             };
-
         }
 
         /// <summary>
@@ -103,7 +101,7 @@ namespace Rtsp.Messages
                 if (Enum.IsDefined(typeof(RequestType), value))
                     commandArray[0] = value.ToString();
                 else
-                    commandArray[0] = RequestType.UNKNOWN.ToString();
+                    commandArray[0] = nameof(RequestType.UNKNOWN);
             }
         }
 
@@ -141,7 +139,7 @@ namespace Rtsp.Messages
         /// <returns>an Rtsp response correcponding to request.</returns>
         public virtual RtspResponse CreateResponse()
         {
-            RtspResponse returnValue = new RtspResponse
+            var returnValue = new RtspResponse
             {
                 ReturnCode = 200,
                 CSeq = CSeq

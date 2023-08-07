@@ -81,7 +81,6 @@ mode                =    <"> *Method <"> | Method
             TCP,
         }
 
-
         /// <summary>
         /// Gets or sets the transport.
         /// </summary>
@@ -168,11 +167,11 @@ mode                =    <"> *Method <"> | Method
         /// <exception cref="ArgumentNullException"><paramref name="aTransportString"/> is null.</exception>
         public static RtspTransport Parse(string aTransportString)
         {
-            if (aTransportString == null)
-                throw new ArgumentNullException("aTransportString");
+            if (aTransportString is null)
+                throw new ArgumentNullException(nameof(aTransportString));
             Contract.EndContractBlock();
 
-            RtspTransport returnValue = new RtspTransport();
+            var returnValue = new RtspTransport();
 
             string[] transportPart = aTransportString.Split(';');
             string[] transportProtocolPart = transportPart[0].Split('/');
@@ -204,7 +203,7 @@ mode                =    <"> *Method <"> | Method
                     case "INTERLEAVED":
                         returnValue.IsMulticast = false;
                         if (subPart.Length < 2)
-                            throw new ArgumentException("interleaved value invalid", "aTransportString");
+                            throw new ArgumentException("interleaved value invalid", nameof(aTransportString));
 
                         returnValue.Interleaved = PortCouple.Parse(subPart[1]);
                         break;
@@ -214,38 +213,38 @@ mode                =    <"> *Method <"> | Method
                     case "TTL":
                         int ttl = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out ttl))
-                            throw new ArgumentException("TTL value invalid", "aTransportString");
+                            throw new ArgumentException("TTL value invalid", nameof(aTransportString));
                         returnValue.TTL = ttl;
                         break;
                     case "LAYERS":
                         int layers = 0;
                         if (subPart.Length < 2 || !int.TryParse(subPart[1], out layers))
-                            throw new ArgumentException("Layers value invalid", "aTransportString");
+                            throw new ArgumentException("Layers value invalid", nameof(aTransportString));
                         returnValue.TTL = layers;
                         break;
                     case "PORT":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("Port value invalid", "aTransportString");
+                            throw new ArgumentException("Port value invalid", nameof(aTransportString));
                         returnValue.Port = PortCouple.Parse(subPart[1]);
                         break;
                     case "CLIENT_PORT":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("client_port value invalid", "aTransportString");
+                            throw new ArgumentException("client_port value invalid", nameof(aTransportString));
                         returnValue.ClientPort = PortCouple.Parse(subPart[1]);
                         break;
                     case "SERVER_PORT":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("server_port value invalid", "aTransportString");
+                            throw new ArgumentException("server_port value invalid", nameof(aTransportString));
                         returnValue.ServerPort = PortCouple.Parse(subPart[1]);
                         break;
                     case "SSRC":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("ssrc value invalid", "aTransportString");
+                            throw new ArgumentException("ssrc value invalid", nameof(aTransportString));
                         returnValue.SSrc = subPart[1];
                         break;
                     case "MODE":
                         if (subPart.Length < 2)
-                            throw new ArgumentException("mode value invalid", "aTransportString");
+                            throw new ArgumentException("mode value invalid", nameof(aTransportString));
                         returnValue.Mode = subPart[1];
                         break;
                     default:
@@ -260,26 +259,23 @@ mode                =    <"> *Method <"> | Method
         {
             if (transportProtocolPart.Length == 3)
             {
-                LowerTransportType lowerTransport;
-                if (!Enum.TryParse<LowerTransportType>(transportProtocolPart[2], out lowerTransport))
-                    throw new ArgumentException("Lower transport type invalid", "aTransportString");
+                if (!Enum.TryParse(transportProtocolPart[2], out LowerTransportType lowerTransport))
+                    throw new ArgumentException("Lower transport type invalid", nameof(transportProtocolPart));
                 returnValue.LowerTransport = lowerTransport;
             }
         }
 
         private static void ReadProfile(RtspTransport returnValue, string[] transportProtocolPart)
         {
-            ProfileType profile;
-            if (transportProtocolPart.Length < 2 || !Enum.TryParse<ProfileType>(transportProtocolPart[1], out profile))
-                throw new ArgumentException("Transport profile type invalid", "aTransportString");
+            if (transportProtocolPart.Length < 2 || !Enum.TryParse(transportProtocolPart[1], out ProfileType profile))
+                throw new ArgumentException("Transport profile type invalid", nameof(transportProtocolPart));
             returnValue.Profile = profile;
         }
 
         private static void ReadTransport(RtspTransport returnValue, string[] transportProtocolPart)
         {
-            TransportType transport;
-            if (!Enum.TryParse<TransportType>(transportProtocolPart[0], out transport))
-                throw new ArgumentException("Transport type invalid", "aTransportString");
+            if (!Enum.TryParse(transportProtocolPart[0], out TransportType transport))
+                throw new ArgumentException("Transport type invalid", nameof(transportProtocolPart));
             returnValue.Transport = transport;
         }
 
@@ -291,7 +287,7 @@ mode                =    <"> *Method <"> | Method
         /// </returns>
         public override string ToString()
         {
-            StringBuilder transportString = new StringBuilder();
+            var transportString = new StringBuilder();
             transportString.Append(Transport.ToString());
             transportString.Append('/');
             transportString.Append(Profile.ToString());
@@ -306,17 +302,17 @@ mode                =    <"> *Method <"> | Method
                 transportString.Append(';');
                 transportString.Append(IsMulticast ? "multicast" : "unicast");
             }
-            if (Destination != null)
+            if (Destination is not null)
             {
                 transportString.Append(";destination=");
                 transportString.Append(Destination);
             }
-            if (Source != null)
+            if (Source is not null)
             {
                 transportString.Append(";source=");
                 transportString.Append(Source);
             }
-            if (Interleaved != null)
+            if (Interleaved is not null)
             {
                 transportString.Append(";interleaved=");
                 transportString.Append(Interleaved.ToString());
@@ -335,22 +331,22 @@ mode                =    <"> *Method <"> | Method
                 transportString.Append(";layers=");
                 transportString.Append(Layers);
             }
-            if (Port != null)
+            if (Port is not null)
             {
                 transportString.Append(";port=");
                 transportString.Append(Port.ToString());
             }
-            if (ClientPort != null)
+            if (ClientPort is not null)
             {
                 transportString.Append(";client_port=");
                 transportString.Append(ClientPort.ToString());
             }
-            if (ServerPort != null)
+            if (ServerPort is not null)
             {
                 transportString.Append(";server_port=");
                 transportString.Append(ServerPort.ToString());
             }
-            if (SSrc != null)
+            if (SSrc is not null)
             {
                 transportString.Append(";ssrc=");
                 transportString.Append(SSrc);
@@ -362,6 +358,5 @@ mode                =    <"> *Method <"> | Method
             }
             return transportString.ToString();
         }
-
     }
 }
