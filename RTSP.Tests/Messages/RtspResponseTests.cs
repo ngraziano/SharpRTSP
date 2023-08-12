@@ -8,56 +8,52 @@ namespace Rtsp.Messages.Tests
         [Test()]
         public void SetSession()
         {
-            RtspResponse testObject = new RtspResponse();
-
-            testObject.Session = "12345";
+            var testObject = new RtspResponse
+            {
+                Session = "12345"
+            };
 
             Assert.AreEqual("12345", testObject.Headers[RtspHeaderNames.Session]);
-
         }
 
         [Test()]
         public void SetSessionAndTimeout()
         {
-            RtspResponse testObject = new RtspResponse();
-
-            testObject.Session = "12345";
-            testObject.Timeout = 10;
+            var testObject = new RtspResponse
+            {
+                Session = "12345",
+                Timeout = 10
+            };
 
             Assert.AreEqual("12345;timeout=10", testObject.Headers[RtspHeaderNames.Session]);
-
         }
 
         [Test()]
         public void ReadSessionAndDefaultTimeout()
         {
-            RtspResponse testObject = new RtspResponse();
+            var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345";
 
             Assert.AreEqual("12345", testObject.Session);
             Assert.AreEqual(60, testObject.Timeout);
-
         }
-
 
         [Test()]
         public void ReadSessionAndTimeout()
         {
-            RtspResponse testObject = new RtspResponse();
+            var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
 
             Assert.AreEqual("12345", testObject.Session);
             Assert.AreEqual(33, testObject.Timeout);
-
         }
-
 
         [Test()]
         public void ChangeTimeout()
         {
-            RtspResponse testObject = new RtspResponse();
+            var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=29";
             testObject.Timeout = 33;
@@ -65,14 +61,12 @@ namespace Rtsp.Messages.Tests
             Assert.AreEqual("12345", testObject.Session);
             Assert.AreEqual(33, testObject.Timeout);
             Assert.AreEqual("12345;timeout=33", testObject.Headers[RtspHeaderNames.Session]);
-
         }
-
 
         [Test()]
         public void ChangeSession()
         {
-            RtspResponse testObject = new RtspResponse();
+            var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
 
@@ -81,8 +75,6 @@ namespace Rtsp.Messages.Tests
             Assert.AreEqual("456", testObject.Session);
             Assert.AreEqual(33, testObject.Timeout);
             Assert.AreEqual("456;timeout=33", testObject.Headers[RtspHeaderNames.Session]);
-
         }
-
     }
 }

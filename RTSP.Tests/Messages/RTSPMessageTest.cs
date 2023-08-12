@@ -31,6 +31,5 @@ namespace Rtsp.Messages.Tests
             Assert.AreEqual(returnCode, oneResponse.ReturnCode);
             Assert.AreEqual(returnMessage, oneResponse.ReturnMessage);
         }
-
     }
 }

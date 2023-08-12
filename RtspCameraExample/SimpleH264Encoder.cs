@@ -17,12 +17,11 @@ using System.Collections.Generic;
 
 public class SimpleH264Encoder
 {
-    CJOCh264encoder h264encoder = null;
+    private readonly CJOCh264encoder h264encoder = new();
 
     uint width = 0;
     uint height = 0;
 
-    List<byte> nal = new List<byte>();
 
     // Constuctor
     public SimpleH264Encoder(uint width, uint height, uint fps)
@@ -33,7 +32,7 @@ public class SimpleH264Encoder
         uint SARh = 1;
 
         // Initialise H264 encoder. The original C++ code writes to a file. In this port it writes to a List<byte>
-        h264encoder = new CJOCh264encoder(nal);
+       
         h264encoder.IniCoder(width, height, fps, CJOCh264encoder.enSampleFormat.SAMPLE_FORMAT_YUV420p, SARw, SARh);
 
         this.width = width;

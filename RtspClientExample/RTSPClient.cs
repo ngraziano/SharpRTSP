@@ -475,7 +475,7 @@ namespace RtspClientExample
 
                     // NTP Most Signigicant Word is relative to 0h, 1 Jan 1900
                     // This will wrap around in 2036
-                    DateTime time = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    var time = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
                     time = time.AddSeconds((double)ntp_msw_seconds); // adds 'double' (whole&fraction)
 
@@ -538,7 +538,8 @@ namespace RtspClientExample
             {
                 _logger.LogDebug("Got Error in RTSP Reply {returnCode} {returnMessage}", message.ReturnCode, message.ReturnMessage);
 
-                if (message.ReturnCode == 401 && message.OriginalRequest is not null && (message.OriginalRequest.Headers.ContainsKey(RtspHeaderNames.Authorization) == true))
+                if (message.ReturnCode == 401
+                    && message.OriginalRequest?.Headers.ContainsKey(RtspHeaderNames.Authorization) == true)
                 {
                     // the authorization failed.
                     _logger.LogError("Fail to authenticate stoping here");
@@ -609,10 +610,12 @@ namespace RtspClientExample
                 // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
                 if (message.Headers.ContainsKey(RtspHeaderNames.Public))
                 {
-                    string[] parts = message.Headers[RtspHeaderNames.Public].Split(',');
-                    foreach (string part in parts)
+                    foreach (string part in message.Headers[RtspHeaderNames.Public].Split(','))
                     {
-                        if (part.Trim().ToUpper().Equals("GET_PARAMETER")) serverSupportsGetParameter = true;
+                        if (part.Trim().Equals("GET_PARAMETER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            serverSupportsGetParameter = true;
+                        }
                     }
                 }
 

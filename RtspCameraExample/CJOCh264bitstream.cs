@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 /*
  * CJOCh264bitstream.cpp
@@ -21,7 +22,7 @@ using System.Collections.Generic;
 /*!
  It is used to create the h264 bit oriented stream, it contains different functions that helps you to create the h264 compliant stream (bit oriented, exp golomb coder)
  */
-public class CJOCh264bitstream : System.IDisposable
+public class CJOCh264bitstream : IDisposable
 {
     private const int BUFFER_SIZE_BITS = 24; //! Buffer size in bits used for emulation prevention
                                              //C++ TO C# CONVERTER NOTE: The following #define macro was replaced in-line:
@@ -31,7 +32,7 @@ public class CJOCh264bitstream : System.IDisposable
 
 
     /*! Buffer  */
-    private byte[] m_buffer = new byte[BUFFER_SIZE_BITS];
+    private readonly byte[] m_buffer = new byte[BUFFER_SIZE_BITS];
 
     /*! Bit buffer index  */
     private int m_nLastbitinbuffer;
@@ -42,14 +43,14 @@ public class CJOCh264bitstream : System.IDisposable
     /*! Pointer to output file */
     //private FILE m_pOutFile;
     //Byte Array used for output
-    private List<byte> m_pOutFile;
+    private readonly Stream stream;
 
     //! Clears the buffer
     private void clearbuffer()
     {
         //C++ TO C# CONVERTER TODO TASK: The memory management function 'memset' has no equivalent in C#:
         //memset(m_buffer, 0, sizeof(byte) * BUFFER_SIZE_BITS);
-        System.Array.Clear(m_buffer, 0, BUFFER_SIZE_BITS);
+        Array.Clear(m_buffer, 0, BUFFER_SIZE_BITS);
         m_nLastbitinbuffer = 0;
         m_nStartingbyte = 0;
     }
@@ -88,7 +89,7 @@ public class CJOCh264bitstream : System.IDisposable
         //Use circular buffer of BUFFER_SIZE_BYTES
         int nBytePos = (m_nStartingbyte + (m_nLastbitinbuffer / 8)) % (24 / 8);
         //The first bit to add is on the left
-        int nBitPosInByte = 7 - m_nLastbitinbuffer % 8;
+        int nBitPosInByte = 7 - (m_nLastbitinbuffer % 8);
 
         //Get the byte value from buffer
         int nValTmp = m_buffer[nBytePos];
@@ -96,11 +97,11 @@ public class CJOCh264bitstream : System.IDisposable
         //Change the bit
         if (nVal > 0)
         {
-            nValTmp = (nValTmp | (int)Math.Pow(2, nBitPosInByte));
+            nValTmp |= (int)Math.Pow(2, nBitPosInByte);
         }
         else
         {
-            nValTmp = (nValTmp & ~((int)Math.Pow(2, nBitPosInByte)));
+            nValTmp &= ~(int)Math.Pow(2, nBitPosInByte);
         }
 
         //Save the new byte value to the buffer
@@ -135,7 +136,7 @@ public class CJOCh264bitstream : System.IDisposable
         //Add all byte to buffer
         m_buffer[nBytePos] = (byte)nVal;
 
-        m_nLastbitinbuffer = m_nLastbitinbuffer + 8;
+        m_nLastbitinbuffer += 8;
     }
 
     //! Save all buffer to file
@@ -146,7 +147,7 @@ public class CJOCh264bitstream : System.IDisposable
     {
         bool bemulationpreventionexecuted = false;
 
-        if (m_pOutFile == null)
+        if (stream == null)
         {
             throw new System.Exception("Error: out file is NULL");
         }
@@ -162,7 +163,7 @@ public class CJOCh264bitstream : System.IDisposable
             throw new System.Exception("Error: NO bytes to save");
         }
 
-        if (bemulationprevention == true)
+        if (bemulationprevention)
         {
             //Emulation prevention will be used:
             /*As per h.264 spec,
@@ -180,31 +181,30 @@ public class CJOCh264bitstream : System.IDisposable
 			*/
 
             //Check if emulation prevention is needed (emulation prevention is byte align defined)
-            if ((m_buffer[((m_nStartingbyte + 0) % (24 / 8))] == 0x00)
-                && (m_buffer[((m_nStartingbyte + 1) % (24 / 8))] == 0x00)
-                && ((m_buffer[((m_nStartingbyte + 2) % (24 / 8))] == 0x00)
-                       || (m_buffer[((m_nStartingbyte + 2) % (24 / 8))] == 0x01)
-                       || (m_buffer[((m_nStartingbyte + 2) % (24 / 8))] == 0x02)
-                       || (m_buffer[((m_nStartingbyte + 2) % (24 / 8))] == 0x03)))
+            if ((m_buffer[(m_nStartingbyte + 0) % (24 / 8)] == 0x00)
+                && (m_buffer[(m_nStartingbyte + 1) % (24 / 8)] == 0x00)
+                && ((m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x00)
+                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x01)
+                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x02)
+                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x03)))
             {
                 int nbuffersaved = 0;
-                byte cEmulationPreventionByte = H264_EMULATION_PREVENTION_BYTE;
 
                 //Save 1st byte
-                fwrite(m_buffer[((m_nStartingbyte + nbuffersaved) % (24 / 8))], 1, 1, m_pOutFile);
+                stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
                 nbuffersaved++;
 
                 //Save 2st byte
-                fwrite(m_buffer[((m_nStartingbyte + nbuffersaved) % (24 / 8))], 1, 1, m_pOutFile);
+                stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
                 nbuffersaved++;
 
                 //Save emulation prevention byte
-                fwrite(cEmulationPreventionByte, 1, 1, m_pOutFile);
+                stream.WriteByte(H264_EMULATION_PREVENTION_BYTE);
 
                 //Save the rest of bytes (usually 1)
                 while (nbuffersaved < (24 / 8))
                 {
-                    fwrite(m_buffer[((m_nStartingbyte + nbuffersaved) % (24 / 8))], 1, 1, m_pOutFile);
+                    stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
                     nbuffersaved++;
                 }
 
@@ -215,18 +215,18 @@ public class CJOCh264bitstream : System.IDisposable
             }
         }
 
-        if (bemulationpreventionexecuted == false)
+        if (!bemulationpreventionexecuted)
         {
             //No emulation prevention was used
 
             //Save the oldest byte in buffer
-            fwrite(m_buffer[m_nStartingbyte], 1, 1, m_pOutFile);
+            stream.WriteByte(m_buffer[m_nStartingbyte]);
 
             //Move the index
             m_buffer[m_nStartingbyte] = 0;
             m_nStartingbyte++;
-            m_nStartingbyte = m_nStartingbyte % (24 / 8);
-            m_nLastbitinbuffer = m_nLastbitinbuffer - 8;
+            m_nStartingbyte %= (24 / 8);
+            m_nLastbitinbuffer -= 8;
         }
     }
 
@@ -234,13 +234,13 @@ public class CJOCh264bitstream : System.IDisposable
     /*!
 		 \param pOutBinaryFile The output file pointer
 	 */
-    public CJOCh264bitstream(List<byte> pOutBinaryFile)
+    public CJOCh264bitstream(Stream stream)
     {
         clearbuffer();
 
         //C++ TO C# CONVERTER TODO TASK: C# does not have an equivalent to pointers to variables (in C#, the variable no longer points to the original when the original variable is re-assigned):
         //ORIGINAL LINE: m_pOutFile = pOutBinaryFile;
-        m_pOutFile = pOutBinaryFile;
+        this.stream = stream;
     }
 
     //! Destructor
@@ -259,14 +259,14 @@ public class CJOCh264bitstream : System.IDisposable
         //Used to add NAL header stream
         //Remember: NAL header is byte oriented
 
-        if (bDoAlign == true)
+        if (bDoAlign)
         {
             dobytealign();
         }
 
         if ((m_nLastbitinbuffer % 8) != 0)
         {
-            throw new System.Exception("Error: Save to file must be byte aligned");
+            throw new Exception("Error: Save to file must be byte aligned");
         }
 
         while (m_nLastbitinbuffer != 0)
@@ -275,16 +275,16 @@ public class CJOCh264bitstream : System.IDisposable
         }
 
         byte cbyte = (byte)((nVal & 0xFF000000) >> 24);
-        fwrite(cbyte, 1, 1, m_pOutFile);
+        stream.WriteByte(cbyte);
 
         cbyte = (byte)((nVal & 0x00FF0000) >> 16);
-        fwrite(cbyte, 1, 1, m_pOutFile);
+        stream.WriteByte(cbyte);
 
         cbyte = (byte)((nVal & 0x0000FF00) >> 8);
-        fwrite(cbyte, 1, 1, m_pOutFile);
+        stream.WriteByte(cbyte);
 
         cbyte = (byte)(nVal & 0x000000FF);
-        fwrite(cbyte, 1, 1, m_pOutFile);
+        stream.WriteByte(cbyte);
     }
 
     //! Adds nNumbits of lval to the end of h264 bitstream
@@ -302,7 +302,7 @@ public class CJOCh264bitstream : System.IDisposable
             throw new System.Exception("Error: numbits must be between 1 ... 64");
         }
 
-        int nBit = 0;
+        int nBit;
         int n = nNumbits - 1;
         while (n >= 0)
         {
@@ -356,7 +356,7 @@ public class CJOCh264bitstream : System.IDisposable
         int nr = m_nLastbitinbuffer % 8;
         if ((nr % 8) != 0)
         {
-            m_nLastbitinbuffer = m_nLastbitinbuffer + (8 - nr);
+            m_nLastbitinbuffer += (8 - nr);
         }
     }
 
@@ -390,9 +390,4 @@ public class CJOCh264bitstream : System.IDisposable
         }
     }
 
-    // 'writing' to memory
-    private void fwrite(byte b, int x, int y, List<byte> data)
-    {
-        data.Add(b);
-    }
 }
