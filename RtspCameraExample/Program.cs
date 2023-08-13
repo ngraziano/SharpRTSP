@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace RtspCameraExample
 {
-    class Program
+    static class Program
     {
         private static ILoggerFactory loggerFactory;
 

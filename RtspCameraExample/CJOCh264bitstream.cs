@@ -1,393 +1,390 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 
-/*
- * CJOCh264bitstream.cpp
- *
- *  Created on: Aug 23, 2014
- *      Author: Jordi Cenzano (www.jordicenzano.name)
- */
-
-/*
- * CJOCh264bitstream.h
- *
- *  Created on: Aug 23, 2014
- *      Author: Jordi Cenzano (www.jordicenzano.name)
- */
-
-
-
-//! h264 bitstream class
-/*!
- It is used to create the h264 bit oriented stream, it contains different functions that helps you to create the h264 compliant stream (bit oriented, exp golomb coder)
- */
-public class CJOCh264bitstream : IDisposable
+namespace RtspCameraExample
 {
-    private const int BUFFER_SIZE_BITS = 24; //! Buffer size in bits used for emulation prevention
-                                             //C++ TO C# CONVERTER NOTE: The following #define macro was replaced in-line:
-                                             //ORIGINAL LINE: #define BUFFER_SIZE_BYTES (24/8)
+    /*
+     * adapted from CJOCh264bitstream.cpp CJOCh264bitstream.h
+     *
+     *  Created on: Aug 23, 2014
+     *      Author: Jordi Cenzano (www.jordicenzano.name)
+     */
 
-    private const int H264_EMULATION_PREVENTION_BYTE = 0x03; //! Emulation prevention byte
-
-
-    /*! Buffer  */
-    private readonly byte[] m_buffer = new byte[BUFFER_SIZE_BITS];
-
-    /*! Bit buffer index  */
-    private int m_nLastbitinbuffer;
-
-    /*! Starting byte indicator  */
-    private int m_nStartingbyte;
-
-    /*! Pointer to output file */
-    //private FILE m_pOutFile;
-    //Byte Array used for output
-    private readonly Stream stream;
-
-    //! Clears the buffer
-    private void clearbuffer()
+    /// <summary>
+    ///  It is used to create the h264 bit oriented stream, it contains different functions that helps you to create the h264 compliant stream (bit oriented, exp golomb coder)
+    /// </summary>
+    public class CJOCh264bitstream : IDisposable
     {
-        //C++ TO C# CONVERTER TODO TASK: The memory management function 'memset' has no equivalent in C#:
-        //memset(m_buffer, 0, sizeof(byte) * BUFFER_SIZE_BITS);
-        Array.Clear(m_buffer, 0, BUFFER_SIZE_BITS);
-        m_nLastbitinbuffer = 0;
-        m_nStartingbyte = 0;
-    }
+        /// <summary>
+        /// Buffer size in bits used for emulation prevention
+        /// </summary>
+        private const int BUFFER_SIZE_BITS = 24;
+        private const int BUFFER_SIZE_BYTES = BUFFER_SIZE_BITS / 8;
 
-    //! Returns the nNumbit value (1 or 0) of lval
-    /*!
-	 	 \param lval number to extract the nNumbit value
-	 	 \param nNumbit Bit position that we want to know if its 1 or 0 (from 0 to 63)
-	 	 \return bit value (1 or 0)
-	 */
-    private static int getbitnum(uint lval, int nNumbit)
-    {
-        int lrc = 0;
+        /// <summary>
+        /// Emulation prevention byte
+        /// </summary>
+        private const int H264_EMULATION_PREVENTION_BYTE = 0x03;
 
-        uint lmask = (uint)Math.Pow((uint)2, (uint)nNumbit);
-        if ((lval & lmask) > 0)
+        private readonly byte[] buffer = new byte[BUFFER_SIZE_BITS];
+
+        /// <summary>
+        ///  Bit buffer index 
+        /// </summary>
+        private int nLastBitInBuffer;
+
+        /// <summary>
+        /// Starting byte indicator
+        /// </summary>
+        private int nStartingbyte;
+
+        private bool disposedValue;
+
+        private readonly Stream stream;
+
+        public CJOCh264bitstream(Stream stream)
         {
-            lrc = 1;
+            this.stream = stream ?? throw new ArgumentNullException(nameof(stream));
+            ClearBuffer();
         }
 
-        return lrc;
-    }
-
-    //! Adds 1 bit to the end of h264 bitstream
-    /*!
-		 \param nVal bit to add at the end of h264 bitstream
-	 */
-    private void addbittostream(int nVal)
-    {
-        if (m_nLastbitinbuffer >= BUFFER_SIZE_BITS)
+        /// <summary>
+        /// Clears the buffer
+        /// </summary>
+        private void ClearBuffer()
         {
-            //Must be aligned, no need to do dobytealign();
-            savebufferbyte();
+            Array.Clear(buffer, 0, BUFFER_SIZE_BITS);
+            nLastBitInBuffer = 0;
+            nStartingbyte = 0;
         }
 
-        //Use circular buffer of BUFFER_SIZE_BYTES
-        int nBytePos = (m_nStartingbyte + (m_nLastbitinbuffer / 8)) % (24 / 8);
-        //The first bit to add is on the left
-        int nBitPosInByte = 7 - (m_nLastbitinbuffer % 8);
+        /// <summary>
+        /// Returns the nNumbit value (1 or 0) of lval
+        /// </summary>
+        /// <param name="lval">lval number to extract the nNumbit value</param>
+        /// <param name="nNumbit">nNumbit Bit position that we want to know if its 1 or 0 (from 0 to 63)</param>
+        /// <returns>bit value (1 or 0)</returns>
+        private static int GetBitNum(uint lval, int nNumbit) => (lval & 1U << nNumbit) == 0 ? 0 : 1;
 
-        //Get the byte value from buffer
-        int nValTmp = m_buffer[nBytePos];
-
-        //Change the bit
-        if (nVal > 0)
+        /// <summary>
+        /// Adds 1 bit to the end of h264 bitstream
+        /// </summary>
+        /// <param name="nVal">nVal bit to add at the end of h264 bitstream</param>
+        private void AddBitToStream(int nVal)
         {
-            nValTmp |= (int)Math.Pow(2, nBitPosInByte);
-        }
-        else
-        {
-            nValTmp &= ~(int)Math.Pow(2, nBitPosInByte);
-        }
+            if (nLastBitInBuffer >= BUFFER_SIZE_BITS)
+            {
+                //Must be aligned, no need to do dobytealign();
+                SaveBufferByte();
+            }
 
-        //Save the new byte value to the buffer
-        m_buffer[nBytePos] = (byte)nValTmp;
+            //Use circular buffer of BUFFER_SIZE_BYTES
+            int nBytePos = (nStartingbyte + (nLastBitInBuffer / 8)) % BUFFER_SIZE_BYTES;
+            //The first bit to add is on the left
+            int nBitPosInByte = 7 - (nLastBitInBuffer % 8);
 
-        m_nLastbitinbuffer++;
-    }
+            //Get the byte value from buffer
+            int nValTmp = buffer[nBytePos];
 
-    //! Adds 8 bit to the end of h264 bitstream (it is optimized for byte aligned situations)
-    /*!
-		 \param nVal byte to add at the end of h264 bitstream (from 0 to 255)
-	 */
-    private void addbytetostream(int nVal)
-    {
-        if (m_nLastbitinbuffer >= BUFFER_SIZE_BITS)
-        {
-            //Must be aligned, no need to do dobytealign();
-            savebufferbyte();
-        }
+            //Change the bit
+            if (nVal > 0)
+            {
+                nValTmp |= 1 << nBitPosInByte;
+            }
+            else
+            {
+                nValTmp &= ~(1 << nBitPosInByte);
+            }
 
-        //Used circular buffer of BUFFER_SIZE_BYTES
-        int nBytePos = (m_nStartingbyte + (m_nLastbitinbuffer / 8)) % (24 / 8);
-        //The first bit to add is on the left
-        int nBitPosInByte = 7 - m_nLastbitinbuffer % 8;
+            //Save the new byte value to the buffer
+            buffer[nBytePos] = (byte)nValTmp;
 
-        //Check if it is byte aligned
-        if (nBitPosInByte != 7)
-        {
-            throw new System.Exception("Error: inserting not aligment byte");
+            nLastBitInBuffer++;
         }
 
-        //Add all byte to buffer
-        m_buffer[nBytePos] = (byte)nVal;
-
-        m_nLastbitinbuffer += 8;
-    }
-
-    //! Save all buffer to file
-    /*!
-		 \param bemulationprevention Indicates if it will insert the emulation prevention byte or not (when it is needed)
-	 */
-    private void savebufferbyte(bool bemulationprevention = true)
-    {
-        bool bemulationpreventionexecuted = false;
-
-        if (stream == null)
+        //! 
+        /*!
+             \param 
+         */
+        /// <summary>
+        /// Adds 8 bit to the end of h264 bitstream (it is optimized for byte aligned situations)
+        /// </summary>
+        /// <param name="nVal">nVal byte to add at the end of h264 bitstream (from 0 to 255)</param>
+        /// <exception cref="InvalidOperationException">If add when not aligned</exception>
+        private void AddByteToStream(int nVal)
         {
-            throw new System.Exception("Error: out file is NULL");
+            if (nLastBitInBuffer >= BUFFER_SIZE_BITS)
+            {
+                //Must be aligned, no need to do dobytealign();
+                SaveBufferByte();
+            }
+
+            //Used circular buffer of BUFFER_SIZE_BYTES
+            int nBytePos = (nStartingbyte + (nLastBitInBuffer / 8)) % BUFFER_SIZE_BYTES;
+            //The first bit to add is on the left
+            int nBitPosInByte = 7 - (nLastBitInBuffer % 8);
+
+            //Check if it is byte aligned
+            if (nBitPosInByte != 7)
+            {
+                throw new InvalidOperationException("Error: inserting not aligment byte");
+            }
+
+            //Add all byte to buffer
+            buffer[nBytePos] = (byte)nVal;
+
+            nLastBitInBuffer += 8;
         }
 
-        //Check if the last bit in buffer is multiple of 8
-        if ((m_nLastbitinbuffer % 8) != 0)
+        /// <summary>
+        /// Save all buffer to file
+        /// </summary>
+        private void SaveBufferByte()
         {
-            throw new System.Exception("Error: Save to file must be byte aligned");
-        }
+            //Check if the last bit in buffer is multiple of 8
+            if ((nLastBitInBuffer % 8) != 0)
+            {
+                throw new Exception("Error: Save to file must be byte aligned");
+            }
 
-        if ((m_nLastbitinbuffer / 8) <= 0)
-        {
-            throw new System.Exception("Error: NO bytes to save");
-        }
+            if ((nLastBitInBuffer / 8) <= 0)
+            {
+                throw new Exception("Error: NO bytes to save");
+            }
 
-        if (bemulationprevention)
-        {
             //Emulation prevention will be used:
             /*As per h.264 spec,
-			rbsp_data shouldn't contain
-					- 0x 00 00 00
-					- 0x 00 00 01
-					- 0x 00 00 02
-					- 0x 00 00 03
-	
-			rbsp_data shall be in the following way
-					- 0x 00 00 03 00
-					- 0x 00 00 03 01
-					- 0x 00 00 03 02
-					- 0x 00 00 03 03
-			*/
+            rbsp_data shouldn't contain
+                    - 0x 00 00 00
+                    - 0x 00 00 01
+                    - 0x 00 00 02
+                    - 0x 00 00 03
+
+            rbsp_data shall be in the following way
+                    - 0x 00 00 03 00
+                    - 0x 00 00 03 01
+                    - 0x 00 00 03 02
+                    - 0x 00 00 03 03
+            */
 
             //Check if emulation prevention is needed (emulation prevention is byte align defined)
-            if ((m_buffer[(m_nStartingbyte + 0) % (24 / 8)] == 0x00)
-                && (m_buffer[(m_nStartingbyte + 1) % (24 / 8)] == 0x00)
-                && ((m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x00)
-                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x01)
-                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x02)
-                       || (m_buffer[(m_nStartingbyte + 2) % (24 / 8)] == 0x03)))
+            if ((buffer[(nStartingbyte + 0) % BUFFER_SIZE_BYTES] == 0x00)
+                && (buffer[(nStartingbyte + 1) % BUFFER_SIZE_BYTES] == 0x00)
+                && ((buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x00)
+                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x01)
+                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x02)
+                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x03)))
             {
                 int nbuffersaved = 0;
 
                 //Save 1st byte
-                stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
+                stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
                 nbuffersaved++;
 
                 //Save 2st byte
-                stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
+                stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
                 nbuffersaved++;
 
                 //Save emulation prevention byte
                 stream.WriteByte(H264_EMULATION_PREVENTION_BYTE);
 
                 //Save the rest of bytes (usually 1)
-                while (nbuffersaved < (24 / 8))
+                while (nbuffersaved < BUFFER_SIZE_BYTES)
                 {
-                    stream.WriteByte(m_buffer[(m_nStartingbyte + nbuffersaved) % (24 / 8)]);
+                    stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
                     nbuffersaved++;
                 }
 
                 //All bytes in buffer are saved, so clear the buffer
-                clearbuffer();
+                ClearBuffer();
+            }
+            else
+            {
+                //No emulation prevention was used
 
-                bemulationpreventionexecuted = true;
+                //Save the oldest byte in buffer
+                stream.WriteByte(buffer[nStartingbyte]);
+
+                //Move the index
+                buffer[nStartingbyte] = 0;
+                nStartingbyte++;
+                nStartingbyte %= BUFFER_SIZE_BYTES;
+                nLastBitInBuffer -= 8;
             }
         }
 
-        if (!bemulationpreventionexecuted)
+        /// <summary>
+        /// Add 4 bytes to h264 bistream without taking into acount the emulation prevention. Used to add the NAL header to the h264 bistream
+        /// </summary>
+        /// <param name="value">The 32b value to add</param>
+        /// <param name="doAlign">Indicates if the function will insert 0 in order to create a byte aligned stream before adding value 4 bytes to stream. If you try to call this function and the stream is not byte aligned an exception will be thrown</param>
+        /// <exception cref="Exception"></exception>
+        public void Add4BytesNoEmulationPrevention(uint value, bool doAlign = false)
         {
-            //No emulation prevention was used
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
 
-            //Save the oldest byte in buffer
-            stream.WriteByte(m_buffer[m_nStartingbyte]);
+            //Used to add NAL header stream
+            //Remember: NAL header is byte oriented
 
-            //Move the index
-            m_buffer[m_nStartingbyte] = 0;
-            m_nStartingbyte++;
-            m_nStartingbyte %= (24 / 8);
-            m_nLastbitinbuffer -= 8;
+
+            if (doAlign)
+            {
+                DoByteAlign();
+            }
+
+            if ((nLastBitInBuffer % 8) != 0)
+            {
+                throw new Exception("Error: Save to file must be byte aligned");
+            }
+
+            while (nLastBitInBuffer != 0)
+            {
+                SaveBufferByte();
+            }
+
+            byte cbyte = (byte)((value & 0xFF000000) >> 24);
+            stream.WriteByte(cbyte);
+
+            cbyte = (byte)((value & 0x00FF0000) >> 16);
+            stream.WriteByte(cbyte);
+
+            cbyte = (byte)((value & 0x0000FF00) >> 8);
+            stream.WriteByte(cbyte);
+
+            cbyte = (byte)(value & 0x000000FF);
+            stream.WriteByte(cbyte);
+        }
+
+        /// <summary>
+        ///  Adds nNumbits of lval to the end of h264 bitstream
+        /// </summary>
+        /// <param name="lval">nVal value to add at the end of the h264 stream (only the LAST nNumbits will be added)</param>
+        /// <param name="nNumbits">nNumbits number of bits of lval that will be added to h264 stream (counting from left)</param>
+        /// <exception cref="ArgumentOutOfRangeException">if nNumbits is too large</exception>
+        public void AddBits(uint lval, int nNumbits)
+        {
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+
+            if ((nNumbits <= 0) || (nNumbits > 64))
+            {
+                throw new ArgumentOutOfRangeException(nameof(nNumbits), "Error: numbits must be between 1 and 64");
+            }
+
+            int n = nNumbits - 1;
+            while (n >= 0)
+            {
+                int nBit = GetBitNum(lval, n);
+                n--;
+
+                AddBitToStream(nBit);
+            }
+        }
+
+        /// <summary>
+        /// Adds lval to the end of h264 bitstream using exp golomb coding for unsigned values
+        /// </summary>
+        /// <param name="lval">value to add at the end of the h264 stream</param>
+        public void AddExpGolombUnsigned(uint lval)
+        {
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+
+            //it implements unsigned exp golomb coding
+            uint lvalint = lval + 1;
+            int nnumbits = (int)(Math.Log(lvalint, 2) + 1);
+
+            for (int n = 0; n < (nnumbits - 1); n++)
+            {
+                AddBits(0, 1);
+            }
+            AddBits(lvalint, nnumbits);
+        }
+
+        /// <summary>
+        /// Adds lval to the end of h264 bitstream using exp golomb coding for signed values
+        /// </summary>
+        /// <param name="lval">value to add at the end of the h264 stream</param>
+        public void AddExpGolombSigned(int lval)
+        {
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+
+            //it implements a signed exp golomb coding
+
+            uint lvalint = lval <= 0 ?
+                (uint)(2 * Math.Abs(lval)) :
+                (uint)((2 * Math.Abs(lval)) - 1);
+
+            AddExpGolombUnsigned(lvalint);
+        }
+
+        //! Adds 0 to the end of h264 bistream in order to leave a byte aligned stream (It will insert seven 0 maximum)
+        public void DoByteAlign()
+        {
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+
+            //Check if the last bit in buffer is multiple of 8
+            int nr = nLastBitInBuffer % 8;
+            if ((nr % 8) != 0)
+            {
+                nLastBitInBuffer += (8 - nr);
+            }
+        }
+
+        /// <summary>
+        /// Adds cByte (8 bits) to the end of h264 bitstream. This function it is optimized in byte aligned streams.
+        /// </summary>
+        /// <param name="cByte">value to add at the end of the h264 stream (from 0 to 255)</param>
+        public void AddByte(byte cByte)
+        {
+            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+
+            //Byte alignment optimization
+            if ((nLastBitInBuffer % 8) == 0)
+            {
+                AddByteToStream(cByte);
+            }
+            else
+            {
+                AddBits(cByte, 8);
+            }
+        }
+
+        //! Close the h264 stream saving to disk the last remaing bits in buffer
+        public void Flush()
+        {
+            //Flush the data in stream buffer
+
+            DoByteAlign();
+
+            while (nLastBitInBuffer != 0)
+            {
+                SaveBufferByte();
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Flush();
+                }
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: substituer le finaliseur uniquement si 'Dispose(bool disposing)' a du code pour libérer les ressources non managées
+        // ~CJOCh264bitstream()
+        // {
+        //     // Ne changez pas ce code. Placez le code de nettoyage dans la méthode 'Dispose(bool disposing)'
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Ne changez pas ce code. Placez le code de nettoyage dans la méthode 'Dispose(bool disposing)'
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
-
-    //! Constructor
-    /*!
-		 \param pOutBinaryFile The output file pointer
-	 */
-    public CJOCh264bitstream(Stream stream)
-    {
-        clearbuffer();
-
-        //C++ TO C# CONVERTER TODO TASK: C# does not have an equivalent to pointers to variables (in C#, the variable no longer points to the original when the original variable is re-assigned):
-        //ORIGINAL LINE: m_pOutFile = pOutBinaryFile;
-        this.stream = stream;
-    }
-
-    //! Destructor
-    public virtual void Dispose()
-    {
-        close();
-    }
-
-    //! Add 4 bytes to h264 bistream without taking into acount the emulation prevention. Used to add the NAL header to the h264 bistream
-    /*!
-		 \param nVal The 32b value to add
-		 \param bDoAlign Indicates if the function will insert 0 in order to create a byte aligned stream before adding nVal 4 bytes to stream. If you try to call this function and the stream is not byte aligned an exception will be thrown
-	 */
-    public void add4bytesnoemulationprevention(uint nVal, bool bDoAlign = false)
-    {
-        //Used to add NAL header stream
-        //Remember: NAL header is byte oriented
-
-        if (bDoAlign)
-        {
-            dobytealign();
-        }
-
-        if ((m_nLastbitinbuffer % 8) != 0)
-        {
-            throw new Exception("Error: Save to file must be byte aligned");
-        }
-
-        while (m_nLastbitinbuffer != 0)
-        {
-            savebufferbyte();
-        }
-
-        byte cbyte = (byte)((nVal & 0xFF000000) >> 24);
-        stream.WriteByte(cbyte);
-
-        cbyte = (byte)((nVal & 0x00FF0000) >> 16);
-        stream.WriteByte(cbyte);
-
-        cbyte = (byte)((nVal & 0x0000FF00) >> 8);
-        stream.WriteByte(cbyte);
-
-        cbyte = (byte)(nVal & 0x000000FF);
-        stream.WriteByte(cbyte);
-    }
-
-    //! Adds nNumbits of lval to the end of h264 bitstream
-    /*!
-		 \param nVal value to add at the end of the h264 stream (only the LAST nNumbits will be added)
-		 \param nNumbits number of bits of lval that will be added to h264 stream (counting from left)
-	 */
-
-    //Public functions
-
-    public void addbits(uint lval, int nNumbits)
-    {
-        if ((nNumbits <= 0) || (nNumbits > 64))
-        {
-            throw new System.Exception("Error: numbits must be between 1 ... 64");
-        }
-
-        int nBit;
-        int n = nNumbits - 1;
-        while (n >= 0)
-        {
-            nBit = getbitnum(lval, n);
-            n--;
-
-            addbittostream(nBit);
-        }
-    }
-
-    //! Adds lval to the end of h264 bitstream using exp golomb coding for unsigned values
-    /*!
-		 \param nVal value to add at the end of the h264 stream
-	 */
-    public void addexpgolombunsigned(uint lval)
-    {
-        //it implements unsigned exp golomb coding
-
-        uint lvalint = lval + 1;
-        int nnumbits = (int)(Math.Log(lvalint, 2) + 1);
-
-        for (int n = 0; n < (nnumbits - 1); n++)
-        {
-            addbits(0, 1);
-        }
-
-        addbits(lvalint, nnumbits);
-    }
-
-    //! Adds lval to the end of h264 bitstream using exp golomb coding for signed values
-    /*!
-		 \param nVal value to add at the end of the h264 stream
-	 */
-    public void addexpgolombsigned(int lval)
-    {
-        //it implements a signed exp golomb coding
-
-        uint lvalint = (uint)(Math.Abs(lval) * 2 - 1);
-        if (lval <= 0)
-        {
-            lvalint = (uint)(2 * Math.Abs(lval));
-        }
-
-        addexpgolombunsigned(lvalint);
-    }
-
-    //! Adds 0 to the end of h264 bistream in order to leave a byte aligned stream (It will insert seven 0 maximum)
-    public void dobytealign()
-    {
-        //Check if the last bit in buffer is multiple of 8
-        int nr = m_nLastbitinbuffer % 8;
-        if ((nr % 8) != 0)
-        {
-            m_nLastbitinbuffer += (8 - nr);
-        }
-    }
-
-    //! Adds cByte (8 bits) to the end of h264 bitstream. This function it is optimized in byte aligned streams.
-    /*!
-		 \param cByte value to add at the end of the h264 stream (from 0 to 255)
-	 */
-    public void addbyte(byte cByte)
-    {
-        //Byte alignment optimization
-        if ((m_nLastbitinbuffer % 8) == 0)
-        {
-            addbytetostream(cByte);
-        }
-        else
-        {
-            addbits(cByte, 8);
-        }
-    }
-
-    //! Close the h264 stream saving to disk the last remaing bits in buffer
-    public void close()
-    {
-        //Flush the data in stream buffer
-
-        dobytealign();
-
-        while (m_nLastbitinbuffer != 0)
-        {
-            savebufferbyte();
-        }
-    }
-
 }
