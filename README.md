@@ -4,6 +4,8 @@ Sharp RTSP
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/ngraziano/SharpRTSP?branch=master&svg=true)](https://ci.appveyor.com/project/ngraziano/sharprtsp)
 [![Coverage Status](https://coveralls.io/repos/github/ngraziano/SharpRTSP/badge.svg?branch=master)](https://coveralls.io/github/ngraziano/SharpRTSP?branch=master)
 
+The source of the nuget package [SharpRTSP](https://www.nuget.org/packages/SharpRTSP)  is in branch [donetcore](https://github.com/ngraziano/SharpRTSP/tree/dotnetcore)
+
 A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
 * RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711, AAC and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
 * RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients
