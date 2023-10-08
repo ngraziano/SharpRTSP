@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rtsp.Rtp
@@ -80,7 +80,7 @@ namespace Rtsp.Rtp
             var bits: AOT Specific Config
              ***/
 
-            // config is a string in hex eg 1490 or 0x1210
+            // config is a string in hex eg 1490 or 1210
             // Read each ASCII character and add to a bit array
             BitStream bs = new();
             bs.AddHexString(config_string);
