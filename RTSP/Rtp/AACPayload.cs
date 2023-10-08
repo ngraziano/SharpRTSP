@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Rtsp.Rtp
@@ -64,6 +64,7 @@ namespace Rtsp.Rtp
     {
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
+        public int SamplingFrequency { get; set; } = 0;
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
@@ -91,6 +92,12 @@ namespace Rtsp.Rtp
             // Read 4 bits
             FrequencyIndex = bs.Read(4);
 
+            if (FrequencyIndex == 15)
+            {
+                // the Sampling Frequency is specified directly
+                SamplingFrequency = bs.Read(24);
+            }
+
             // Read 4 bits
             ChannelConfiguration = bs.Read(4);
         }
@@ -115,8 +122,6 @@ namespace Rtsp.Rtp
             {
                 if (position + 4 > packet.PayloadSize) break; // 2 bytes for AU Header Length, 2 bytes of AU Header payload
 
-
-
                 // Get Size of the AU Header
                 int au_headers_length_bits = (rtp_payload[position] << 8) + (rtp_payload[position + 1] << 0); // 16 bits
                 int au_headers_length = (int)Math.Ceiling(au_headers_length_bits / 8.0);
@@ -136,7 +141,5 @@ namespace Rtsp.Rtp
 
             return audio_data;
         }
-
-
     }
 }
