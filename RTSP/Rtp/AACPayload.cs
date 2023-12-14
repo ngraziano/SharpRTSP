@@ -64,6 +64,7 @@ namespace Rtsp.Rtp
     {
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
+        public int SamplingFrequency { get; set; } = 0;
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
@@ -80,7 +81,7 @@ namespace Rtsp.Rtp
             var bits: AOT Specific Config
              ***/
 
-            // config is a string in hex eg 1490 or 0x1210
+            // config is a string in hex eg 1490 or 1210
             // Read each ASCII character and add to a bit array
             BitStream bs = new();
             bs.AddHexString(config_string);
@@ -90,6 +91,12 @@ namespace Rtsp.Rtp
 
             // Read 4 bits
             FrequencyIndex = bs.Read(4);
+
+            if (FrequencyIndex == 15)
+            {
+                // the Sampling Frequency is specified directly
+                SamplingFrequency = bs.Read(24);
+            }
 
             // Read 4 bits
             ChannelConfiguration = bs.Read(4);
@@ -133,7 +140,5 @@ namespace Rtsp.Rtp
 
             return audio_data;
         }
-
-
     }
 }
