@@ -823,7 +823,7 @@ namespace RtspClientExample
                         videoPayloadProcessor = rtpmap?.EncodingName?.ToUpper() switch
                         {
                             "H264" => new H264Payload(null),
-                            "H265" => new H265Payload(false),
+                            "H265" => new H265Payload(false, null),
                             _ => null,
                         };
 

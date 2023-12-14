@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -11,6 +13,8 @@ namespace Rtsp.Rtp
     // By Roger Hardiman, RJH Technical Consultancy Ltd
     public class H265Payload : IPayloadProcessor
     {
+        private readonly ILogger _logger;
+
         // H265 / HEVC structure.
         // An 'Access Unit' is the set of NAL Units that form one Picture
         // NAL Units have a 2 byte header comprising of
@@ -22,12 +26,13 @@ namespace Rtsp.Rtp
         private readonly List<ReadOnlyMemory<byte>> temporary_rtp_payloads = new(); // used to assemble the RTP packets that form one RTP Frame
                                                                                     // Eg all the RTP Packets from M=0 through to M=1
 
-        private readonly MemoryStream fragmented_nal = new (); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
+        private readonly MemoryStream fragmented_nal = new(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
 
         // Constructor
-        public H265Payload(bool has_donl)
+        public H265Payload(bool has_donl, ILogger<H265Payload> logger)
         {
             this.has_donl = has_donl;
+            _logger = logger as ILogger ?? NullLogger.Instance;
         }
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
@@ -53,7 +58,7 @@ namespace Rtsp.Rtp
         // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
         private List<ReadOnlyMemory<byte>> ProcessRTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
         {
-            Console.WriteLine("RTP Data comprised of " + rtp_payloads.Count + " rtp packets");
+            _logger.LogDebug("RTP Data comprised of {payloadCount} rtp packets", rtp_payloads.Count);
 
             var nal_units = new List<ReadOnlyMemory<byte>>(); // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
 
@@ -89,7 +94,7 @@ namespace Rtsp.Rtp
                 // 34=PPS
                 if (payload_header_type != 48 && payload_header_type != 49)
                 {
-                    Console.WriteLine("Single NAL");
+                    _logger.LogDebug("Single NAL");
                     single++;
 
                     //TODO - Handle DONL
@@ -100,7 +105,7 @@ namespace Rtsp.Rtp
                 // Aggregation Packet
                 else if (payload_header_type == 48)
                 {
-                    Console.WriteLine("Aggregation Packet");
+                    _logger.LogDebug("Aggregation Packet");
                     agg++;
 
                     // RTP packet contains multiple NALs, each with a 16 bit header
@@ -122,16 +127,16 @@ namespace Rtsp.Rtp
                             ptr += size;
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        Console.WriteLine("H265 Aggregate Packet processing error");
+                        _logger.LogError(ex, "H265 Aggregate Packet processing error");
                     }
                 }
 
                 // Fragmentation Unit
                 else if (payload_header_type == 49)
                 {
-                    Console.WriteLine("Fragmentation Unit");
+                    _logger.LogDebug("Fragmentation Unit");
                     frag++;
 
                     // Parse Fragmentation Unit Header
@@ -139,7 +144,7 @@ namespace Rtsp.Rtp
                     int fu_header_e = payload[2] >> 6 & 0x01;  // end marker
                     int fu_header_type = payload[2] >> 0 & 0x3F; // fu type
 
-                    Console.WriteLine("Frag FU-A s=" + fu_header_s + "e=" + fu_header_e);
+                    _logger.LogDebug("Frag FU-A s={headerS} e={headerE}", fu_header_s, fu_header_e);
 
                     // Check Start and End flags
                     if (fu_header_s == 1)
@@ -180,12 +185,9 @@ namespace Rtsp.Rtp
                 }
                 else
                 {
-                    Console.WriteLine("Unknown Payload Header Type = " + payload_header_type);
+                    _logger.LogWarning("Unknown Payload Header Type = {payloadHeaderType}", payload_header_type);
                 }
             }
-
-            // Output some statistics
-            Console.WriteLine("Single=" + single + " Agg=" + agg + " Frag=" + frag);
 
             // Output all the NALs that form one RTP Frame (one frame of video)
             return nal_units;
