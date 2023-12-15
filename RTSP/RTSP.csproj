@@ -4,13 +4,14 @@
     <OutputType>Library</OutputType>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
     <StyleCopOutputFile>StyleCopViolations.xml</StyleCopOutputFile>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>SharpRTSP</PackageId>
     <Authors>ngraziano</Authors>
     <Product>SharpRTSP</Product>
+    <Description>Handle receive and send of Rtsp Messages</Description>
+    <VersionPrefix>1.1.0</VersionPrefix>
     <PackageProjectUrl>https://github.com/ngraziano/SharpRTSP</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ngraziano/SharpRTSP</RepositoryUrl>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>

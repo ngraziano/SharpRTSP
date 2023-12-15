@@ -1,0 +1,25 @@
+# Action to publish a new version of the package to NuGet
+
+name: Publish
+on:
+  release:
+    types: [released]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - name: Restore dependencies
+        run: dotnet restore RTSP.sln
+      - name: Build
+        run: dotnet build --no-restore RTSP.sln
+      - name: Test
+        run: dotnet test --no-build --verbosity normal RTSP.sln
+      - name: Publish
+        run: dotnet nuget push */bin/Release/SharpRTSP*.nupkg -k $NUGET_AUTH_TOKEN -s https://api.nuget.org/v3/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_TOKEN }}
