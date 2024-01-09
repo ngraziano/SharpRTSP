@@ -138,14 +138,14 @@ namespace RtspCameraExample
 
 
                 // Put the NALs into a List
-                List<byte[]> nal_array = new List<byte[]>();
+                List<byte[]> nal_array = [];
 
                 // We may want to add the SPS and PPS to the H264 stream as in-band data.
                 // This may be of use if the client did not parse the SPS/PPS in the SDP or if the H264 encoder
                 // changes properties (eg a new resolution or framerate which gives a new SPS or PPS).
                 // Also looking towards H265, the VPS/SPS/PPS do not need to be in the SDP so would be added here.
 
-                Boolean add_sps_pps_to_keyframe = true;
+                bool add_sps_pps_to_keyframe = true;
                 if (add_sps_pps_to_keyframe && isKeyframe)
                 {
                     nal_array.Add(raw_sps);

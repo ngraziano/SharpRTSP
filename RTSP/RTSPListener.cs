@@ -427,7 +427,7 @@
         /// </summary>
         /// <param name="aRtspData">A Rtsp data.</param>
         /// <param name="asyncCallback">The async callback.</param>
-        /// <param name="aState">A state.</param>
+        /// <param name="state">A state.</param>
         public IAsyncResult? BeginSendData(RtspData aRtspData, AsyncCallback asyncCallback, object state)
         {
             if (aRtspData is null)
@@ -446,7 +446,7 @@
         /// <param name="channel">The channel.</param>
         /// <param name="frame">The frame.</param>
         /// <param name="asyncCallback">The async callback.</param>
-        /// <param name="aState">A state.</param>
+        /// <param name="state">A state.</param>
         public IAsyncResult? BeginSendData(int channel, byte[] frame, AsyncCallback asyncCallback, object state)
         {
             if (frame == null)
