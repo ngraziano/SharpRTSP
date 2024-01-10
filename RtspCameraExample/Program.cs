@@ -14,11 +14,10 @@ namespace RtspCameraExample
 {
     static class Program
     {
-        private static ILoggerFactory loggerFactory;
 
-        static void Main(string[] args)
+        static void Main()
         {
-            loggerFactory = LoggerFactory.Create(builder =>
+            var loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder
                     .AddFilter("Microsoft", LogLevel.Warning)
@@ -27,29 +26,29 @@ namespace RtspCameraExample
                     .AddFilter("Rtsp", LogLevel.Debug)
                     .AddConsole();
             });
-            var demo = new Demo();
+            var demo = new Demo(loggerFactory);
             
         }
 
 
         class Demo
         {
-            RtspServer rtspServer = null;
-            SimpleH264Encoder h264_encoder = null;
-            SimpleG711Encoder ulaw_encoder = null;
+            private readonly RtspServer rtspServer;
+            private readonly SimpleH264Encoder h264Encoder;
+            private readonly SimpleG711Encoder ulaw_encoder;
 
-            byte[] raw_sps = null;
-            byte[] raw_pps = null;
+            byte[] raw_sps;
+            byte[] raw_pps;
 
             int port = 8554;
             string username = "user";      // or use NUL if there is no username
             string password = "password";  // or use NUL if there is no password
 
-            uint width = 192;
-            uint height = 128;
+            uint width = 1280; // 192;
+            uint height = 1024; // 128;
             uint fps = 25;
 
-            public Demo()
+            public Demo(ILoggerFactory loggerFactory)
             {
                 // Our programme needs several things...
                 //   1) The RTSP Server to send the NALs to RTSP Clients
@@ -68,7 +67,7 @@ namespace RtspCameraExample
                 catch
                 {
                     Console.WriteLine("Error: Could not start server");
-                    return;
+                    throw;
                 }
 
                 Console.WriteLine("RTSP URL is rtsp://" + username + ":" + password + "@" + "hostname:" + port);
@@ -77,10 +76,10 @@ namespace RtspCameraExample
                 /////////////////////////////////////////
                 // Step 2 - Create the H264 Encoder. It will feed NALs into the RTSP server
                 /////////////////////////////////////////
-                h264_encoder = new SimpleH264Encoder(width, height, fps);
+                h264Encoder = new SimpleH264Encoder(width, height, fps);
                 //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
-                raw_sps = h264_encoder.GetRawSPS();
-                raw_pps = h264_encoder.GetRawPPS();
+                raw_sps = h264Encoder.GetRawSPS();
+                raw_pps = h264Encoder.GetRawPPS();
 
                 /////////////////////////////////////////
                 // Step 3 - Create the PCM to G711 Encoder.
@@ -109,14 +108,7 @@ namespace RtspCameraExample
                 }
                 Console.WriteLine(msg);
                 Console.WriteLine("Press ENTER to exit");
-                String readline = null;
-                while (readline == null)
-                {
-                    readline = Console.ReadLine();
-
-                    // Avoid maxing out CPU on systems that instantly return null for ReadLine
-                    if (readline == null) Thread.Sleep(500);
-                }
+                Console.ReadLine();
 
 
                 /////////////////////////////////////////
@@ -133,7 +125,7 @@ namespace RtspCameraExample
             private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
             {
                 // Compress the YUV and feed into the RTSP Server
-                byte[] raw_video_nal = h264_encoder.CompressFrame(yuv_data);
+                byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
 
 

@@ -38,9 +38,9 @@ namespace RtspCameraExample
         }
 
         // Raw SPS with no Size Header and no 00 00 00 01 headers
-        public byte[] GetRawSPS() => h264encoder.sps.Skip(4).ToArray();
+        public byte[] GetRawSPS() => h264encoder?.sps?.Skip(4).ToArray() ?? [];
 
-        public byte[] GetRawPPS() => h264encoder.pps.Skip(4).ToArray();
+        public byte[] GetRawPPS() => h264encoder?.pps?.Skip(4).ToArray() ?? [];
 
         public byte[] CompressFrame(byte[] yuv_data)
         {

@@ -23,9 +23,9 @@ namespace RtspCameraExample
             SAMPLE_FORMAT_YUV420p //!< SAMPLE_FORMAT_YUV420p
         }
 
-        public byte[] sps;
-        public byte[] pps;
-        public byte[] nal;
+        public byte[]? sps;
+        public byte[]? pps;
+        public byte[]? nal;
 
         /*!Set the used Y macroblock size for I PCM in YUV420p */
         private const int MACROBLOCK_Y_WIDTH = 16;
@@ -48,7 +48,7 @@ namespace RtspCameraExample
             public uint nCmbwidth; //!< Y (Crominance) macroblock width in pixels
             public uint nCmbheight; //!< Y (Crominance) macroblock height in pixels
 
-            public byte[] yuv420pframe; //!< Pointer to current frame data
+            public byte[]? yuv420pframe; //!< Pointer to current frame data
             public uint yuv420pframesize; //!< Size in bytes of yuv420pframe
         }
 
@@ -243,6 +243,10 @@ namespace RtspCameraExample
         //Creates & saves a macroblock (coded INTRA 16x16)
         private void CreateMacroblock(uint nYpos, uint nXpos)
         {
+            if (frame.yuv420pframe is null)
+            {
+                throw new InvalidOperationException();
+            }
 
 
             CreateMacroblockHeader();
