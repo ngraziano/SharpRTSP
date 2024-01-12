@@ -601,11 +601,17 @@ namespace Rtsp.Rtp
         //private readonly List<byte[]> temporary_rtp_payloads = [];
         private readonly List<ReadOnlyMemory<byte>> temporaryRtpPayloads = new(256);
 
+        private ReadOnlyMemory<byte> extensionMemory;
+        private bool hasExtensionMemory;
+
         private int _currentDri;
         private int _currentQ;
         private int _currentType;
         private int _currentFrameWidth;
         private int _currentFrameHeight;
+
+        private int _extensionFrameWidth = 0;
+        private int _extensionFrameHeight = 0;
 
         private bool _hasExternalQuantizationTable;
 
@@ -618,11 +624,20 @@ namespace Rtsp.Rtp
         {
             temporaryRtpPayloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
 
+            if (packet.HasExtension)
+            {
+                extensionMemory = packet.Extension;
+                hasExtensionMemory = true;
+            }
+
             if (packet.IsMarker)
             {
                 // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the results
                 ReadOnlyMemory<byte> nalUnits = ProcessJPEGRTPFrame(temporaryRtpPayloads);
                 temporaryRtpPayloads.Clear();
+
+                extensionMemory = null;
+                hasExtensionMemory = false;
 
                 return new() { nalUnits };
             }
@@ -633,6 +648,32 @@ namespace Rtsp.Rtp
         private ReadOnlyMemory<byte> ProcessJPEGRTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
         {
             _frameStream.SetLength(0);
+
+            if (hasExtensionMemory)
+            {
+                ReadOnlySpan<byte> extension = extensionMemory.Span;
+                int extensionType = (extension[0] << 8) + (extension[1] << 0);
+                if (extensionType == 0xFFD8)
+                {
+                    int headerPosition = 4;
+                    int extensionSize = extension.Length;
+                    while (headerPosition < (extensionSize - 4))
+                    {
+                        int blockType = (extension[headerPosition] << 8) + extension[headerPosition + 1];
+                        int blockSize = (extension[headerPosition + 2] << 8) + extension[headerPosition + 3];
+
+                        if (blockType == 0xFFC0)
+                        {
+                            if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
+                            {
+                                _extensionFrameWidth = width / 8;
+                                _extensionFrameHeight = height / 8;
+                            }
+                        }
+                        headerPosition += (blockSize + 2);
+                    }
+                }
+            }
 
             foreach (ReadOnlyMemory<byte> payloadMemory in rtp_payloads)
             {
@@ -649,6 +690,12 @@ namespace Rtsp.Rtp
                 int width = payload[offset++] * 8;
                 int height = payload[offset++] * 8;
                 int dri = 0;
+
+                if (width == 0 && height == 0 && _extensionFrameWidth > 0 && _extensionFrameHeight > 0)
+                {
+                    width = _extensionFrameWidth * 8;
+                    height = _extensionFrameHeight * 8;
+                }
 
                 if (type > 63)
                 {
@@ -875,6 +922,27 @@ namespace Rtsp.Rtp
             offset += ncodes;
             Buffer.BlockCopy(symbols, 0, buffer, offset, nsymbols);
         }
-    }
 
+        private static int JpegExtractExtensionWidthHeight(ReadOnlySpan<byte> extension, int headerPosition, int size, out int width, out int height)
+        {
+            width = -1;
+            height = -1;
+
+            if (size < 17) { return -3; }
+
+            int i = 0;
+            do
+            {
+                if (extension[headerPosition + i] == 0xFF && extension[headerPosition + i + 1] == 0xC0)
+                {
+                    height = ((extension[headerPosition + i + 5] << 8) & 0x0000FF00) | (extension[headerPosition + i + 6] & 0x000000FF);
+                    width = ((extension[headerPosition + i + 7] << 8) & 0x0000FF00) | (extension[headerPosition + i + 8] & 0x000000FF);
+                    return 1;
+                }
+                ++i;
+            }
+            while (i < (size - 17));
+            return 0;
+        }
+    }
 }
