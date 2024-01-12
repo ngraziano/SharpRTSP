@@ -29,7 +29,7 @@ namespace Rtsp.Rtp
         private readonly MemoryStream fragmented_nal = new(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
 
         // Constructor
-        public H265Payload(bool has_donl, ILogger<H265Payload> logger)
+        public H265Payload(bool has_donl, ILogger<H265Payload>? logger)
         {
             this.has_donl = has_donl;
             _logger = logger as ILogger ?? NullLogger.Instance;
