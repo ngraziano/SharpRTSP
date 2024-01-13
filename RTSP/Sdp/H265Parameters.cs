@@ -17,7 +17,7 @@ namespace Rtsp.Sdp
         {
             get
             {
-                List<byte[]> result = new List<byte[]>();
+                List<byte[]> result = new();
 
                 if (ContainsKey("sprop-vps") && this["sprop-vps"] != null)
                 {
