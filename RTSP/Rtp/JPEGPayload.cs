@@ -6,16 +6,16 @@ namespace Rtsp.Rtp
 {
     public class JPEGPayload : IPayloadProcessor
     {
-        const byte MARKER_SOF0 = 0xc0;          // start-of-frame, baseline scan
-        const byte MARKER_SOI = 0xd8;           // start of image
-        const byte MARKER_EOI = 0xd9;           // end of image
-        const byte MARKER_SOS = 0xda;           // start of scan
-        const byte MARKER_DRI = 0xdd;           // restart interval
-        const byte MARKER_DQT = 0xdb;           // define quantization tables
-        const byte MARKER_DHT = 0xc4;           // huffman tables
-        const byte MARKER_APP_FIRST = 0xe0;
-        const byte MARKER_APP_LAST = 0xef;
-        const byte MARKER_COMMENT = 0xfe;
+        const int MARKER_SOF0 = 0xffc0;          // start-of-frame, baseline scan
+        const int MARKER_SOI = 0xffd8;           // start of image
+        const int MARKER_EOI = 0xffd9;           // end of image
+        const int MARKER_SOS = 0xffda;           // start of scan
+        const int MARKER_DRI = 0xffdd;           // restart interval
+        const int MARKER_DQT = 0xffdb;           // define quantization tables
+        const int MARKER_DHT = 0xffc4;           // huffman tables
+        const int MARKER_APP_FIRST = 0xffe0;
+        const int MARKER_APP_LAST = 0xffef;
+        const int MARKER_COMMENT = 0xfffe;
 
         const int JPEG_HEADER_SIZE = 8;
         const int JPEG_MAX_SIZE = 16 * 1024 * 1024;
@@ -149,11 +149,11 @@ namespace Rtsp.Rtp
                 99,
                 99,
                 99,
-                99
+                99,
             };
 
         private static readonly byte[] LumDcCodelens = new byte[] {
-                0,
+            0,
             1,
             5,
             1,
@@ -168,12 +168,12 @@ namespace Rtsp.Rtp
             0,
             0,
             0,
-            0
+            0,
         };
 
         private static readonly byte[] LumDcSymbols = new byte[]
         {
-                0,
+            0,
             1,
             2,
             3,
@@ -184,12 +184,12 @@ namespace Rtsp.Rtp
             8,
             9,
             10,
-            11
+            11,
         };
 
         private static readonly byte[] LumAcCodelens = new byte[]
         {
-                0,
+            0,
             2,
             1,
             3,
@@ -204,12 +204,12 @@ namespace Rtsp.Rtp
             0,
             0,
             1,
-            0x7d
+            0x7d,
         };
 
         private static readonly byte[] LumAcSymbols = new byte[]
         {
-                0x01,
+            0x01,
             0x02,
             0x03,
             0x00,
@@ -370,11 +370,11 @@ namespace Rtsp.Rtp
             0xf7,
             0xf8,
             0xf9,
-            0xfa
+            0xfa,
         };
 
         private static readonly byte[] ChmDcCodelens = new byte[] {
-                0,
+            0,
             3,
             1,
             1,
@@ -389,7 +389,7 @@ namespace Rtsp.Rtp
             0,
             0,
             0,
-            0
+            0,
         };
 
         private static readonly byte[] ChmDcSymbols = new byte[]
@@ -405,12 +405,12 @@ namespace Rtsp.Rtp
             8,
             9,
             10,
-            11
+            11,
         };
 
         private static readonly byte[] ChmAcCodelens = new byte[]
         {
-                0,
+            0,
             2,
             1,
             2,
@@ -425,12 +425,12 @@ namespace Rtsp.Rtp
             0,
             1,
             2,
-            0x77
+            0x77,
         };
 
         private static readonly byte[] ChmAcSymbols = new byte[]
         {
-                0x00,
+            0x00,
             0x01,
             0x02,
             0x03,
@@ -591,11 +591,9 @@ namespace Rtsp.Rtp
             0xf7,
             0xf8,
             0xf9,
-            0xfa
+            0xfa,
         };
 
-        static readonly byte[] StartMarkerBytes = new byte[] { 0xFF, 0xD8 };
-        static readonly byte[] EndMarkerBytes = new byte[] { 0xFF, 0xD9 };
 
         readonly MemoryStream _frameStream = new(64 * 1024);
         //private readonly List<byte[]> temporary_rtp_payloads = [];
@@ -653,7 +651,7 @@ namespace Rtsp.Rtp
             {
                 ReadOnlySpan<byte> extension = extensionMemory.Span;
                 int extensionType = (extension[0] << 8) + (extension[1] << 0);
-                if (extensionType == 0xFFD8)
+                if (extensionType == MARKER_SOI)
                 {
                     int headerPosition = 4;
                     int extensionSize = extension.Length;
@@ -662,7 +660,7 @@ namespace Rtsp.Rtp
                         int blockType = (extension[headerPosition] << 8) + extension[headerPosition + 1];
                         int blockSize = (extension[headerPosition + 2] << 8) + extension[headerPosition + 3];
 
-                        if (blockType == 0xFFC0)
+                        if (blockType == MARKER_SOF0)
                         {
                             if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
                             {
