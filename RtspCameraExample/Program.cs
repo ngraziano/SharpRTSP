@@ -44,8 +44,8 @@ namespace RtspCameraExample
             string username = "user";      // or use NUL if there is no username
             string password = "password";  // or use NUL if there is no password
 
-            uint width = 1280; // 192;
-            uint height = 1024; // 128;
+            int width = 1280; // 192;
+            int height = 1024; // 128;
             uint fps = 25;
 
             public Demo(ILoggerFactory loggerFactory)
@@ -122,8 +122,9 @@ namespace RtspCameraExample
             }
 
 
-            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
+            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, Span<byte> yuv_data)
             {
+                
                 // Compress the YUV and feed into the RTSP Server
                 byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.

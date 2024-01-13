@@ -18,7 +18,7 @@ public class TestCard
     public event ReceivedAudioFrameHandler? ReceivedAudioFrame;
 
     // Delegated functions (essentially the function prototype)
-    public delegate void ReceivedYUVFrameHandler(uint timestamp, int width, int height, byte[] data);
+    public delegate void ReceivedYUVFrameHandler(uint timestamp, int width, int height, Span<byte> data);
     public delegate void ReceivedAudioFrameHandler(uint timestamp, short[] data);
 
 
@@ -140,27 +140,11 @@ public class TestCard
         {
             // Get the current time
             DateTime now_utc = DateTime.UtcNow;
-            DateTime now_local = now_utc.ToLocalTime();
 
 
             long timestamp_ms = now_utc.Ticks / TimeSpan.TicksPerMillisecond;
 
-            // Generate the String to write
-            char[] overlay;
-
-            if (width >= 96)
-            {
-                // Need 12 characters of 8x8 pixels. 12*8 = 96
-                // HH:MM:SS.mmm
-                var overlay_str = now_local.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture); // do not replace : or . by local formats
-                overlay = overlay_str.ToCharArray();
-            }
-            else
-            {
-                // Min for most video formats is 16x16, enough for 2 characters
-                var overlay_str = now_local.ToString("ss", CultureInfo.InvariantCulture); // do not replace : or . by local formats
-                overlay = overlay_str.ToCharArray();
-            }
+            char[] overlay = GetTimeForCard(now_utc);
 
             // process each character
             int start_row = ((height / 2) - 4); // start 4 pixels above the centre row (4 is half the font height)
@@ -191,9 +175,6 @@ public class TestCard
                 }
             }
 
-
-
-
             // Toggle the pixel value
             byte pixel_value = yuv_frame[(y_position * width) + x_position];
 
@@ -221,6 +202,24 @@ public class TestCard
         }
     }
 
+    private char[] GetTimeForCard(DateTime now_utc)
+    {
+        // Generate the String to write
+        DateTime now_local = now_utc.ToLocalTime();
+        if (width >= 96)
+        {
+            // Need 12 characters of 8x8 pixels. 12*8 = 96
+            // HH:MM:SS.mmm
+            var overlay_str = now_local.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture); // do not replace : or . by local formats
+            return overlay_str.ToCharArray();
+        }
+        else
+        {
+            // Min for most video formats is 16x16, enough for 2 characters
+            var overlay_str = now_local.ToString("ss", CultureInfo.InvariantCulture); // do not replace : or . by local formats
+            return overlay_str.ToCharArray();
+        }
+    }
 
     private void Send_Audio_Frame()
     {

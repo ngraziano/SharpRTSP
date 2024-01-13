@@ -38,18 +38,16 @@ namespace RtspCameraExample
         private class Frame
         {
             public SampleFormat sampleformat; //!< Sample format
-            public uint nYwidth; //!< Y (luminance) block width in pixels
-            public uint nYheight; //!< Y (luminance) block height in pixels
-            public uint nCwidth; //!< C (Crominance) block width in pixels
-            public uint nCheight; //!< C (Crominance) block height in pixels
+            public int nYwidth; //!< Y (luminance) block width in pixels
+            public int nYheight; //!< Y (luminance) block height in pixels
+            public int nCwidth; //!< C (Crominance) block width in pixels
+            public int nCheight; //!< C (Crominance) block height in pixels
 
-            public uint nYmbwidth; //!< Y (luminance) macroblock width in pixels
-            public uint nYmbheight; //!< Y (luminance) macroblock height in pixels
-            public uint nCmbwidth; //!< Y (Crominance) macroblock width in pixels
-            public uint nCmbheight; //!< Y (Crominance) macroblock height in pixels
+            public int nYmbwidth; //!< Y (luminance) macroblock width in pixels
+            public int nYmbheight; //!< Y (luminance) macroblock height in pixels
+            public int nCmbwidth; //!< Y (Crominance) macroblock width in pixels
+            public int nCmbheight; //!< Y (Crominance) macroblock height in pixels
 
-            public byte[]? yuv420pframe; //!< Pointer to current frame data
-            public uint yuv420pframesize; //!< Size in bytes of yuv420pframe
         }
 
         /*! The frame var*/
@@ -65,16 +63,7 @@ namespace RtspCameraExample
         private readonly CJOCh264bitstream stream;
 
 
-        //! Allocs the frame yuv420pframe memory according to the frame properties
 
-        private void AllocVideoSrcFrame()
-        {
-            //Alloc mem to store a video frame
-            uint nYsize = frame.nYwidth * frame.nYheight;
-            uint nCsize = frame.nCwidth * frame.nCheight;
-            frame.yuv420pframesize = nYsize + nCsize + nCsize;
-            frame.yuv420pframe = new byte[frame.yuv420pframesize];
-        }
 
         //! Creates SPS NAL and add it to the output
         /*!
@@ -88,7 +77,7 @@ namespace RtspCameraExample
          */
 
         //Creates and saves the NAL SPS (including VUI) (one per file)
-        private void CreateSps(uint nImW, uint nImH, uint nMbW, uint nMbH, uint nFps, uint nSARw, uint nSARh)
+        private void CreateSps(int nImW, int nImH, int nMbW, int nMbH, uint nFps, uint nSARw, uint nSARh)
         {
             stream.Add4BytesNoEmulationPrevention(0x000001); // NAL header
             stream.AddBits(0x0, 1); // forbidden_bit
@@ -110,10 +99,10 @@ namespace RtspCameraExample
             stream.AddExpGolombUnsigned(0); // max_num_refs_frames
             stream.AddBits(0x0, 1); // gaps_in_frame_num_value_allowed_flag
 
-            uint nWinMbs = nImW / nMbW;
-            stream.AddExpGolombUnsigned(nWinMbs - 1); // pic_width_in_mbs_minus_1
-            uint nHinMbs = nImH / nMbH;
-            stream.AddExpGolombUnsigned(nHinMbs - 1); // pic_height_in_map_units_minus_1
+            int nWinMbs = nImW / nMbW;
+            stream.AddExpGolombUnsigned((uint)nWinMbs - 1); // pic_width_in_mbs_minus_1
+            int nHinMbs = nImH / nMbH;
+            stream.AddExpGolombUnsigned((uint)nHinMbs - 1); // pic_height_in_map_units_minus_1
 
             stream.AddBits(0x1, 1); // frame_mbs_only_flag
             stream.AddBits(0x0, 1); // direct_8x8_interfernce
@@ -241,12 +230,9 @@ namespace RtspCameraExample
          */
 
         //Creates & saves a macroblock (coded INTRA 16x16)
-        private void CreateMacroblock(uint nYpos, uint nXpos)
+        private void CreateMacroblock(int nYpos, int nXpos, Span<byte> frameBuffer)
         {
-            if (frame.yuv420pframe is null)
-            {
-                throw new InvalidOperationException();
-            }
+
 
 
             CreateMacroblockHeader();
@@ -254,31 +240,31 @@ namespace RtspCameraExample
             stream.DoByteAlign();
 
             //Y
-            uint nYsize = frame.nYwidth * frame.nYheight;
-            for (uint y = nYpos * frame.nYmbheight; y < (nYpos + 1) * frame.nYmbheight; y++)
+            int nYsize = frame.nYwidth * frame.nYheight;
+            for (int y = nYpos * frame.nYmbheight; y < (nYpos + 1) * frame.nYmbheight; y++)
             {
-                for (uint x = nXpos * frame.nYmbwidth; x < (nXpos + 1) * frame.nYmbwidth; x++)
+                for (int x = nXpos * frame.nYmbwidth; x < (nXpos + 1) * frame.nYmbwidth; x++)
                 {
-                    stream.AddByte(frame.yuv420pframe[(y * frame.nYwidth + x)]);
+                    stream.AddByte(frameBuffer[y * frame.nYwidth + x]);
                 }
             }
 
             //Cb
-            uint nCsize = frame.nCwidth * frame.nCheight;
-            for (uint y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
+            int nCsize = frame.nCwidth * frame.nCheight;
+            for (int y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
             {
-                for (uint x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
+                for (int x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
                 {
-                    stream.AddByte(frame.yuv420pframe[nYsize + (y * frame.nCwidth + x)]);
+                    stream.AddByte(frameBuffer[nYsize + (y * frame.nCwidth + x)]);
                 }
             }
 
             //Cr
-            for (uint y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
+            for (int y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
             {
-                for (uint x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
+                for (int x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
                 {
-                    stream.AddByte(frame.yuv420pframe[nYsize + nCsize + (y * frame.nCwidth + x)]);
+                    stream.AddByte(frameBuffer[nYsize + nCsize + (y * frame.nCwidth + x)]);
                 }
             }
         }
@@ -304,9 +290,9 @@ namespace RtspCameraExample
         //public functions
 
         //Initilizes the h264 coder (mini-coder)
-        public void IniCoder(uint nImW, uint nImH, uint nImFps, SampleFormat sampleFormat, uint nSARw = 1, uint nSARh = 1)
+        public void IniCoder(int nImW, int nImH, uint nImFps, SampleFormat sampleFormat, uint nSARw = 1, uint nSARh = 1)
         {
-            
+
 
             m_lNumFramesAdded = 0;
 
@@ -336,13 +322,12 @@ namespace RtspCameraExample
                 //In this implementation only picture sizes multiples of macroblock size (16x16) are allowed
                 if (((nImW % MACROBLOCK_Y_WIDTH) != 0) || ((nImH % MACROBLOCK_Y_HEIGHT) != 0))
                 {
-                    throw new System.Exception("Error: size not allowed. Only multiples of macroblock are allowed (macroblock size is: 16x16)");
+                    throw new Exception("Error: size not allowed. Only multiples of macroblock are allowed (macroblock size is: 16x16)");
                 }
             }
             m_nFps = nImFps;
 
-            //Alloc mem for 1 frame
-            AllocVideoSrcFrame();
+
 
             //Create h264 SPS & PPS
             CreateSps(frame.nYwidth, frame.nYheight, frame.nYmbwidth, frame.nYmbheight, nImFps, nSARw, nSARh);
@@ -356,37 +341,12 @@ namespace RtspCameraExample
             baseStream.SetLength(0);
         }
 
-        //! Returns the frame pointer
-        /*!
-            \return Frame pointer ready to fill with frame pixels data (the format to fill the data is indicated by SampleFormat parameter when the coder is initialized
-        */
 
-        //Returns the frame pointer to load the video frame
-        public byte[] GetFramePtr()
-        {
-            if (frame.yuv420pframe == null)
-            {
-                throw new InvalidOperationException("Error: video frame is null (not initialized)");
-            }
-
-            return frame.yuv420pframe;
-        }
-
-        //! Returns the allocated frame memory in bytes
-        /*!
-            \return The allocated memory to store the frame data
-        */
-
-        //Returns the the allocated size for video frame
-        public uint GetFrameSize()
-        {
-            return frame.yuv420pframesize;
-        }
 
         //! It codes the frame that is in frame memory a it saves the coded data to disc
 
         //Codifies & save the video frame (it only uses 16x16 intra PCM -> NO COMPRESSION!)
-        public void CodeAndSaveFrame()
+        public void CodeAndSaveFrame(Span<byte> frameBuffer)
         {
             baseStream.SetLength(0);
 
@@ -394,11 +354,11 @@ namespace RtspCameraExample
             CreateSliceHeader(m_lNumFramesAdded);
 
             //Loop over macroblock size
-            for (uint y = 0; y < frame.nYheight / frame.nYmbheight; y++)
+            for (int y = 0; y < frame.nYheight / frame.nYmbheight; y++)
             {
-                for (uint x = 0; x < frame.nYwidth / frame.nYmbwidth; x++)
+                for (int x = 0; x < frame.nYwidth / frame.nYmbwidth; x++)
                 {
-                    CreateMacroblock(y, x);
+                    CreateMacroblock(y, x, frameBuffer);
                 }
             }
 
@@ -439,7 +399,6 @@ namespace RtspCameraExample
                 {
                     stream.Dispose();
                 }
-                frame.yuv420pframe = null;
                 disposedValue = true;
             }
         }

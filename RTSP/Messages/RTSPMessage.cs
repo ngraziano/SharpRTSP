@@ -13,7 +13,7 @@
         /// <summary>
         /// The regex to validate the Rtsp message.
         /// </summary>
-        private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled);
+        private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
 
         // TODO Move in factory
         /// <summary>
@@ -26,7 +26,7 @@
             // We can't determine the message 
             if (string.IsNullOrEmpty(aRequestLine))
                 return new RtspMessage();
-            string[] requestParts = aRequestLine.Split(new char[] { ' ' }, 3);
+            string[] requestParts = aRequestLine.Split(' ', 3);
             RtspMessage returnValue;
             if (requestParts.Length == 3)
             {
@@ -79,8 +79,8 @@
         /// <value>The command.</value>
         public string Command
         {
-            get => commandArray is null ? string.Empty : string.Join(" ", commandArray);
-            set => commandArray = value is null ? new string[] { string.Empty } : value.Split(new char[] { ' ' }, 3);
+            get => commandArray is null ? string.Empty : string.Join(' ', commandArray);
+            set => commandArray = value is null ? new string[] { string.Empty } : value.Split(' ', 3);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@
             }
 
             //spliter
-            string[] elements = line.Split(new char[] { ':' }, 2);
+            string[] elements = line.Split(':', 2);
             if (elements.Length == 2)
             {
                 Headers[elements[0].Trim()] = elements[1].TrimStart();
@@ -129,7 +129,7 @@
             get
             {
                 if (!(Headers.TryGetValue("CSeq", out string? returnStringValue) &&
-                    int.TryParse(returnStringValue, out int returnValue)))
+                    int.TryParse(returnStringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out int returnValue)))
                 {
                     returnValue = 0;
                 }
@@ -150,10 +150,10 @@
         {
             get
             {
-                if (!Headers.ContainsKey("Session"))
+                if (!Headers.TryGetValue("Session", out string? value))
                     return null;
 
-                return Headers["Session"];
+                return value;
             }
             set
             {
@@ -167,7 +167,7 @@
         public void InitialiseDataFromContentLength()
         {
             if (!(Headers.ContainsKey("Content-Length")
-                && int.TryParse(Headers["Content-Length"], out int dataLength)))
+                && int.TryParse(Headers["Content-Length"], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dataLength)))
             {
                 dataLength = 0;
             }
@@ -218,7 +218,7 @@
             outputString.Append("\r\n");
             foreach (var item in Headers)
             {
-                outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
+                outputString.AppendFormat(CultureInfo.InvariantCulture, "{0}: {1}\r\n", item.Key, item.Value);
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
@@ -240,15 +240,15 @@
         {
             var stringBuilder = new StringBuilder();
 
-            stringBuilder.AppendLine($"Commande : {Command}");
+            stringBuilder.Append("Commande : ").AppendLine(Command);
             foreach (KeyValuePair<string, string?> item in Headers)
             {
-                stringBuilder.AppendLine($"Header : {item.Key}: {item.Value}");
+                stringBuilder.Append("Header : ").Append(item.Key).Append(": ").AppendLine(item.Value);
             }
 
             if (Data?.Length > 0)
             {
-                stringBuilder.AppendLine($"Data :-{Encoding.ASCII.GetString(Data)}-");
+                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data)).Append('-').AppendLine();
             }
 
             return stringBuilder.ToString();

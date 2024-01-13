@@ -19,27 +19,20 @@ namespace RtspCameraExample
         /// Buffer size in bits used for emulation prevention
         /// </summary>
         private const int BUFFER_SIZE_BITS = 24;
-        private const int BUFFER_SIZE_BYTES = BUFFER_SIZE_BITS / 8;
+        private int buffer;
 
         /// <summary>
         /// Emulation prevention byte
         /// </summary>
         private const int H264_EMULATION_PREVENTION_BYTE = 0x03;
 
-        private readonly byte[] buffer = new byte[BUFFER_SIZE_BITS];
 
         /// <summary>
         ///  Bit buffer index 
         /// </summary>
         private int nLastBitInBuffer;
 
-        /// <summary>
-        /// Starting byte indicator
-        /// </summary>
-        private int nStartingbyte;
-
         private bool disposedValue;
-
         private readonly Stream stream;
 
         public CJOCh264bitstream(Stream stream)
@@ -53,9 +46,8 @@ namespace RtspCameraExample
         /// </summary>
         private void ClearBuffer()
         {
-            Array.Clear(buffer, 0, BUFFER_SIZE_BITS);
+            buffer = 0;
             nLastBitInBuffer = 0;
-            nStartingbyte = 0;
         }
 
         /// <summary>
@@ -78,13 +70,13 @@ namespace RtspCameraExample
                 SaveBufferByte();
             }
 
-            //Use circular buffer of BUFFER_SIZE_BYTES
-            int nBytePos = (nStartingbyte + (nLastBitInBuffer / 8)) % BUFFER_SIZE_BYTES;
+            //Use buffer of BUFFER_SIZE_BITS
+            int nBytePos = nLastBitInBuffer / 8;
             //The first bit to add is on the left
             int nBitPosInByte = 7 - (nLastBitInBuffer % 8);
 
             //Get the byte value from buffer
-            int nValTmp = buffer[nBytePos];
+            int nValTmp = BufferAt(nBytePos);
 
             //Change the bit
             if (nVal > 0)
@@ -97,7 +89,7 @@ namespace RtspCameraExample
             }
 
             //Save the new byte value to the buffer
-            buffer[nBytePos] = (byte)nValTmp;
+            SetBufferAt(nBytePos, (byte)nValTmp);
 
             nLastBitInBuffer++;
         }
@@ -120,7 +112,7 @@ namespace RtspCameraExample
             }
 
             //Used circular buffer of BUFFER_SIZE_BYTES
-            int nBytePos = (nStartingbyte + (nLastBitInBuffer / 8)) % BUFFER_SIZE_BYTES;
+            int nBytePos = (nLastBitInBuffer / 8);
             //The first bit to add is on the left
             int nBitPosInByte = 7 - (nLastBitInBuffer % 8);
 
@@ -131,7 +123,7 @@ namespace RtspCameraExample
             }
 
             //Add all byte to buffer
-            buffer[nBytePos] = (byte)nVal;
+            SetBufferAt(nBytePos, (byte)nVal);
 
             nLastBitInBuffer += 8;
         }
@@ -168,48 +160,26 @@ namespace RtspCameraExample
             */
 
             //Check if emulation prevention is needed (emulation prevention is byte align defined)
-            if ((buffer[(nStartingbyte + 0) % BUFFER_SIZE_BYTES] == 0x00)
-                && (buffer[(nStartingbyte + 1) % BUFFER_SIZE_BYTES] == 0x00)
-                && ((buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x00)
-                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x01)
-                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x02)
-                       || (buffer[(nStartingbyte + 2) % BUFFER_SIZE_BYTES] == 0x03)))
+            if ((BufferAt(0) == 0x00)
+                && (BufferAt(1) == 0x00)
+                && ((BufferAt(1) == 0x00) || (BufferAt(2) == 0x01) || (BufferAt(2) == 0x02) || (BufferAt(2) == 0x03)))
             {
-                int nbuffersaved = 0;
-
                 //Save 1st byte
-                stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
-                nbuffersaved++;
-
+                stream.WriteByte(PopByteInBuffer());
                 //Save 2st byte
-                stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
-                nbuffersaved++;
-
+                stream.WriteByte(PopByteInBuffer());
                 //Save emulation prevention byte
                 stream.WriteByte(H264_EMULATION_PREVENTION_BYTE);
-
                 //Save the rest of bytes (usually 1)
-                while (nbuffersaved < BUFFER_SIZE_BYTES)
-                {
-                    stream.WriteByte(buffer[(nStartingbyte + nbuffersaved) % BUFFER_SIZE_BYTES]);
-                    nbuffersaved++;
-                }
-
+                stream.WriteByte(PopByteInBuffer());
                 //All bytes in buffer are saved, so clear the buffer
                 ClearBuffer();
             }
             else
             {
                 //No emulation prevention was used
-
                 //Save the oldest byte in buffer
-                stream.WriteByte(buffer[nStartingbyte]);
-
-                //Move the index
-                buffer[nStartingbyte] = 0;
-                nStartingbyte++;
-                nStartingbyte %= BUFFER_SIZE_BYTES;
-                nLastBitInBuffer -= 8;
+                stream.WriteByte(PopByteInBuffer());
             }
         }
 
@@ -323,7 +293,7 @@ namespace RtspCameraExample
 
             //Check if the last bit in buffer is multiple of 8
             int nr = nLastBitInBuffer % 8;
-            if ((nr % 8) != 0)
+            if (nr != 0)
             {
                 nLastBitInBuffer += (8 - nr);
             }
@@ -361,6 +331,25 @@ namespace RtspCameraExample
             }
         }
 
+        private byte BufferAt(int n)
+        {
+            return (byte)(buffer >> (n * 8) & 0xFF);
+        }
+
+        private void SetBufferAt(int n, byte val)
+        {
+            buffer &= ~(0xFF << (n * 8));
+            buffer |= val << (n * 8);
+        }
+
+        private byte PopByteInBuffer()
+        {
+            var r = buffer & 0xFF;
+            buffer >>= 8;
+            nLastBitInBuffer -= 8;
+            return (byte)r;
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -372,13 +361,6 @@ namespace RtspCameraExample
                 disposedValue = true;
             }
         }
-
-        // // TODO: substituer le finaliseur uniquement si 'Dispose(bool disposing)' a du code pour libérer les ressources non managées
-        // ~CJOCh264bitstream()
-        // {
-        //     // Ne changez pas ce code. Placez le code de nettoyage dans la méthode 'Dispose(bool disposing)'
-        //     Dispose(disposing: false);
-        // }
 
         public void Dispose()
         {

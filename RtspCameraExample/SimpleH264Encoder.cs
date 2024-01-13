@@ -24,7 +24,7 @@ namespace RtspCameraExample
         private readonly CJOCh264encoder h264encoder = new();
 
         // Constuctor
-        public SimpleH264Encoder(uint width, uint height, uint fps)
+        public SimpleH264Encoder(int width, int height, uint fps)
         {
             // We have the ability to set the aspect ratio (SAR).
             // For now we set to 1:1
@@ -42,16 +42,9 @@ namespace RtspCameraExample
 
         public byte[] GetRawPPS() => h264encoder?.pps?.Skip(4).ToArray() ?? [];
 
-        public byte[] CompressFrame(byte[] yuv_data)
+        public byte[] CompressFrame(Span<byte> yuv_data)
         {
-            byte[] image = h264encoder.GetFramePtr();
-            // copy over the YUV image
-            Array.Copy(yuv_data, image, image.Length);
-
-            //        // HACK. Set the YUV pixels all to 127
-            //        for (int hack = 0; hack < image.Length; hack++) image[hack] = 127;
-
-            h264encoder.CodeAndSaveFrame();
+            h264encoder.CodeAndSaveFrame(yuv_data);
 
             // Get the NAL (which has the 00 00 00 01 header)
             byte[] nal_with_header = h264encoder.nal;

@@ -24,6 +24,7 @@ public class RtspServer : IDisposable
 
     private readonly TcpListener _RTSPServerListener;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger _logger;
     private CancellationTokenSource? _Stopping;
     private Thread? _ListenTread;
 
@@ -44,7 +45,7 @@ public class RtspServer : IDisposable
     /// <param name="portNumber">A numero port.</param>
 	/// <param name="username">username.</param>
 	/// <param name="password">password.</param>
-    public RtspServer(int portNumber, String username, String password, ILoggerFactory loggerFactory)
+    public RtspServer(int portNumber, string username, string password, ILoggerFactory loggerFactory)
     {
         if (portNumber < IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort)
         {
@@ -66,6 +67,7 @@ public class RtspServer : IDisposable
         RtspUtils.RegisterUri();
         _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
         _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<RtspServer>();
     }
 
     /// <summary>
@@ -91,27 +93,22 @@ public class RtspServer : IDisposable
             {
                 // Wait for an incoming TCP Connection
                 TcpClient oneClient = _RTSPServerListener.AcceptTcpClient();
-                Console.WriteLine("Connection from " + oneClient.Client.RemoteEndPoint);
+                _logger.LogDebug("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
 
                 // Hand the incoming TCP connection over to the RTSP classes
                 var rtsp_socket = new RtspTcpTransport(oneClient);
                 RtspListener newListener = new(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                 newListener.MessageReceived += RTSPMessageReceived;
-                //RTSPDispatcher.Instance.AddListener(newListener);
 
                 // Add the RtspListener to the RTSPConnections List
                 lock (rtspConnectionList)
                 {
                     RTSPConnection new_connection = new()
                     {
-                        listener = newListener,
-                        client_hostname = newListener.RemoteAdress.Split(':')[0],
+                        Listener = newListener,
+                        ClientHostname = newListener.RemoteAdress.Split(':')[0],
                         ssrc = global_ssrc,
-
-                        time_since_last_rtsp_keepalive = DateTime.UtcNow
                     };
-                    new_connection.video.time_since_last_rtcp_keepalive = DateTime.UtcNow;
-
                     rtspConnectionList.Add(new_connection);
                 }
 
@@ -159,11 +156,11 @@ public class RtspServer : IDisposable
     private void RTSPMessageReceived(object? sender, RtspChunkEventArgs e)
     {
         // Cast the 'sender' and 'e' into the RTSP Listener (the Socket) and the RTSP Message
-        RtspListener listener = sender as RtspListener ?? throw new ArgumentException("Invalid sender",nameof(sender));
+        RtspListener listener = sender as RtspListener ?? throw new ArgumentException("Invalid sender", nameof(sender));
 
         if (e.Message is not RtspRequest message)
         {
-            Console.WriteLine("RTSP message is not a request. Invalid dialog.");
+            _logger.LogWarning("RTSP message is not a request. Invalid dialog.");
             return;
         }
 
@@ -187,7 +184,7 @@ public class RtspServer : IDisposable
 
                     lock (rtspConnectionList)
                     {
-                        rtspConnectionList.RemoveAll(c => c.listener == listener);
+                        rtspConnectionList.RemoveAll(c => c.Listener == listener);
                     }
                     listener.Dispose();
                     return;
@@ -208,10 +205,10 @@ public class RtspServer : IDisposable
         // Update the RTSP Keepalive Timeout
         lock (rtspConnectionList)
         {
-            foreach (var connection in rtspConnectionList.Where(connection => connection.listener.RemoteAdress == listener.RemoteAdress))
+            foreach (var connection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
             {
                 // found the connection
-                connection.time_since_last_rtsp_keepalive = DateTime.UtcNow;
+                connection.UpdateKeepAlive();
                 break;
             }
         }
@@ -369,7 +366,7 @@ public class RtspServer : IDisposable
                 string copy_of_session_id = "";
                 lock (rtspConnectionList)
                 {
-                    foreach (var connection in rtspConnectionList.Where(connection => connection.listener.RemoteAdress == listener.RemoteAdress))
+                    foreach (var connection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
                     {
                         // Check the Track ID to determine if this is a SETUP for the Video Stream
                         // or a SETUP for an Audio Stream.
@@ -545,7 +542,7 @@ public class RtspServer : IDisposable
                 // do not need to send a keepalive (so we check for Socket write errors)
                 bool sending_rtp_via_tcp = connection.video.client_transport?.LowerTransport == RtspTransport.LowerTransportType.TCP;
 
-                if (!sending_rtp_via_tcp && ((now - connection.time_since_last_rtsp_keepalive).TotalSeconds > timeout_in_seconds))
+                if (!sending_rtp_via_tcp && ((now - connection.TimeSinceLastRtspKeepalive).TotalSeconds > timeout_in_seconds))
                 {
 
                     Console.WriteLine("Removing session " + connection.session_id + " due to TIMEOUT");
@@ -560,7 +557,7 @@ public class RtspServer : IDisposable
                         connection.audio.udp_pair.Stop();
                         connection.audio.udp_pair = null;
                     }
-                    connection.listener.Dispose();
+                    connection.Listener.Dispose();
                     rtspConnectionList.Remove(connection);
                 }
                 else if (connection.play)
@@ -613,12 +610,12 @@ public class RtspServer : IDisposable
             // TODO check mtu for UDP
             int packetMTU = 65535 - 8 - 20 - 16; // 65535 -8 for UDP header, -20 for IP header, -16 normal RTP header len. ** LESS RTP EXTENSIONS !!!
 
-            
+
             if (raw_nal.Length > packetMTU) fragmenting = true;
 
             // INDIGO VISION DOES NOT SUPPORT FRAGMENTATION. Send as one jumbo RTP packet and let OS split over MTUs.
             // NOTE TO SELF... perhaps this was because the SDP did not have the extra packetization flag
-           //  fragmenting = false;
+            //  fragmenting = false;
 
 
             if (!fragmenting)
@@ -814,32 +811,32 @@ public class RtspServer : IDisposable
                         int video_rtcp_channel = connection.video.transport_reply.Interleaved.Second; // second is for RTCP status messages)
                         try
                         {
-                            connection.listener.SendData(video_rtcp_channel, rtcp_sender_report);
+                            connection.Listener.SendData(video_rtcp_channel, rtcp_sender_report);
                         }
                         catch
                         {
-                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.Listener.RemoteAdress);
                         }
                     }
 
                     // Send RTCP over UDP
-                    if (connection.video.transport_reply.LowerTransport == RtspTransport.LowerTransportType.UDP 
+                    if (connection.video.transport_reply.LowerTransport == RtspTransport.LowerTransportType.UDP
                         && !connection.video.transport_reply.IsMulticast)
                     {
                         try
                         {
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video.udp_pair!.WriteToDataPort(rtcp_sender_report, connection.client_hostname, connection.video.client_transport.ClientPort.Second);
+                            connection.video.udp_pair!.WriteToDataPort(rtcp_sender_report, connection.ClientHostname, connection.video.client_transport.ClientPort.Second);
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine("UDP Write Exception " + e);
-                            Console.WriteLine("Error writing RTCP to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing RTCP to listener " + connection.Listener.RemoteAdress);
                         }
                     }
 
-                    if (connection.video.transport_reply.LowerTransport == RtspTransport.LowerTransportType.UDP 
+                    if (connection.video.transport_reply.LowerTransport == RtspTransport.LowerTransportType.UDP
                         && connection.video.transport_reply.IsMulticast)
                     {
                         // TODO. Add Multicast
@@ -872,11 +869,11 @@ public class RtspServer : IDisposable
                         {
                             // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
                             //session.listener.BeginSendData(video_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
-                            connection.listener.SendData(video_channel, rtp_packet);
+                            connection.Listener.SendData(video_channel, rtp_packet);
                         }
                         catch
                         {
-                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing to listener " + connection.Listener.RemoteAdress);
                             write_error = true;
                             break; // exit out of foreach loop
                         }
@@ -890,12 +887,12 @@ public class RtspServer : IDisposable
                             // send the whole NAL. ** We could fragment the RTP packet into smaller chuncks that fit within the MTU
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video.udp_pair.WriteToDataPort(rtp_packet, connection.client_hostname, connection.video.client_transport.ClientPort.First);
+                            connection.video.udp_pair.WriteToDataPort(rtp_packet, connection.ClientHostname, connection.video.client_transport.ClientPort.First);
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine("UDP Write Exception " + e.ToString());
-                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing to listener " + connection.Listener.RemoteAdress);
                             write_error = true;
                             break; // exit out of foreach loop
                         }
@@ -917,7 +914,7 @@ public class RtspServer : IDisposable
                         connection.audio.udp_pair.Stop();
                         connection.audio.udp_pair = null;
                     }
-                    connection.listener.Dispose();
+                    connection.Listener.Dispose();
                     rtspConnectionList.Remove(connection); // remove the session. It is dead
                 }
 
@@ -1080,11 +1077,11 @@ public class RtspServer : IDisposable
                         int audio_rtcp_channel = connection.audio.transport_reply.Interleaved.Second; // second is for RTCP status messages)
                         try
                         {
-                            connection.listener.SendData(audio_rtcp_channel, rtcp_sender_report);
+                            connection.Listener.SendData(audio_rtcp_channel, rtcp_sender_report);
                         }
                         catch
                         {
-                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing RTCP Sender Report to listener " + connection.Listener.RemoteAdress);
                         }
                     }
 
@@ -1095,12 +1092,12 @@ public class RtspServer : IDisposable
                         {
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.audio.udp_pair.WriteToDataPort(rtcp_sender_report, connection.client_hostname, connection.audio.client_transport.ClientPort.Second);
+                            connection.audio.udp_pair.WriteToDataPort(rtcp_sender_report, connection.ClientHostname, connection.audio.client_transport.ClientPort.Second);
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine("UDP Write Exception " + e.ToString());
-                            Console.WriteLine("Error writing RTCP to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing RTCP to listener " + connection.Listener.RemoteAdress);
                         }
                     }
 
@@ -1135,11 +1132,11 @@ public class RtspServer : IDisposable
                         {
                             // send the whole NAL. With RTP over RTSP we do not need to Fragment the NAL (as we do with UDP packets or Multicast)
                             //session.listener.BeginSendData(audio_channel, rtp_packet, new AsyncCallback(session.listener.EndSendData), state);
-                            connection.listener.SendData(audio_channel, rtp_packet);
+                            connection.Listener.SendData(audio_channel, rtp_packet);
                         }
                         catch
                         {
-                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing to listener " + connection.Listener.RemoteAdress);
                             write_error = true;
                             break; // exit out of foreach loop
                         }
@@ -1153,12 +1150,12 @@ public class RtspServer : IDisposable
                             // send the whole RTP packet
                             // Send to the IP address of the Client
                             // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.audio.udp_pair.WriteToDataPort(rtp_packet, connection.client_hostname, connection.audio.client_transport.ClientPort.First);
+                            connection.audio.udp_pair.WriteToDataPort(rtp_packet, connection.ClientHostname, connection.audio.client_transport.ClientPort.First);
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine("UDP Write Exception " + e.ToString());
-                            Console.WriteLine("Error writing to listener " + connection.listener.RemoteAdress);
+                            Console.WriteLine("Error writing to listener " + connection.Listener.RemoteAdress);
                             write_error = true;
                             break; // exit out of foreach loop
                         }
@@ -1180,7 +1177,7 @@ public class RtspServer : IDisposable
                         connection.audio.udp_pair.Stop();
                         connection.audio.udp_pair = null;
                     }
-                    connection.listener.Dispose();
+                    connection.Listener.Dispose();
                     rtspConnectionList.Remove(connection); // remove the session. It is dead
                 }
 
@@ -1207,11 +1204,14 @@ public class RtspServer : IDisposable
 
     public class RTSPConnection
     {
-        public required RtspListener listener;  // The RTSP client connection
+        // The RTSP client connection
+        public required RtspListener Listener { get; init; }
         public bool play = false;                  // set to true when Session is in Play mode
-        public DateTime time_since_last_rtsp_keepalive = DateTime.UtcNow; // Time since last RTSP message received - used to spot dead UDP clients
+        // Time since last RTSP message received - used to spot dead UDP clients
+        public DateTime TimeSinceLastRtspKeepalive { get; private set; } = DateTime.UtcNow;
         public UInt32 ssrc = 0x12345678;           // SSRC value used with this client connection
-        public String client_hostname = "";        // Client Hostname/IP Address
+        // Client Hostname/IP Address
+        public required string ClientHostname { get; init; }
         public int videoTrackID = 0;
         public int audioTrackID = 1;
 
@@ -1219,6 +1219,11 @@ public class RtspServer : IDisposable
 
         public RTPStream video = new();
         public RTPStream audio = new();
+
+        public void UpdateKeepAlive()
+        {
+            TimeSinceLastRtspKeepalive = DateTime.UtcNow;
+        }
     }
     public static class RTPPacketUtil
     {
