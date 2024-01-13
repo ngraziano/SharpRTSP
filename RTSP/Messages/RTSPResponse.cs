@@ -114,7 +114,7 @@ namespace Rtsp.Messages
         {
             get
             {
-                return commandArray.Length < 3 ? string.Empty: commandArray[2];
+                return commandArray.Length < 3 ? string.Empty : commandArray[2];
             }
             set
             {
@@ -151,7 +151,7 @@ namespace Rtsp.Messages
                         string[] subParts = parts[1].Split('=');
                         if (subParts.Length > 1 &&
                             string.Equals(subParts[0], "TIMEOUT", StringComparison.InvariantCultureIgnoreCase)
-                            && !int.TryParse(subParts[1], out returnValue))
+                            && !int.TryParse(subParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out returnValue))
                         {
                             returnValue = DEFAULT_TIMEOUT;
                         }

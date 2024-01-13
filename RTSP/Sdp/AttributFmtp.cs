@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Rtsp.Sdp
@@ -8,7 +9,7 @@ namespace Rtsp.Sdp
     {
         public const string NAME = "fmtp";
 
-        private readonly Dictionary<string, string> parameters = new ();
+        private readonly Dictionary<string, string> parameters = new();
 
         public AttributFmtp() : base(NAME)
         {
@@ -18,7 +19,7 @@ namespace Rtsp.Sdp
         {
             get
             {
-                return string.Format("{0} {1}", PayloadNumber, FormatParameter);
+                return string.Format(CultureInfo.InvariantCulture,  "{0} {1}", PayloadNumber, FormatParameter);
             }
             protected set
             {
@@ -34,9 +35,9 @@ namespace Rtsp.Sdp
         // Extract the Payload Number and the Format Parameters
         protected override void ParseValue(string value)
         {
-            var parts = value.Split(new char[] { ' ' }, 2);
+            var parts = value.Split(' ', 2);
 
-            if (int.TryParse(parts[0], out int payloadNumber))
+            if (int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int payloadNumber))
             {
                 PayloadNumber = payloadNumber;
             }
@@ -48,7 +49,7 @@ namespace Rtsp.Sdp
                 // Then Trim each item and then Split on the first '='
                 // Add them to the dictionary
                 parameters.Clear();
-                foreach (var pair in parts[1].Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
+                foreach (var pair in parts[1].Split(';').Select(x => x.Trim().Split('=', 2)))
                 {
                     if (!string.IsNullOrWhiteSpace(pair[0]))
                         parameters[pair[0]] = pair.Length > 1 ? pair[1] : string.Empty;
@@ -56,6 +57,6 @@ namespace Rtsp.Sdp
             }
         }
 
-        public string this[string index] => parameters.ContainsKey(index) ? parameters[index] : string.Empty;
+        public string this[string index] => parameters.TryGetValue(index, out string? value) ? value : string.Empty;
     }
 }
