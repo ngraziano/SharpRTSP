@@ -28,7 +28,7 @@ namespace RtspCameraExample
 
 
         /// <summary>
-        ///  Bit buffer index 
+        ///  Bit buffer index
         /// </summary>
         private int nLastBitInBuffer;
 
