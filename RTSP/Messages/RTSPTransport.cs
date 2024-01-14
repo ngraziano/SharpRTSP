@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Text;
 
 namespace Rtsp.Messages
@@ -204,7 +205,6 @@ mode                =    <"> *Method <"> | Method
                         returnValue.IsMulticast = false;
                         if (subPart.Length < 2)
                             throw new ArgumentException("interleaved value invalid", nameof(aTransportString));
-
                         returnValue.Interleaved = PortCouple.Parse(subPart[1]);
                         break;
                     case "APPEND":
@@ -212,13 +212,13 @@ mode                =    <"> *Method <"> | Method
                         break;
                     case "TTL":
                         int ttl = 0;
-                        if (subPart.Length < 2 || !int.TryParse(subPart[1], out ttl))
+                        if (subPart.Length < 2 || !int.TryParse(subPart[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out ttl))
                             throw new ArgumentException("TTL value invalid", nameof(aTransportString));
                         returnValue.TTL = ttl;
                         break;
                     case "LAYERS":
                         int layers = 0;
-                        if (subPart.Length < 2 || !int.TryParse(subPart[1], out layers))
+                        if (subPart.Length < 2 || !int.TryParse(subPart[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out layers))
                             throw new ArgumentException("Layers value invalid", nameof(aTransportString));
                         returnValue.TTL = layers;
                         break;

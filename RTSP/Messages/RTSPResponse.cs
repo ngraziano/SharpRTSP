@@ -85,7 +85,7 @@ namespace Rtsp.Messages
             {
                 if (_returnCode == 0 && commandArray.Length >= 2)
                 {
-                    int.TryParse(commandArray[1], out _returnCode);
+                    int.TryParse(commandArray[1],NumberStyles.Integer, CultureInfo.InvariantCulture, out _returnCode);
                 }
 
                 return _returnCode;
@@ -172,7 +172,7 @@ namespace Rtsp.Messages
                     else
                     {
                         //remove timeout part
-                        Headers[RtspHeaderNames.Session] = sessionString.Split(';').First();
+                        Headers[RtspHeaderNames.Session] = sessionString.Split(';')[0];
                     }
                 }
             }
