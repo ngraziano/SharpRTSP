@@ -4,6 +4,7 @@
     using Microsoft.Extensions.Logging.Abstractions;
     using Rtsp.Messages;
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
     using System.IO;
@@ -19,7 +20,7 @@
     {
         private readonly ILogger _logger;
         private readonly IRtspTransport _transport;
-        private readonly Dictionary<int, RtspRequest> _sentMessage = new();
+        private readonly Dictionary<int, RtspRequest> _sentMessage = [];
 
         private CancellationTokenSource? _cancelationTokenSource;
         private Task? _mainTask;
@@ -495,7 +496,7 @@
         /// </summary>
         /// <param name="channel">The channel.</param>
         /// <param name="frame">The frame.</param>
-        public void SendData(int channel, byte[] frame)
+        public void SendData(int channel, ReadOnlySpan<byte> frame)
         {
             if (frame == null)
                 throw new ArgumentNullException(nameof(frame));
@@ -512,16 +513,20 @@
                 Reconnect();
             }
 
-            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            var size = 4 + frame.Length;
+            var buffer = ArrayPool<byte>.Shared.Rent(size);
+            var data = buffer.AsSpan(0, size);
             data[0] = 36; // '$' character
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)(frame.Length & 0x00FF);
-            Array.Copy(frame, 0, data, 4, frame.Length);
+            frame.CopyTo(data[4..]);
             lock (_stream)
             {
-                _stream.Write(data, 0, data.Length);
+                _stream.Write(data);
             }
+            ArrayPool<byte>.Shared.Return(buffer);
+
         }
 
         #region IDisposable Membres

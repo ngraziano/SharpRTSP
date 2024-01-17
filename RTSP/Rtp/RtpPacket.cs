@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -33,6 +32,6 @@ namespace Rtsp.Rtp
         public int PayloadSize => rawData.Length - HeaderSize - ExtensionSize - PaddingSize;
 
         public ReadOnlyMemory<byte> Payload => rawData.AsMemory()[(HeaderSize + ExtensionSize)..^PaddingSize];
-        public ReadOnlyMemory<byte> Extension => new(rawData[HeaderSize..ExtensionSize].ToArray());
+        public ReadOnlyMemory<byte> Extension => rawData.AsMemory()[HeaderSize..ExtensionSize];
     }
 }
