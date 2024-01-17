@@ -8,7 +8,7 @@ namespace Rtsp.Rtp
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
             // TODO check the RFC 2250
-            return new() { packet.Payload };
+            return [packet.Payload];
         }
     }
 }
