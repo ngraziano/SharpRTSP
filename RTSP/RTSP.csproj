@@ -4,7 +4,7 @@
     <OutputType>Library</OutputType>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
     <StyleCopOutputFile>StyleCopViolations.xml</StyleCopOutputFile>
-    <LangVersion>9</LangVersion>
+    <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>SharpRTSP</PackageId>
