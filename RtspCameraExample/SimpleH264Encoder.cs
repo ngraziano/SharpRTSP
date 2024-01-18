@@ -21,7 +21,7 @@ namespace RtspCameraExample
 
     public class SimpleH264Encoder
     {
-        private readonly CJOCh264encoder h264encoder = new();
+        private readonly CJOCh264encoder h264encoder;
 
         // Constuctor
         public SimpleH264Encoder(int width, int height, uint fps)
@@ -32,25 +32,21 @@ namespace RtspCameraExample
             uint SARh = 1;
 
             // Initialise H264 encoder.
-            h264encoder.IniCoder(width, height, fps, CJOCh264encoder.SampleFormat.SAMPLE_FORMAT_YUV420p, SARw, SARh);
+            h264encoder = new(width, height, fps, CJOCh264encoder.SampleFormat.SAMPLE_FORMAT_YUV420p, SARw, SARh);
             // NAL array will contain SPS and PPS
 
         }
 
         // Raw SPS with no Size Header and no 00 00 00 01 headers
-        public byte[] GetRawSPS() => h264encoder?.sps?.Skip(4).ToArray() ?? [];
+        public byte[] GetRawSPS() => h264encoder?.sps.Skip(4).ToArray() ?? [];
 
-        public byte[] GetRawPPS() => h264encoder?.pps?.Skip(4).ToArray() ?? [];
+        public byte[] GetRawPPS() => h264encoder?.pps.Skip(4).ToArray() ?? [];
 
-        public byte[] CompressFrame(Span<byte> yuv_data)
+        public ReadOnlyMemory<byte> CompressFrame(ReadOnlySpan<byte> yuv_data)
         {
-            h264encoder.CodeAndSaveFrame(yuv_data);
-
             // Get the NAL (which has the 00 00 00 01 header)
-            byte[] nal_with_header = h264encoder.nal;
-            byte[] nal = new byte[nal_with_header.Length - 4];
-            Array.Copy(nal_with_header, 4, nal, 0, nal.Length);
-            return nal;
+            byte[] nal_with_header = h264encoder.CodeAndSaveFrame(yuv_data);
+            return nal_with_header.AsMemory()[4..];
         }
 
 

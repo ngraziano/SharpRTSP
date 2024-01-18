@@ -122,16 +122,16 @@ namespace RtspCameraExample
             }
 
 
-            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, Span<byte> yuv_data)
+            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, ReadOnlySpan<byte> yuv_data)
             {
                 
                 // Compress the YUV and feed into the RTSP Server
-                byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
+                var raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
 
 
                 // Put the NALs into a List
-                List<byte[]> nal_array = [];
+                List<ReadOnlyMemory<byte>> nal_array = [];
 
                 // We may want to add the SPS and PPS to the H264 stream as in-band data.
                 // This may be of use if the client did not parse the SPS/PPS in the SDP or if the H264 encoder
@@ -153,7 +153,7 @@ namespace RtspCameraExample
                 rtspServer.FeedInRawNAL(timestamp_ms, nal_array);
             }
 
-            private void Audio_source_ReceivedAudioFrame(uint timestamp_ms, short[] audio_frame)
+            private void Audio_source_ReceivedAudioFrame(uint timestamp_ms, ReadOnlySpan<short> audio_frame)
             {
                 // Compress the audio into G711 and feed into the RTSP Server
                 byte[] g711_data = ulaw_encoder.EncodeULaw(audio_frame);

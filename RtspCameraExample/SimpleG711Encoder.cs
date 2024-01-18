@@ -1,8 +1,10 @@
 ﻿// Audio Encoder taken from the NAudio Project which is MIT Licenced
 
+using System;
+
 public class SimpleG711Encoder
 {
-    public byte[] EncodeULaw(short[] pcm)
+    public byte[] EncodeULaw(ReadOnlySpan<short> pcm)
     {
         byte[] output = new byte[pcm.Length];
         for (int i = 0; i < pcm.Length; i++)

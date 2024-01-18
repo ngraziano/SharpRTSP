@@ -144,17 +144,17 @@ namespace Rtsp
         /// <summary>
         /// Write to the RTP Data Port
         /// </summary>
-        public void WriteToDataPort(byte[] data, string hostname, int port)
+        public void WriteToDataPort(ReadOnlySpan<byte> data, string hostname, int port)
         {
-            dataSocket.Send(data, data.Length, hostname, port);
+            dataSocket.Send(data.ToArray(), data.Length, hostname, port);
         }
 
         /// <summary>
         /// Write to the RTP Control Port
         /// </summary>
-        public void WriteToControlPort(byte[] data, string hostname, int port)
+        public void WriteToControlPort(ReadOnlySpan<byte> data, string hostname, int port)
         {
-            dataSocket.Send(data, data.Length, hostname, port);
+            dataSocket.Send(data.ToArray(), data.Length, hostname, port);
         }
     }
 }

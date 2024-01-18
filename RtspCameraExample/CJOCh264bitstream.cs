@@ -94,10 +94,6 @@ namespace RtspCameraExample
             nLastBitInBuffer++;
         }
 
-        //! 
-        /*!
-             \param 
-         */
         /// <summary>
         /// Adds 8 bit to the end of h264 bitstream (it is optimized for byte aligned situations)
         /// </summary>
@@ -160,7 +156,8 @@ namespace RtspCameraExample
             */
 
             //Check if emulation prevention is needed (emulation prevention is byte align defined)
-            if ((BufferAt(0) == 0x00)
+            if (nLastBitInBuffer / 8 >= 3
+                && (BufferAt(0) == 0x00)
                 && (BufferAt(1) == 0x00)
                 && ((BufferAt(1) == 0x00) || (BufferAt(2) == 0x01) || (BufferAt(2) == 0x02) || (BufferAt(2) == 0x03)))
             {
@@ -191,7 +188,7 @@ namespace RtspCameraExample
         /// <exception cref="Exception"></exception>
         public void Add4BytesNoEmulationPrevention(uint value, bool doAlign = false)
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             //Used to add NAL header stream
             //Remember: NAL header is byte oriented
@@ -233,7 +230,7 @@ namespace RtspCameraExample
         /// <exception cref="ArgumentOutOfRangeException">if nNumbits is too large</exception>
         public void AddBits(uint lval, int nNumbits)
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             if ((nNumbits <= 0) || (nNumbits > 64))
             {
@@ -256,7 +253,7 @@ namespace RtspCameraExample
         /// <param name="lval">value to add at the end of the h264 stream</param>
         public void AddExpGolombUnsigned(uint lval)
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             //it implements unsigned exp golomb coding
             uint lvalint = lval + 1;
@@ -275,7 +272,7 @@ namespace RtspCameraExample
         /// <param name="lval">value to add at the end of the h264 stream</param>
         public void AddExpGolombSigned(int lval)
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             //it implements a signed exp golomb coding
 
@@ -286,10 +283,12 @@ namespace RtspCameraExample
             AddExpGolombUnsigned(lvalint);
         }
 
-        //! Adds 0 to the end of h264 bistream in order to leave a byte aligned stream (It will insert seven 0 maximum)
+        /// <summary>
+        /// Adds 0 to the end of h264 bistream in order to leave a byte aligned stream (It will insert seven 0 maximum)
+        /// </summary>
         public void DoByteAlign()
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             //Check if the last bit in buffer is multiple of 8
             int nr = nLastBitInBuffer % 8;
@@ -305,7 +304,7 @@ namespace RtspCameraExample
         /// <param name="cByte">value to add at the end of the h264 stream (from 0 to 255)</param>
         public void AddByte(byte cByte)
         {
-            ObjectDisposedException.ThrowIf(disposedValue, GetType());
+            ObjectDisposedException.ThrowIf(disposedValue,typeof(CJOCh264bitstream));
 
             //Byte alignment optimization
             if ((nLastBitInBuffer % 8) == 0)
@@ -318,7 +317,9 @@ namespace RtspCameraExample
             }
         }
 
-        //! Close the h264 stream saving to disk the last remaing bits in buffer
+        /// <summary>
+        /// Close the h264 stream saving to disk the last remaing bits in buffer
+        /// </summary>
         public void Flush()
         {
             //Flush the data in stream buffer

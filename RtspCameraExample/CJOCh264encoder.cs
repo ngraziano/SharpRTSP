@@ -23,9 +23,8 @@ namespace RtspCameraExample
             SAMPLE_FORMAT_YUV420p //!< SAMPLE_FORMAT_YUV420p
         }
 
-        public byte[]? sps;
-        public byte[]? pps;
-        public byte[]? nal;
+        public readonly byte[] sps;
+        public readonly byte[] pps;
 
         /*!Set the used Y macroblock size for I PCM in YUV420p */
         private const int MACROBLOCK_Y_WIDTH = 16;
@@ -51,7 +50,7 @@ namespace RtspCameraExample
         }
 
         /*! The frame var*/
-        private readonly Frame frame = new();
+        private readonly Frame frame;
 
         /*! The frames per second var*/
         private uint m_nFps;
@@ -230,11 +229,8 @@ namespace RtspCameraExample
          */
 
         //Creates & saves a macroblock (coded INTRA 16x16)
-        private void CreateMacroblock(int nYpos, int nXpos, Span<byte> frameBuffer)
+        private void CreateMacroblock(int nYpos, int nXpos, ReadOnlySpan<byte> frameBuffer)
         {
-
-
-
             CreateMacroblockHeader();
 
             stream.DoByteAlign();
@@ -245,98 +241,87 @@ namespace RtspCameraExample
             {
                 for (int x = nXpos * frame.nYmbwidth; x < (nXpos + 1) * frame.nYmbwidth; x++)
                 {
-                    stream.AddByte(frameBuffer[y * frame.nYwidth + x]);
+                    stream.AddByte(frameBuffer[(y * frame.nYwidth) + x]);
                 }
             }
 
             //Cb
             int nCsize = frame.nCwidth * frame.nCheight;
+            var bufferCb = frameBuffer[nYsize..];
             for (int y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
             {
                 for (int x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
                 {
-                    stream.AddByte(frameBuffer[nYsize + (y * frame.nCwidth + x)]);
+                    stream.AddByte(bufferCb[(y * frame.nCwidth) + x]);
                 }
             }
 
             //Cr
+            var bufferCr = frameBuffer[(nYsize + nCsize)..];
             for (int y = nYpos * frame.nCmbheight; y < (nYpos + 1) * frame.nCmbheight; y++)
             {
                 for (int x = nXpos * frame.nCmbwidth; x < (nXpos + 1) * frame.nCmbwidth; x++)
                 {
-                    stream.AddByte(frameBuffer[nYsize + nCsize + (y * frame.nCwidth + x)]);
+                    stream.AddByte(bufferCr[(y * frame.nCwidth) + x]);
                 }
             }
         }
 
 
-        public CJOCh264encoder()
+     
+
+        /// <summary>
+        /// Initilizes the h264 coder (mini-coder)
+        /// </summary>
+        /// <param name="nImW">Frame width in pixels</param>
+        /// <param name="nImH">Frame height in pixels</param>
+        /// <param name="nImFps">Desired frames per second of the output file (typical values are: 25, 30, 50, etc)</param>
+        /// <param name="sampleFormat">Sample format if the input file. In this implementation only SAMPLE_FORMAT_YUV420p is allowed</param>
+        /// <param name="nSARw">Indicates the horizontal size of the sample aspect ratio (typical values are:1, 4, 16, etc)</param>
+        /// <param name="nSARh">Indicates the vertical size of the sample aspect ratio (typical values are:1, 3, 9, etc)</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="Exception"></exception>
+        public  CJOCh264encoder(int nImW, int nImH, uint nImFps, SampleFormat sampleFormat, uint nSARw = 1, uint nSARh = 1)
         {
-            m_lNumFramesAdded = 0;
             stream = new CJOCh264bitstream(baseStream);
-            m_nFps = 25;
-        }
-
-        //! Initializes the coder
-        /*!
-            \param nImW Frame width in pixels
-            \param nImH Frame height in pixels
-            \param nFps Desired frames per second of the output file (typical values are: 25, 30, 50, etc)
-            \param SampleFormat Sample format if the input file. In this implementation only SAMPLE_FORMAT_YUV420p is allowed
-            \param nSARw Indicates the horizontal size of the sample aspect ratio (typical values are:1, 4, 16, etc)
-            \param nSARh Indicates the vertical size of the sample aspect ratio (typical values are:1, 3, 9, etc)
-        */
-
-        //public functions
-
-        //Initilizes the h264 coder (mini-coder)
-        public void IniCoder(int nImW, int nImH, uint nImFps, SampleFormat sampleFormat, uint nSARw = 1, uint nSARh = 1)
-        {
-
-
-            m_lNumFramesAdded = 0;
 
             if (sampleFormat != SampleFormat.SAMPLE_FORMAT_YUV420p)
             {
                 throw new ArgumentException("Error: SAMPLE FORMAT not allowed. Only yuv420p is allowed in this version", nameof(sampleFormat));
             }
-
-            //Ini vars
-            frame.sampleformat = sampleFormat;
-            frame.nYwidth = nImW;
-            frame.nYheight = nImH;
-            if (sampleFormat == SampleFormat.SAMPLE_FORMAT_YUV420p)
+            //In this implementation only picture sizes multiples of macroblock size (16x16) are allowed
+            if (((nImW % MACROBLOCK_Y_WIDTH) != 0) || ((nImH % MACROBLOCK_Y_HEIGHT) != 0))
             {
+                throw new Exception("Error: size not allowed. Only multiples of macroblock are allowed (macroblock size is: 16x16)");
+            }
+
+            frame = new Frame
+            {
+                //Ini vars
+                sampleformat = sampleFormat,
+                nYwidth = nImW,
+                nYheight = nImH,
                 //Set macroblock Y size
-                frame.nYmbwidth = MACROBLOCK_Y_WIDTH;
-                frame.nYmbheight = MACROBLOCK_Y_HEIGHT;
+                nYmbwidth = MACROBLOCK_Y_WIDTH,
+                nYmbheight = MACROBLOCK_Y_HEIGHT,
 
                 //Set macroblock C size (in YUV420 is 1/2 of Y)
-                frame.nCmbwidth = MACROBLOCK_Y_WIDTH / 2;
-                frame.nCmbheight = MACROBLOCK_Y_HEIGHT / 2;
-
+                nCmbwidth = MACROBLOCK_Y_WIDTH / 2,
+                nCmbheight = MACROBLOCK_Y_HEIGHT / 2,
                 //Set C size
-                frame.nCwidth = frame.nYwidth / 2;
-                frame.nCheight = frame.nYheight / 2;
-
-                //In this implementation only picture sizes multiples of macroblock size (16x16) are allowed
-                if (((nImW % MACROBLOCK_Y_WIDTH) != 0) || ((nImH % MACROBLOCK_Y_HEIGHT) != 0))
-                {
-                    throw new Exception("Error: size not allowed. Only multiples of macroblock are allowed (macroblock size is: 16x16)");
-                }
-            }
+                nCwidth = nImW / 2,
+                nCheight = nImW / 2
+            };
             m_nFps = nImFps;
-
-
 
             //Create h264 SPS & PPS
             CreateSps(frame.nYwidth, frame.nYheight, frame.nYmbwidth, frame.nYmbheight, nImFps, nSARw, nSARh);
-            stream.Flush(); // Flush data to the List<byte>
+            stream.Flush();
             sps = baseStream.ToArray();
             baseStream.SetLength(0);
 
             CreatePPS();
-            stream.Flush(); // Flush data to the List<byte>
+            stream.Flush(); 
             pps = baseStream.ToArray();
             baseStream.SetLength(0);
         }
@@ -346,7 +331,7 @@ namespace RtspCameraExample
         //! It codes the frame that is in frame memory a it saves the coded data to disc
 
         //Codifies & save the video frame (it only uses 16x16 intra PCM -> NO COMPRESSION!)
-        public void CodeAndSaveFrame(Span<byte> frameBuffer)
+        public byte[] CodeAndSaveFrame(ReadOnlySpan<byte> frameBuffer)
         {
             baseStream.SetLength(0);
 
@@ -369,7 +354,7 @@ namespace RtspCameraExample
 
             // flush
             stream.Flush();
-            nal = baseStream.ToArray();
+            return baseStream.ToArray();
         }
 
         //! Returns number of coded frames
