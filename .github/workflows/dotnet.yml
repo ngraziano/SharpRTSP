@@ -2,7 +2,6 @@ name: .NET
 
 on:
   push:
-    branches: [ dotnetcore ]
   pull_request:
     branches: [ dotnetcore ]
 
