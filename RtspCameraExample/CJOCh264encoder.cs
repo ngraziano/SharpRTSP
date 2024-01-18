@@ -310,7 +310,7 @@ namespace RtspCameraExample
                 nCmbheight = MACROBLOCK_Y_HEIGHT / 2,
                 //Set C size
                 nCwidth = nImW / 2,
-                nCheight = nImW / 2
+                nCheight = nImH / 2
             };
             m_nFps = nImFps;
 
