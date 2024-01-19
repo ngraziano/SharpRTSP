@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -12,18 +14,18 @@ public class TestCard
 {
 
     // Events that applications can receive
-    public event ReceivedYUVFrameHandler ReceivedYUVFrame;
-    public event ReceivedAudioFrameHandler ReceivedAudioFrame;
+    public event ReceivedYUVFrameHandler? ReceivedYUVFrame;
+    public event ReceivedAudioFrameHandler? ReceivedAudioFrame;
 
     // Delegated functions (essentially the function prototype)
-    public delegate void ReceivedYUVFrameHandler(uint timestamp, int width, int height, byte[] data);
+    public delegate void ReceivedYUVFrameHandler(uint timestamp, int width, int height, Span<byte> data);
     public delegate void ReceivedAudioFrameHandler(uint timestamp, short[] data);
 
 
     // Local variables
     private Stopwatch stopwatch;
     private System.Timers.Timer frame_timer;
-    private byte[] yuv_frame = null;
+    private readonly byte[] yuv_frame;
     private int x_position = 0;
     private int y_position = 0;
     private int fps = 0;
@@ -40,19 +42,21 @@ public class TestCard
     // Created by Roger Hardiman using an online generation tool
     // http://www.riyas.org/2013/12/online-led-matrix-font-generator-with.html
 
-    byte[] ascii_0 = { 0x00, 0x3c, 0x42, 0x42, 0x42, 0x42, 0x42, 0x3c };
-    byte[] ascii_1 = { 0x00, 0x08, 0x18, 0x28, 0x08, 0x08, 0x08, 0x3e };
-    byte[] ascii_2 = { 0x00, 0x3e, 0x42, 0x02, 0x0c, 0x30, 0x40, 0x7e };
-    byte[] ascii_3 = { 0x00, 0x7c, 0x02, 0x02, 0x3c, 0x02, 0x02, 0x7c };
-    byte[] ascii_4 = { 0x00, 0x0c, 0x14, 0x24, 0x44, 0x7e, 0x04, 0x04 };
-    byte[] ascii_5 = { 0x00, 0x7e, 0x40, 0x40, 0x7c, 0x02, 0x02, 0x7c };
-    byte[] ascii_6 = { 0x00, 0x3e, 0x40, 0x40, 0x7c, 0x42, 0x42, 0x3c };
-    byte[] ascii_7 = { 0x00, 0x7e, 0x02, 0x02, 0x04, 0x08, 0x10, 0x20 };
-    byte[] ascii_8 = { 0x00, 0x3c, 0x42, 0x42, 0x3c, 0x42, 0x42, 0x3c };
-    byte[] ascii_9 = { 0x00, 0x3c, 0x42, 0x42, 0x3c, 0x02, 0x02, 0x3e };
-    byte[] ascii_colon = { 0x00, 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00 };
-    byte[] ascii_space = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    byte[] ascii_dot = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x00 };
+    private readonly ReadOnlyDictionary<char, byte[]> asciiFont = new Dictionary<char, byte[]>() {
+        {'0', [ 0x00, 0x3c, 0x42, 0x42, 0x42, 0x42, 0x42, 0x3c ] },
+        {'1', [ 0x00, 0x08, 0x18, 0x28, 0x08, 0x08, 0x08, 0x3e ] },
+        {'2', [ 0x00, 0x3e, 0x42, 0x02, 0x0c, 0x30, 0x40, 0x7e ] },
+        {'3', [ 0x00, 0x7c, 0x02, 0x02, 0x3c, 0x02, 0x02, 0x7c ] },
+        {'4', [ 0x00, 0x0c, 0x14, 0x24, 0x44, 0x7e, 0x04, 0x04 ] },
+        {'5', [ 0x00, 0x7e, 0x40, 0x40, 0x7c, 0x02, 0x02, 0x7c ] },
+        {'6', [ 0x00, 0x3e, 0x40, 0x40, 0x7c, 0x42, 0x42, 0x3c ] },
+        {'7', [ 0x00, 0x7e, 0x02, 0x02, 0x04, 0x08, 0x10, 0x20 ] },
+        {'8', [ 0x00, 0x3c, 0x42, 0x42, 0x3c, 0x42, 0x42, 0x3c ] },
+        {'9', [ 0x00, 0x3c, 0x42, 0x42, 0x3c, 0x02, 0x02, 0x3e ] },
+        {':', [ 0x00, 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00 ] },
+        {' ', [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ] },
+        {'.', [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x00 ] },
+    }.AsReadOnly();
 
     // Constructor
     public TestCard(int width, int height, int fps)
@@ -68,19 +72,19 @@ public class TestCard
         yuv_frame = new byte[y_size + u_size + v_size];
 
         // Set all values to 127
-        for (int x = 0; x < yuv_frame.Length; x++)
-        {
-            yuv_frame[x] = 127;
-        }
+        Array.Fill(yuv_frame, (byte)127);
+
 
         stopwatch = new Stopwatch();
         stopwatch.Start();
 
         // Start timer. The Timer will generate each YUV frame
-        frame_timer = new System.Timers.Timer();
-        frame_timer.Interval = 1; // on first pass timer will fire straight away (cannot have zero interval)
-        frame_timer.AutoReset = false; // do not restart timer after the time has elapsed
-        frame_timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
+        frame_timer = new System.Timers.Timer
+        {
+            Interval = 1, // on first pass timer will fire straight away (cannot have zero interval)
+            AutoReset = false // do not restart timer after the time has elapsed
+        };
+        frame_timer.Elapsed += (object? sender, System.Timers.ElapsedEventArgs e) =>
         {
             // send a video frame
             Send_YUV_Frame();
@@ -100,7 +104,7 @@ public class TestCard
         audio_timer = new System.Timers.Timer();
         audio_timer.Interval = 1; // on first pass timer will fire straight away (cannot have zero interval)
         audio_timer.AutoReset = false; // do not restart timer after the time has elapsed
-        audio_timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
+        audio_timer.Elapsed += (object? sender, System.Timers.ElapsedEventArgs e) =>
         {
             // send an audio frame
             Send_Audio_Frame();
@@ -136,46 +140,17 @@ public class TestCard
         {
             // Get the current time
             DateTime now_utc = DateTime.UtcNow;
-            DateTime now_local = now_utc.ToLocalTime();
 
 
-            long timestamp_ms = ((long)(now_utc.Ticks / TimeSpan.TicksPerMillisecond));
+            long timestamp_ms = now_utc.Ticks / TimeSpan.TicksPerMillisecond;
 
-            // Generate the String to write
-            char[] overlay = null;
-
-            if (width >= 96)
-            {
-                // Need 12 characters of 8x8 pixels. 12*8 = 96
-                // HH:MM:SS.mmm
-                String overlay_str = now_local.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture); // do not replace : or . by local formats
-                overlay = overlay_str.ToCharArray();
-            }
-            else
-            {
-                // Min for most video formats is 16x16, enough for 2 characters
-                String overlay_str = now_local.ToString("ss", CultureInfo.InvariantCulture); // do not replace : or . by local formats
-                overlay = overlay_str.ToCharArray();
-            }
+            char[] overlay = GetTimeForCard(now_utc);
 
             // process each character
             int start_row = ((height / 2) - 4); // start 4 pixels above the centre row (4 is half the font height)
             for (int c = 0; c < overlay.Length; c++)
             {
-                byte[] font = ascii_space;
-                if (overlay[c] == '0') font = ascii_0;
-                if (overlay[c] == '1') font = ascii_1;
-                if (overlay[c] == '2') font = ascii_2;
-                if (overlay[c] == '3') font = ascii_3;
-                if (overlay[c] == '4') font = ascii_4;
-                if (overlay[c] == '5') font = ascii_5;
-                if (overlay[c] == '6') font = ascii_6;
-                if (overlay[c] == '7') font = ascii_7;
-                if (overlay[c] == '8') font = ascii_8;
-                if (overlay[c] == '9') font = ascii_9;
-                if (overlay[c] == ' ') font = ascii_space;
-                if (overlay[c] == ':') font = ascii_colon;
-                if (overlay[c] == '.') font = ascii_dot;
+                byte[] font = asciiFont[overlay[c]] ?? asciiFont[' '];
 
                 // process the font character
                 for (int rows = 0; rows < 8; rows++)
@@ -200,9 +175,6 @@ public class TestCard
                 }
             }
 
-
-
-
             // Toggle the pixel value
             byte pixel_value = yuv_frame[(y_position * width) + x_position];
 
@@ -213,11 +185,11 @@ public class TestCard
             yuv_frame[(y_position * width) + x_position] = pixel_value;
 
             // move the x and y position
-            x_position = x_position + 5;
+            x_position += 5;
             if (x_position >= width)
             {
                 x_position = 0;
-                y_position = y_position + 1;
+                y_position++;
             }
 
             if (y_position >= height)
@@ -226,13 +198,28 @@ public class TestCard
             }
 
             // fire the Event
-            if (ReceivedYUVFrame != null)
-            {
-                ReceivedYUVFrame((uint)stopwatch.ElapsedMilliseconds, width, height, yuv_frame);
-            }
+            ReceivedYUVFrame?.Invoke((uint)stopwatch.ElapsedMilliseconds, width, height, yuv_frame);
         }
     }
 
+    private char[] GetTimeForCard(DateTime now_utc)
+    {
+        // Generate the String to write
+        DateTime now_local = now_utc.ToLocalTime();
+        if (width >= 96)
+        {
+            // Need 12 characters of 8x8 pixels. 12*8 = 96
+            // HH:MM:SS.mmm
+            var overlay_str = now_local.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture); // do not replace : or . by local formats
+            return overlay_str.ToCharArray();
+        }
+        else
+        {
+            // Min for most video formats is 16x16, enough for 2 characters
+            var overlay_str = now_local.ToString("ss", CultureInfo.InvariantCulture); // do not replace : or . by local formats
+            return overlay_str.ToCharArray();
+        }
+    }
 
     private void Send_Audio_Frame()
     {
@@ -276,10 +263,7 @@ public class TestCard
             }
 
             // Fire the Event
-            if (ReceivedAudioFrame != null)
-            {
-                ReceivedAudioFrame((uint)stopwatch.ElapsedMilliseconds, audio_frame);
-            }
+            ReceivedAudioFrame?.Invoke((uint)stopwatch.ElapsedMilliseconds, audio_frame);
         }
     }
 }

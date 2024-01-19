@@ -14,7 +14,7 @@
         /// <summary>
         /// The regex to validate the Rtsp message.
         /// </summary>
-        private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled);
+        private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
 
         // TODO Move in factory
         /// <summary>
@@ -131,7 +131,7 @@
             get
             {
                 if (!(Headers.TryGetValue("CSeq", out string? returnStringValue) &&
-                    int.TryParse(returnStringValue, out int returnValue)))
+                    int.TryParse(returnStringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out int returnValue)))
                 {
                     returnValue = 0;
                 }
@@ -169,7 +169,7 @@
         public void InitialiseDataFromContentLength()
         {
             if (!(Headers.ContainsKey("Content-Length")
-                && int.TryParse(Headers["Content-Length"], out int dataLength)))
+                && int.TryParse(Headers["Content-Length"], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dataLength)))
             {
                 dataLength = 0;
             }
@@ -221,7 +221,7 @@
             outputString.Append("\r\n");
             foreach (KeyValuePair<string, string?> item in Headers)
             {
-                outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
+                outputString.AppendFormat(CultureInfo.InvariantCulture, "{0}: {1}\r\n", item.Key, item.Value);
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
@@ -281,15 +281,15 @@
         {
             StringBuilder stringBuilder = new();
 
-            stringBuilder.AppendLine($"Commande : {Command}");
+            stringBuilder.Append("Commande : ").AppendLine(Command);
             foreach (KeyValuePair<string, string?> item in Headers)
             {
-                stringBuilder.AppendLine($"Header : {item.Key}: {item.Value}");
+                stringBuilder.Append("Header : ").Append(item.Key).Append(": ").AppendLine(item.Value);
             }
 
             if (Data?.Length > 0)
             {
-                stringBuilder.AppendLine($"Data :-{Encoding.ASCII.GetString(Data)}-");
+                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data)).Append('-').AppendLine();
             }
 
             return stringBuilder.ToString();

@@ -15,11 +15,10 @@ namespace RtspCameraExample
 {
     static class Program
     {
-        private static ILoggerFactory loggerFactory;
 
-        static void Main(string[] args)
+        static void Main()
         {
-            loggerFactory = LoggerFactory.Create(builder =>
+            var loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder
                     .AddFilter("Microsoft", LogLevel.Warning)
@@ -40,8 +39,8 @@ namespace RtspCameraExample
             SimpleH264Encoder h264_encoder = null;
             SimpleG711Encoder ulaw_encoder = null;
 
-            byte[] raw_sps = null;
-            byte[] raw_pps = null;
+            byte[] raw_sps;
+            byte[] raw_pps;
 
             int port = 8554;
             string username = "user";      // or use NUL if there is no username
@@ -52,7 +51,7 @@ namespace RtspCameraExample
             uint height = 128;
             uint fps = 25;
 
-            public Demo()
+            public Demo(ILoggerFactory loggerFactory)
             {
                 // Our programme needs several things...
                 //   1) The RTSP Server to send the NALs to RTSP Clients
@@ -72,7 +71,7 @@ namespace RtspCameraExample
                 catch
                 {
                     Console.WriteLine("Error: Could not start server");
-                    return;
+                    throw;
                 }
 
                 Console.WriteLine("RTSP URL is rtsp://" + username + ":" + password + "@" + "hostname:" + port);
@@ -81,10 +80,10 @@ namespace RtspCameraExample
                 /////////////////////////////////////////
                 // Step 2 - Create the H264 Encoder. It will feed NALs into the RTSP server
                 /////////////////////////////////////////
-                h264_encoder = new SimpleH264Encoder(width, height, fps);
+                h264Encoder = new SimpleH264Encoder(width, height, fps);
                 //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
-                raw_sps = h264_encoder.GetRawSPS();
-                raw_pps = h264_encoder.GetRawPPS();
+                raw_sps = h264Encoder.GetRawSPS();
+                raw_pps = h264Encoder.GetRawPPS();
 
                 /////////////////////////////////////////
                 // Step 3 - Create the PCM to G711 Encoder.
@@ -113,14 +112,7 @@ namespace RtspCameraExample
                 }
                 Console.WriteLine(msg);
                 Console.WriteLine("Press ENTER to exit");
-                String readline = null;
-                while (readline == null)
-                {
-                    readline = Console.ReadLine();
-
-                    // Avoid maxing out CPU on systems that instantly return null for ReadLine
-                    if (readline == null) Thread.Sleep(500);
-                }
+                Console.ReadLine();
 
 
                 /////////////////////////////////////////
@@ -134,22 +126,23 @@ namespace RtspCameraExample
             }
 
 
-            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, byte[] yuv_data)
+            private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, Span<byte> yuv_data)
             {
+                
                 // Compress the YUV and feed into the RTSP Server
-                byte[] raw_video_nal = h264_encoder.CompressFrame(yuv_data);
+                byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
 
 
                 // Put the NALs into a List
-                List<byte[]> nal_array = new List<byte[]>();
+                List<byte[]> nal_array = [];
 
                 // We may want to add the SPS and PPS to the H264 stream as in-band data.
                 // This may be of use if the client did not parse the SPS/PPS in the SDP or if the H264 encoder
                 // changes properties (eg a new resolution or framerate which gives a new SPS or PPS).
                 // Also looking towards H265, the VPS/SPS/PPS do not need to be in the SDP so would be added here.
 
-                Boolean add_sps_pps_to_keyframe = true;
+                bool add_sps_pps_to_keyframe = true;
                 if (add_sps_pps_to_keyframe && isKeyframe)
                 {
                     nal_array.Add(raw_sps);
