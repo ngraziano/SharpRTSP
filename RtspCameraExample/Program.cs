@@ -27,7 +27,7 @@ namespace RtspCameraExample
                     .AddFilter("Rtsp", LogLevel.Debug)
                     .AddConsole();
             });
-            var demo = new Demo();
+            var demo = new Demo(loggerFactory);
 
         }
 
@@ -35,9 +35,9 @@ namespace RtspCameraExample
         class Demo
         {
             NetworkCredential networkCredential;
-            RtspServer rtspServer = null;
-            SimpleH264Encoder h264_encoder = null;
-            SimpleG711Encoder ulaw_encoder = null;
+            RtspServer rtspServer;
+            SimpleH264Encoder h264Encoder;
+            SimpleG711Encoder ulaw_encoder;
 
             byte[] raw_sps;
             byte[] raw_pps;
@@ -80,7 +80,7 @@ namespace RtspCameraExample
                 /////////////////////////////////////////
                 // Step 2 - Create the H264 Encoder. It will feed NALs into the RTSP server
                 /////////////////////////////////////////
-                h264Encoder = new SimpleH264Encoder(width, height, fps);
+                h264Encoder = new SimpleH264Encoder((int)width, (int)height, fps);
                 //h264_encoder = new TinyH264Encoder(); // hard coded to 192x128
                 raw_sps = h264Encoder.GetRawSPS();
                 raw_pps = h264Encoder.GetRawPPS();
@@ -128,7 +128,7 @@ namespace RtspCameraExample
 
             private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, Span<byte> yuv_data)
             {
-                
+
                 // Compress the YUV and feed into the RTSP Server
                 byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.

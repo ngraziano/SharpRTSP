@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Linq;
+using Rtsp.Messages;
 
 // RTSP Server Example (c) Roger Hardiman, 2016, 2018, 2020
 // Released uder the MIT Open Source Licence
@@ -102,7 +103,7 @@ public class RtspServer : IDisposable
                 // Hand the incoming TCP connection over to the RTSP classes
                 var rtsp_socket = new RtspTcpTransport(oneClient, _credential);
                 RtspListener newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
-                newListener.MessageReceived += RTSP_Message_Received;
+                newListener.MessageReceived += RTSPMessageReceived;
                 //RTSPDispatcher.Instance.AddListener(newListener);
 
                 // Add the RtspListener to the RTSPConnections List
