@@ -1,32 +1,22 @@
 ﻿using Rtsp.Messages;
 using System;
-using System.Security.Cryptography;
+using System.Net;
 using System.Text;
 
 namespace Rtsp
 {
 
     // WWW-Authentication and Authorization Headers
-    public class AuthenticationBasic : Authentication
+    public class AuthenticationBasic(NetworkCredential credentials) : Authentication(credentials)
     {
-        private const char quote = '\"';
-
-        // Constructor
-        public AuthenticationBasic(string username, string password, string realm)
-            : base(username, password, realm)
+        public override string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes)
         {
+            string usernamePasswordHash = $"{Credentials.UserName}:{Credentials.Password}";
+            return $"Bassic {Convert.ToBase64String(Encoding.UTF8.GetBytes(usernamePasswordHash))}";
         }
-
-        public override string GetHeader()
+        public override bool IsValid(RtspMessage message)
         {
-            return $"Basic realm=\"{realm}\"";
-        }
-
-
-        public override bool IsValid(RtspMessage received_message)
-        {
-
-            string? authorization = received_message.Headers["Authorization"];
+            string? authorization = message.Headers["Authorization"];
 
 
             // Check Username and Password
@@ -39,7 +29,7 @@ namespace Rtsp
                 string decoded_username = decoded.Substring(0, split_position);
                 string decoded_password = decoded.Substring(split_position + 1);
 
-                if ((decoded_username == username) && (decoded_password == password))
+                if ((decoded_username == Credentials.UserName) && (decoded_password == Credentials.Password))
                 {
                     // _logger.Debug("Basic Authorization passed");
                     return true;
@@ -54,21 +44,7 @@ namespace Rtsp
             return false;
         }
 
+        public override string ToString() => $"Authentication Basic";
 
-
-        // Generate Basic or Digest Authorization
-        public static string? GenerateAuthorization(string username, string password,
-                                             string realm, string nonce, string url, string command)
-        {
-
-            if (username == null || username.Length == 0) return null;
-            if (password == null || password.Length == 0) return null;
-            if (realm == null || realm.Length == 0) return null;
-
-            byte[] credentials = Encoding.UTF8.GetBytes(username + ":" + password);
-            string credentials_base64 = Convert.ToBase64String(credentials);
-            string basic_authorization = "Basic " + credentials_base64;
-            return basic_authorization;
-        }
     }
 }

@@ -1,35 +1,62 @@
 ﻿using Rtsp.Messages;
+using Rtsp.Utils;
 using System;
-using System.Security.Cryptography;
+using System.Net;
 using System.Text;
 
 namespace Rtsp
 {
-
     // WWW-Authentication and Authorization Headers
     public class AuthenticationDigest : Authentication
     {
+        private readonly string _realm;
+        private readonly string _nonce;
+        private readonly string? _qop;
+        private readonly string _cnonce;
 
-        private readonly string nonce;
-        private readonly MD5 md5 = MD5.Create();
-
-        // Constructor
-        public AuthenticationDigest(string username, string password, string realm)
-            : base(username, password, realm)
+        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string qop) : base(credentials)
         {
-            nonce = new Random().Next(100000000, 999999999).ToString(); // random 9 digit number            
+            _realm = realm ?? throw new ArgumentNullException(nameof(realm));
+            _nonce = nonce ?? throw new ArgumentNullException(nameof(nonce));
+
+            if (!string.IsNullOrEmpty(qop))
+            {
+                int commaIndex = qop.IndexOf(',');
+                _qop = commaIndex > -1 ? qop[..commaIndex] : qop;
+            }
+            uint cnonce = (uint)Guid.NewGuid().GetHashCode();
+            _cnonce = cnonce.ToString("X8");
         }
 
-        public override string GetHeader()
+        public override string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes)
         {
-            return $"Digest realm=\"{realm}\", nonce=\"{nonce}\"";
+            string ha1 = MD5.GetHashHexValues($"{Credentials.UserName}:{_realm}:{Credentials.Password}");
+            string ha2Argument = $"{method}:{uri}";
+            bool hasQop = !string.IsNullOrEmpty(_qop);
+
+            if (hasQop && _qop!.Equals("auth-int", StringComparison.InvariantCultureIgnoreCase))
+            {
+                ha2Argument = $"{ha2Argument}:{MD5.GetHashHexValues(entityBodyBytes)}";
+            }
+            string ha2 = MD5.GetHashHexValues(ha2Argument);
+
+            StringBuilder sb = new();
+            sb.AppendFormat("Digest username=\"{0}\", realm=\"{1}\", nonce=\"{2}\", uri=\"{3}\"", Credentials.UserName, _realm, _nonce, uri);
+            if (!hasQop)
+            {
+                string response = MD5.GetHashHexValues($"{ha1}:{_nonce}:{ha2}");
+                sb.AppendFormat(", response=\"{0}\"", response);
+            }
+            else
+            {
+                string response = MD5.GetHashHexValues($"{ha1}:{_nonce}:{nonceCounter:X8}:{_cnonce}:{_qop}:{ha2}");
+                sb.AppendFormat(", response=\"{0}\", cnonce=\"{1}\", nc=\"{2:X8}\", qop=\"{3}\"", response, _cnonce, nonceCounter, _qop);
+            }
+            return sb.ToString();
         }
-
-
-        public override bool IsValid(RtspMessage received_message)
+        public override bool IsValid(RtspMessage message)
         {
-
-            string? authorization = received_message.Headers["Authorization"];
+            string? authorization = message.Headers["Authorization"];
 
             // Check Username, URI, Nonce and the MD5 hashed Response
             if (authorization != null && authorization.StartsWith("Digest "))
@@ -69,15 +96,15 @@ namespace Rtsp
 
                 // Create the MD5 Hash using all parameters passed in the Auth Header with the 
                 // addition of the 'Password'
-                string hashA1 = CalculateMD5Hash(md5, auth_header_username + ":" + auth_header_realm + ":" + password);
-                string hashA2 = CalculateMD5Hash(md5, received_message.Method + ":" + auth_header_uri);
-                string expected_response = CalculateMD5Hash(md5, hashA1 + ":" + auth_header_nonce + ":" + hashA2);
+                string hashA1 = MD5.GetHashHexValues(auth_header_username + ":" + auth_header_realm + ":" + Credentials.Password);
+                string hashA2 = MD5.GetHashHexValues(message.Method + ":" + auth_header_uri);
+                string expected_response = MD5.GetHashHexValues(hashA1 + ":" + auth_header_nonce + ":" + hashA2);
 
                 // Check if everything matches
                 // ToDo - extract paths from the URIs (ignoring SETUP's trackID)
-                if ((auth_header_username == username)
-                    && (auth_header_realm == realm)
-                    && (auth_header_nonce == nonce)
+                if ((auth_header_username == Credentials.Password)
+                    && (auth_header_realm == _realm)
+                    && (auth_header_nonce == _nonce)
                     && (auth_header_response == expected_response)
                    )
                 {
@@ -94,48 +121,6 @@ namespace Rtsp
         }
 
 
-
-        // Generate Basic or Digest Authorization
-        public static string? GenerateAuthorization(string username, string password,
-                                             string realm, string nonce, string url, string command)
-        {
-
-            if (string.IsNullOrEmpty(username)) return null;
-            if (string.IsNullOrEmpty(password)) return null;
-            if (string.IsNullOrEmpty(realm)) return null;
-            if (string.IsNullOrEmpty(nonce)) return null;
-
-
-                MD5 md5 = MD5.Create();
-                string hashA1 = CalculateMD5Hash(md5, username + ":" + realm + ":" + password);
-                string hashA2 = CalculateMD5Hash(md5, command + ":" + url);
-                string response = CalculateMD5Hash(md5, hashA1 + ":" + nonce + ":" + hashA2);
-
-                string digest_authorization = $"Digest username=\"{username}\", "
-                    + $"realm=\"{realm}\", "
-                    + $"nonce=\"{nonce}\", "
-                    + $"uri=\"{url}\", "
-                    + $"response=\"{response}\"";
-
-                return digest_authorization;
-        
-        }
-
-
-
-        // MD5 (lower case)
-        private static string CalculateMD5Hash(MD5 md5_session, string input)
-        {
-            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-            byte[] hash = md5_session.ComputeHash(inputBytes);
-
-            var output = new StringBuilder();
-            for (int i = 0; i < hash.Length; i++)
-            {
-                output.Append(hash[i].ToString("x2"));
-            }
-
-            return output.ToString();
-        }
+        public override string ToString() => $"Authentication Digest: Realm {_realm}, Nonce {_nonce}";
     }
 }

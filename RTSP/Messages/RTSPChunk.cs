@@ -14,6 +14,12 @@ namespace Rtsp.Messages
         public byte[]? Data { get; set; }
 
         /// <summary>
+        /// Gets or sets the data length associated with the message.
+        /// </summary>
+        /// <value>Integer with the length of message (usefull if using ArrayPool for avoiding gc pressure)</value>
+        public int DataLength { get; set; }
+
+        /// <summary>
         /// Gets or sets the source port wich receive the message.
         /// </summary>
         /// <value>The source port.</value>

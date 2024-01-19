@@ -238,7 +238,7 @@
             else
             {
                 destination = new RtspListener(
-                    new RtspTcpTransport(destinationUri.Host, destinationUri.Port)
+                    new RtspTcpTransport(destinationUri, new NetworkCredential())
                     );
 
                 // un peu pourri mais pas d'autre idée...

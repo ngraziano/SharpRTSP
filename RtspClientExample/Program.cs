@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Rtsp.Utils;
 using System;
 using System.IO;
 using System.Threading;
@@ -67,7 +68,7 @@ namespace RtspClientExample
 
             // The SPS/PPS comes from the SDP data
             // or it is the first SPS/PPS from the H264 video stream
-            client.ReceivedSpsPps += (sps, pps) =>
+            client.ReceivedSpsPps += (sender, e) =>
             {
                 h264 = true;
                 if (fs_v == null)
@@ -75,13 +76,13 @@ namespace RtspClientExample
                     string filename = "rtsp_capture_" + now + ".264";
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
-                WriteNalToFile(fs_v, sps);
-                WriteNalToFile(fs_v, pps);
+                WriteNalToFile(fs_v, e.Sps);
+                WriteNalToFile(fs_v, e.Pps);
                 fs_v.Flush(true);
 
             };
 
-            client.ReceivedVpsSpsPps += (vps, sps, pps) =>
+            client.ReceivedVpsSpsPps += (sender, e) =>
             {
                 h265 = true;
                 if (fs_v == null)
@@ -90,9 +91,9 @@ namespace RtspClientExample
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
 
-                WriteNalToFile(fs_v, vps);
-                WriteNalToFile(fs_v, sps);
-                WriteNalToFile(fs_v, pps);
+                WriteNalToFile(fs_v, e.Vps);
+                WriteNalToFile(fs_v, e.Sps);
+                WriteNalToFile(fs_v, e.Pps);
                 fs_v.Flush(true);
             };
 
@@ -100,11 +101,11 @@ namespace RtspClientExample
 
 
             // Video NALs. May also include the SPS and PPS in-band for H264
-            client.ReceivedNALs += (nalUnits) =>
+            client.ReceivedNALs += (sender, e) =>
             {
                 if (fs_v != null)
                 {
-                    foreach (var nalUnitMem in nalUnits)
+                    foreach (var nalUnitMem in e.Data)
                     {
                         var nalUnit = nalUnitMem.Span;
                         // Output some H264 stream information
@@ -148,29 +149,29 @@ namespace RtspClientExample
                 }
             };
 
-            client.ReceivedMp2t += (datas) =>
+            client.ReceivedMp2t += (sender, e) =>
             {
                 if (fs_a == null)
                 {
                     string filename = "rtsp_capture_" + now + ".mp2";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
-                foreach (var data in datas)
+                foreach (var data in e.Data)
                 {
                     fs_a?.Write(data.Span);
                 }
 
             };
 
-            client.ReceivedG711 += (format, g711) =>
+            client.ReceivedG711 += (sender, e) =>
             {
-                if (fs_a == null && format.Equals("PCMU"))
+                if (fs_a == null && e.Format.Equals("PCMU"))
                 {
                     string filename = "rtsp_capture_" + now + ".ul";
                     fs_a = new FileStream(filename, FileMode.Create);
                 }
 
-                if (fs_a == null && format.Equals("PCMA"))
+                if (fs_a == null && e.Format.Equals("PCMA"))
                 {
                     string filename = "rtsp_capture_" + now + ".al";
                     fs_a = new FileStream(filename, FileMode.Create);
@@ -178,16 +179,16 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (var data in g711)
+                    foreach (var data in e.Data)
                     {
                         fs_a.Write(data.Span);
                     }
                 }
             };
 
-            client.ReceivedAMR += (format, amr) =>
+            client.ReceivedAMR += (sender, e) =>
             {
-                if (fs_a == null && format.Equals("AMR"))
+                if (fs_a == null && e.Format.Equals("AMR"))
                 {
                     string filename = "rtsp_capture_" + now + ".amr";
                     fs_a = new FileStream(filename, FileMode.Create);
@@ -197,7 +198,7 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (var data in amr)
+                    foreach (var data in e.Data)
                     {
                         fs_a.Write(data.Span);
                     }
@@ -205,7 +206,7 @@ namespace RtspClientExample
             };
 
 
-            client.ReceivedAAC += (format, aac, ObjectType, FrequencyIndex, ChannelConfiguration) =>
+            client.ReceivedAAC += (sender, e) =>
             {
                 if (fs_a == null)
                 {
@@ -215,7 +216,7 @@ namespace RtspClientExample
 
                 if (fs_a != null)
                 {
-                    foreach (var data in aac)
+                    foreach (var data in e.Data)
                     {
                         // ASDT header format
                         int protection_absent = 1;
@@ -223,15 +224,15 @@ namespace RtspClientExample
                         //                        int sample_freq = 4; // 4 = 44100 Hz
                         //                        int channel_config = 2; // 2 = Stereo
 
-                        Rtsp.BitStream bs = new Rtsp.BitStream();
+                        BitStream bs = new BitStream();
                         bs.AddValue(0xFFF, 12); // (a) Start of data
                         bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
                         bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
                         bs.AddValue(protection_absent, 1); // (d) 1 = No CRC
-                        bs.AddValue((int)ObjectType - 1, 2); // (e) MPEG Object Type / Profile, minus 1
-                        bs.AddValue((int)FrequencyIndex, 4); // (f)
+                        bs.AddValue((int)e.ObjectType - 1, 2); // (e) MPEG Object Type / Profile, minus 1
+                        bs.AddValue((int)e.FrequencyIndex, 4); // (f)
                         bs.AddValue(0, 1); // (g) private bit. Always zero
-                        bs.AddValue((int)ChannelConfiguration, 3); // (h)
+                        bs.AddValue((int)e.ChannelConfiguration, 3); // (h)
                         bs.AddValue(0, 1); // (i) originality
                         bs.AddValue(0, 1); // (j) home
                         bs.AddValue(0, 1); // (k) copyrighted id
@@ -255,39 +256,66 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, string.Empty, string.Empty, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
-            // Check for null which is returned when running under some IDEs
-            // OR wait for the Streaming to Finish - eg an error on the RTSP socket
 
-            Console.WriteLine("Press ENTER to exit");
 
-            ConsoleKeyInfo key = default;
-            while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
+            if (client.SocketStatus == RTSPClient.RtspSocketStatus.Connected)
             {
+                Console.WriteLine("Press ENTER to exit");
+                // client connected.
 
-                while (!Console.KeyAvailable && !client.StreamingFinished())
+                // Check for null which is returned when running under some IDEs
+                // OR wait for the Streaming to Finish - eg an error on the RTSP socket
+
+                ConsoleKeyInfo key = default;
+                while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
                 {
-                    // Avoid maxing out CPU on systems that instantly return null for ReadLine
 
-                    Thread.Sleep(250);
+                    while (!Console.KeyAvailable && !client.StreamingFinished())
+                    {
+                        // Avoid maxing out CPU on systems that instantly return null for ReadLine
+
+                        Thread.Sleep(250);
+                    }
+                    if (Console.KeyAvailable)
+                    {
+                        key = Console.ReadKey();
+                    }
                 }
-                if (Console.KeyAvailable)
+                client.Stop();
+            }
+            else
+            {
+                Console.WriteLine("Connection failed...");
+                Console.WriteLine("Press ENTER to exit");
+
+                ConsoleKeyInfo key = default;
+                while (key.Key != ConsoleKey.Enter)
                 {
-                    key = Console.ReadKey();
+
+                    while (!Console.KeyAvailable)
+                    {
+                        // Avoid maxing out CPU on systems that instantly return null for ReadLine
+
+                        Thread.Sleep(250);
+                    }
+                    if (Console.KeyAvailable)
+                    {
+                        key = Console.ReadKey();
+                    }
                 }
             }
 
-            client.Stop();
             fs_v?.Close();
-            Console.WriteLine("Finished");
 
+            Console.WriteLine("Finished");
         }
 
         private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)
         {
-            fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+            fs_v.Write([0x00, 0x00, 0x00, 0x01], 0, 4);  // Write Start Code
             fs_v.Write(nal);
         }
     }

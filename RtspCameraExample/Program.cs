@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 
 namespace RtspCameraExample
@@ -28,12 +29,13 @@ namespace RtspCameraExample
                     .AddConsole();
             });
             var demo = new Demo();
-            
+
         }
 
 
         class Demo
         {
+            NetworkCredential networkCredential;
             RtspServer rtspServer = null;
             SimpleH264Encoder h264_encoder = null;
             SimpleG711Encoder ulaw_encoder = null;
@@ -44,6 +46,7 @@ namespace RtspCameraExample
             int port = 8554;
             string username = "user";      // or use NUL if there is no username
             string password = "password";  // or use NUL if there is no password
+
 
             uint width = 192;
             uint height = 128;
@@ -60,7 +63,8 @@ namespace RtspCameraExample
                 /////////////////////////////////////////
                 // Step 1 - Start the RTSP Server
                 /////////////////////////////////////////
-                rtspServer = new RtspServer(port, username, password, loggerFactory);
+                networkCredential = new(username, password);
+                rtspServer = new RtspServer(port, networkCredential, loggerFactory);
                 try
                 {
                     rtspServer.StartListen();

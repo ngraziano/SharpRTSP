@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Rtsp;
+using Rtsp.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -21,6 +22,7 @@ public class RtspServer : IDisposable
 
     const uint global_ssrc = 0x4321FADE; // 8 hex digits
 
+    private readonly NetworkCredential _credential;
     private readonly TcpListener _RTSPServerListener;
     private readonly ILoggerFactory _loggerFactory;
     private ManualResetEvent _Stopping;
@@ -43,17 +45,19 @@ public class RtspServer : IDisposable
     /// <param name="aPortNumber">A numero port.</param>
 	/// <param name="username">username.</param>
 	/// <param name="password">password.</param>
-    public RtspServer(int portNumber, String username, String password, ILoggerFactory loggerFactory)
+    public RtspServer(int portNumber, NetworkCredential credential, ILoggerFactory loggerFactory)
     {
         if (portNumber < System.Net.IPEndPoint.MinPort || portNumber > System.Net.IPEndPoint.MaxPort)
             throw new ArgumentOutOfRangeException("aPortNumber", portNumber, "Port number must be between System.Net.IPEndPoint.MinPort and System.Net.IPEndPoint.MaxPort");
         Contract.EndContractBlock();
 
-        if (String.IsNullOrEmpty(username) == false
-            && String.IsNullOrEmpty(password) == false)
+
+        _credential = credential;
+
+        if (!credential.IsEmpty())
         {
-            String realm = "SharpRTSPServer";
-            auth = new AuthenticationDigest(username, password, realm);
+            string realm = "SharpRTSPServer";
+            auth = new AuthenticationDigest(credential, realm, string.Empty, string.Empty);
         }
         else
         {
@@ -92,7 +96,7 @@ public class RtspServer : IDisposable
                 Console.WriteLine("Connection from " + oneClient.Client.RemoteEndPoint.ToString());
 
                 // Hand the incoming TCP connection over to the RTSP classes
-                var rtsp_socket = new RtspTcpTransport(oneClient);
+                var rtsp_socket = new RtspTcpTransport(oneClient, _credential);
                 RtspListener newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                 newListener.MessageReceived += RTSP_Message_Received;
                 //RTSPDispatcher.Instance.AddListener(newListener);
@@ -179,7 +183,7 @@ public class RtspServer : IDisposable
                 {
                     // Send a 401 Authentication Failed reply, then close the RTSP Socket
                     Rtsp.Messages.RtspResponse authorization_response = (e.Message as Rtsp.Messages.RtspRequest).CreateResponse();
-                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader());
+                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse((uint)message.CSeq, listener.RemoteAdress, message.Method, message.Data));
                     authorization_response.ReturnCode = 401;
                     listener.SendMessage(authorization_response);
 
@@ -203,7 +207,7 @@ public class RtspServer : IDisposable
                 // Send a 401 Authentication Failed with extra info in WWW-Authenticate
                 // to tell the Client if we are using Basic or Digest Authentication
                 Rtsp.Messages.RtspResponse authorization_response = (e.Message as Rtsp.Messages.RtspRequest).CreateResponse();
-                authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader()); // 'Basic' or 'Digest'
+                authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse((uint)message.CSeq, listener.RemoteAdress, message.Method, message.Data)); // 'Basic' or 'Digest'
                 authorization_response.ReturnCode = 401;
                 listener.SendMessage(authorization_response);
                 return;
@@ -625,7 +629,7 @@ public class RtspServer : IDisposable
 
         checkTimeouts(out current_rtsp_count, out current_rtsp_play_count);
 
-       // Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
+        // Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
 
         if (current_rtsp_play_count == 0) return;
 
@@ -765,8 +769,8 @@ public class RtspServer : IDisposable
 
             // Go through each RTSP connection and output the NAL on the Video Session
             foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // ToArray makes a temp copy of the list.
-                                                                       // This lets us delete items in the foreach
-                                                                       // eg when there is Write Error
+                                                                                // This lets us delete items in the foreach
+                                                                                // eg when there is Write Error
             {
                 // Only process Sessions in Play Mode
                 if (connection.play == false) continue;
@@ -1026,8 +1030,8 @@ public class RtspServer : IDisposable
 
             // Go through each RTSP connection and output the NAL on the Video Session
             foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // ToArray makes a temp copy of the list.
-                                                                       // This lets us delete items in the foreach
-                                                                       // eg when there is Write Error
+                                                                                // This lets us delete items in the foreach
+                                                                                // eg when there is Write Error
             {
                 // Only process Sessions in Play Mode
                 if (connection.play == false) continue;

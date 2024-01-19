@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Rtsp
+namespace Rtsp.Utils
 {
     public static class RtspUtils
     {

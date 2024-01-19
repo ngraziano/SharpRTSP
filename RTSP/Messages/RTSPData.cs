@@ -34,6 +34,7 @@ namespace Rtsp.Messages
             Channel = Channel,
             SourcePort = SourcePort,
             Data = Data is null ? null : Data.Clone() as byte[],
+            DataLength = DataLength,
         };
     }
 }

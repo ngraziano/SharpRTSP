@@ -15,10 +15,12 @@
         /// Gets the remote address.
         /// </summary>
         /// <value>The remote address.</value>
-        string RemoteAddress
-        {
-            get;
-        }
+        string RemoteAddress { get; }
+
+        /// <summary>
+        /// Keep track of issued commands...
+        /// </summary>
+        uint CommandCounter { get; }
 
         /// <summary>
         /// Closes this instance.

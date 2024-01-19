@@ -1,6 +1,7 @@
 ﻿namespace Rtsp.Messages
 {
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
     using System.Globalization;
@@ -26,7 +27,7 @@
             // We can't determine the message 
             if (string.IsNullOrEmpty(aRequestLine))
                 return new RtspMessage();
-            string[] requestParts = aRequestLine.Split(new char[] { ' ' }, 3);
+            string[] requestParts = aRequestLine.Split([' '], 3);
             RtspMessage returnValue;
             if (requestParts.Length == 3)
             {
@@ -61,11 +62,12 @@
         /// </summary>
         public RtspMessage()
         {
-            Data = Array.Empty<byte>();
+            Data = [];
+            DataLength = 0;
             Creation = DateTime.Now;
         }
 
-        protected internal string[] commandArray = new string[] { string.Empty };
+        protected internal string[] commandArray = [string.Empty];
 
         /// <summary>
         /// Gets or sets the creation time.
@@ -80,7 +82,7 @@
         public string Command
         {
             get => commandArray is null ? string.Empty : string.Join(" ", commandArray);
-            set => commandArray = value is null ? new string[] { string.Empty } : value.Split(new char[] { ' ' }, 3);
+            set => commandArray = value is null ? new string[] { string.Empty } : value.Split([' '], 3);
         }
 
         /// <summary>
@@ -108,7 +110,7 @@
             }
 
             //spliter
-            string[] elements = line.Split(new char[] { ':' }, 2);
+            string[] elements = line.Split([':'], 2);
             if (elements.Length == 2)
             {
                 Headers[elements[0].Trim()] = elements[1].TrimStart();
@@ -150,10 +152,10 @@
         {
             get
             {
-                if (!Headers.ContainsKey("Session"))
+                if (!Headers.TryGetValue("Session", out string? value))
                     return null;
 
-                return Headers["Session"];
+                return value;
             }
             set
             {
@@ -171,7 +173,8 @@
             {
                 dataLength = 0;
             }
-            Data = new byte[dataLength];
+            Data = ArrayPool<byte>.Shared.Rent(dataLength);
+            DataLength = dataLength;
         }
 
         /// <summary>
@@ -179,9 +182,9 @@
         /// </summary>
         public void AdjustContentLength()
         {
-            if (Data?.Length > 0)
+            if (DataLength > 0)
             {
-                Headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
+                Headers["Content-Length"] = DataLength.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
@@ -209,14 +212,14 @@
             Contract.EndContractBlock();
 
             Encoding encoder = Encoding.UTF8;
-            var outputString = new StringBuilder();
+            StringBuilder outputString = new();
 
             AdjustContentLength();
 
             // output header
             outputString.Append(Command);
             outputString.Append("\r\n");
-            foreach (var item in Headers)
+            foreach (KeyValuePair<string, string?> item in Headers)
             {
                 outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
             }
@@ -227,18 +230,56 @@
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
-                if (Data?.Length > 0)
-                    stream.Write(Data.AsSpan());
+                if (Data != null && DataLength > 0)
+                {
+                    stream.Write(Data, 0, DataLength);
+                }
             }
             stream.Flush();
         }
+
+        /// <summary>
+        /// Like the <see cref="SendTo(Stream)"/> methods, but will return the current byte[] stream without sending it.
+        /// </summary>
+        /// <returns>An array of Bytes</returns>
+        public byte[] Prepare()
+        {
+            MemoryStream ms = new();
+            Encoding encoder = Encoding.UTF8;
+            StringBuilder outputString = new();
+
+            AdjustContentLength();
+
+            // output header
+            outputString.Append(Command);
+            outputString.Append("\r\n");
+            foreach (KeyValuePair<string, string?> item in Headers)
+            {
+                outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
+            }
+            outputString.Append("\r\n");
+            byte[] buffer = encoder.GetBytes(outputString.ToString());
+            lock (ms)
+            {
+                ms.Write(buffer, 0, buffer.Length);
+
+                // Output data
+                if (Data != null && DataLength > 0)
+                {
+                    ms.Write(Data, 0, DataLength);
+                }
+            }
+
+            return ms.ToArray();
+        }
+
 
         /// <summary>
         /// Create a string of the message for debug.
         /// </summary>
         public override string ToString()
         {
-            var stringBuilder = new StringBuilder();
+            StringBuilder stringBuilder = new();
 
             stringBuilder.AppendLine($"Commande : {Command}");
             foreach (KeyValuePair<string, string?> item in Headers)
@@ -264,7 +305,7 @@
         {
             RtspMessage returnValue = GetRtspMessage(Command);
 
-            foreach (var item in Headers)
+            foreach (KeyValuePair<string, string?> item in Headers)
             {
                 returnValue.Headers.Add(item.Key, item.Value);
             }

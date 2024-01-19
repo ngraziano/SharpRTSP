@@ -1,6 +1,7 @@
 ﻿namespace RtspMulticaster
 {
     using Rtsp;
+    using Rtsp.Utils;
     using System;
     using System.Diagnostics.Contracts;
     using System.Net;
@@ -55,7 +56,7 @@
                 {
                     TcpClient oneClient = _RTSPServerListener.AcceptTcpClient();
                     RtspListener newListener = new RtspListener(
-                        new RtspTcpTransport(oneClient));
+                        new RtspTcpTransport(oneClient, new NetworkCredential()));
                     RTSPDispatcher.Instance.AddListener(newListener);
                     newListener.Start();
                 }
