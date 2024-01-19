@@ -474,18 +474,15 @@ public class RtspListener(IRtspTransport connection, ILogger<RtspListener>? logg
         }
 
         int length = 4 + frame.Length;
-        byte[] data = ArrayPool<byte>.Shared.Rent(length);
-        try
-        {
-            //byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
-            data[0] = 36; // '$' character
-            data[1] = (byte)channel;
-            data[2] = (byte)((frame.Length & 0xFF00) >> 8);
-            data[3] = (byte)((frame.Length & 0x00FF));
-            Array.Copy(frame, 0, data, 4, frame.Length);
-            return _stream.BeginWrite(data, 0, length, asyncCallback, state);
-        }
-        finally { ArrayPool<byte>.Shared.Return(data, true); }
+        byte[] data = new byte[length];
+        //byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+        data[0] = 36; // '$' character
+        data[1] = (byte)channel;
+        data[2] = (byte)((frame.Length & 0xFF00) >> 8);
+        data[3] = (byte)((frame.Length & 0x00FF));
+        Array.Copy(frame, 0, data, 4, frame.Length);
+        return _stream.BeginWrite(data, 0, length, asyncCallback, state);
+
     }
 
     /// <summary>
@@ -526,21 +523,17 @@ public class RtspListener(IRtspTransport connection, ILogger<RtspListener>? logg
         }
 
         int length = 4 + frame.Length;
-        byte[] data = ArrayPool<byte>.Shared.Rent(length);
-        try
+        byte[] data = new byte[length];
+        //byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+        data[0] = 36; // '$' character
+        data[1] = (byte)channel;
+        data[2] = (byte)((frame.Length & 0xFF00) >> 8);
+        data[3] = (byte)((frame.Length & 0x00FF));
+        Array.Copy(frame, 0, data, 4, frame.Length);
+        lock (_stream)
         {
-            //byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
-            data[0] = 36; // '$' character
-            data[1] = (byte)channel;
-            data[2] = (byte)((frame.Length & 0xFF00) >> 8);
-            data[3] = (byte)((frame.Length & 0x00FF));
-            Array.Copy(frame, 0, data, 4, frame.Length);
-            lock (_stream)
-            {
-                _stream.Write(data, 0, data.Length);
-            }
+            _stream.Write(data, 0, length);
         }
-        finally { ArrayPool<byte>.Shared.Return(data, true); }
     }
 
 

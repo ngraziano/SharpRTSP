@@ -200,7 +200,7 @@ namespace Rtsp.Tests
 
             Assert.AreEqual(11, dataMessage.Channel);
             Assert.AreSame(testedListener, dataMessage.SourcePort);
-            Assert.AreEqual(data, dataMessage.Data);
+            Assert.AreEqual(data, dataMessage.Data[..dataMessage.DataLength]);
         }
 
         [Test]
@@ -294,7 +294,8 @@ namespace Rtsp.Tests
             var data = new RtspData
             {
                 Channel = 12,
-                Data = Enumerable.Range(0, dataLenght).Select(x => (byte)x).ToArray()
+                Data = Enumerable.Range(0, dataLenght).Select(x => (byte)x).ToArray(),
+                DataLength = dataLenght,
             };
 
             // Run
