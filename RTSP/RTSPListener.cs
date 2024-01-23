@@ -115,9 +115,9 @@
                 while (_transport.Connected && !token.IsCancellationRequested)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk? currentMessage = await ReadOneMessageAsync(_stream);
+                    RtspChunk? currentMessage = await ReadOneMessageAsync(_stream, token).ConfigureAwait(false);
 
-                    if (currentMessage != null)
+                    if (currentMessage is not null)
                     {
                         if (_logger.IsEnabled(LogLevel.Debug) && currentMessage is not RtspData)
                         {
@@ -145,18 +145,17 @@
                                 OnMessageReceived(new RtspChunkEventArgs(response));
                                 break;
 
-                            case RtspRequest _:
+                            case RtspRequest:
                                 OnMessageReceived(new RtspChunkEventArgs(currentMessage));
                                 break;
-                            case RtspData _:
+                            case RtspData:
                                 OnDataReceived(new RtspChunkEventArgs(currentMessage));
                                 break;
                         }
                     }
                     else
                     {
-                        _stream.Close();
-                        _transport.Close();
+                        break;
                     }
                 }
             }
@@ -241,7 +240,15 @@
             }
 
             _logger.LogDebug("Send Message\n {message}", message);
-            message.SendTo(_stream);
+            //if (_transport is RtspHttpTransport httpTransport)
+            //{
+            //    byte[] data = message.Prepare();
+            //    httpTransport.Write(data, 0, data.Length);
+            //}
+            //else
+            {
+                message.SendTo(_stream);
+            }
             return true;
         }
 
@@ -274,7 +281,7 @@
         /// </summary>
         /// <param name="commandStream">The Rtsp stream.</param>
         /// <returns>Message readen</returns>
-        public async Task<RtspChunk?> ReadOneMessageAsync(Stream commandStream)
+        public async Task<RtspChunk?> ReadOneMessageAsync(Stream commandStream, CancellationToken token)
         {
             if (commandStream == null)
                 throw new ArgumentNullException(nameof(commandStream));
@@ -352,12 +359,12 @@
                             ((RtspMessage)currentMessage!).AddHeader(line);
                         }
                         break;
-                    case ReadingState.Data:
-                        if (currentMessage!.Data!.Length > 0)
+                    case ReadingState.Data when currentMessage is not null:
+                        if (!currentMessage.Data.IsEmpty)
                         {
                             // Read the remaning data
                             int byteCount = await commandStream.ReadAsync(
-                                currentMessage.Data.AsMemory(byteReaden, currentMessage.Data.Length - byteReaden));
+                                currentMessage.Data, token);//,.AsMemory(byteReaden, currentMessage.Data.Length - byteReaden));
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -396,11 +403,11 @@
                         currentMessage.Data = new byte[size];
                         currentReadingState = ReadingState.MoreInterleavedData;
                         break;
-                    case ReadingState.MoreInterleavedData:
+                    case ReadingState.MoreInterleavedData when currentMessage is not null:
                         // apparently non blocking
                         {
                             int byteCount = await commandStream.ReadAsync(
-                                currentMessage!.Data.AsMemory(byteReaden, size - byteReaden));
+                                currentMessage.Data, token);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -432,12 +439,12 @@
         {
             if (aRtspData is null)
                 throw new ArgumentNullException(nameof(aRtspData));
-            if (aRtspData.Data is null)
+            if (aRtspData.Data.IsEmpty)
                 throw new ArgumentException("no data present", nameof(aRtspData));
 
             Contract.EndContractBlock();
 
-            return BeginSendData(aRtspData.Channel, aRtspData.Data, asyncCallback, state);
+            return BeginSendData(aRtspData.Channel, aRtspData.Data.Span, asyncCallback, state);
         }
 
         /// <summary>
@@ -447,9 +454,9 @@
         /// <param name="frame">The frame.</param>
         /// <param name="asyncCallback">The async callback.</param>
         /// <param name="state">A state.</param>
-        public IAsyncResult? BeginSendData(int channel, byte[] frame, AsyncCallback asyncCallback, object state)
+        public IAsyncResult? BeginSendData(int channel, ReadOnlySpan<byte> frame, AsyncCallback asyncCallback, object state)
         {
-            if (frame == null)
+            if (frame.IsEmpty)
                 throw new ArgumentNullException(nameof(frame));
             if (frame.Length > 0xFFFF)
                 throw new ArgumentException("frame too large", nameof(frame));
@@ -464,13 +471,14 @@
                 Reconnect();
             }
 
-            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            Span<byte> data = new byte[4 + frame.Length]; // add 4 bytes for the header
             data[0] = 36; // '$' character
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)(frame.Length & 0x00FF);
-            Array.Copy(frame, 0, data, 4, frame.Length);
-            return _stream.BeginWrite(data, 0, data.Length, asyncCallback, state);
+            frame.CopyTo(data[4..]);
+            //Array.Copy(frame.Span, 0, data, 4, frame.Length);
+            return _stream.BeginWrite(data.ToArray(), 0, data.Length, asyncCallback, state);
         }
 
         /// <summary>

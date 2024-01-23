@@ -12,14 +12,18 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
+        private readonly NetworkCredential _credentials;
         private readonly IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
+
+        private uint _commandCounter = 0;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
         /// <param name="tcpConnection">The underlying TCP connection.</param>
-        public RtspTcpTransport(TcpClient tcpConnection)
+        public RtspTcpTransport(TcpClient tcpConnection, NetworkCredential credential)
         {
             if (tcpConnection == null)
                 throw new ArgumentNullException(nameof(tcpConnection));
@@ -27,6 +31,7 @@ namespace Rtsp
 
             _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
             _RtspServerClient = tcpConnection;
+            _credentials = credential;
         }
 
         /// <summary>
@@ -34,10 +39,9 @@ namespace Rtsp
         /// </summary>
         /// <param name="aHost">A host.</param>
         /// <param name="aPortNumber">A port number.</param>
-        public RtspTcpTransport(string aHost, int aPortNumber)
-            : this(new TcpClient(aHost, aPortNumber))
-        {
-        }
+        public RtspTcpTransport(string aHost, int aPortNumber, NetworkCredential credential)
+            : this(new TcpClient(aHost, aPortNumber), credential)
+        { }
 
         #region IRtspTransport Membres
 
@@ -52,6 +56,8 @@ namespace Rtsp
         /// </summary>
         /// <value>The remote address.</value>
         public string RemoteAddress => string.Format(CultureInfo.InvariantCulture, "{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+
+        public uint CommandCounter => ++_commandCounter;
 
         /// <summary>
         /// Closes this instance.
