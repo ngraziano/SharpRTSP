@@ -52,7 +52,10 @@
         public void Start()
         {
             _cancelationTokenSource = new();
-            _mainTask = Task.Factory.StartNew(async () => await DoJobAsync(_cancelationTokenSource.Token), _cancelationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+            _mainTask = Task.Factory.StartNew(async () => await DoJobAsync(_cancelationTokenSource.Token).ConfigureAwait(false),
+                _cancelationTokenSource.Token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Current);
         }
 
         /// <summary>
@@ -240,12 +243,12 @@
             }
 
             _logger.LogDebug("Send Message\n {message}", message);
-            //if (_transport is RtspHttpTransport httpTransport)
-            //{
-            //    byte[] data = message.Prepare();
-            //    httpTransport.Write(data, 0, data.Length);
-            //}
-            //else
+            if (_transport is RtspHttpTransport httpTransport)
+            {
+                byte[] data = message.Prepare();
+                httpTransport.Write(data, 0, data.Length);
+            }
+            else
             {
                 message.SendTo(_stream);
             }
@@ -363,8 +366,7 @@
                         if (!currentMessage.Data.IsEmpty)
                         {
                             // Read the remaning data
-                            int byteCount = await commandStream.ReadAsync(
-                                currentMessage.Data, token);//,.AsMemory(byteReaden, currentMessage.Data.Length - byteReaden));
+                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, token).ConfigureAwait(false);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -406,8 +408,7 @@
                     case ReadingState.MoreInterleavedData when currentMessage is not null:
                         // apparently non blocking
                         {
-                            int byteCount = await commandStream.ReadAsync(
-                                currentMessage.Data, token);
+                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, token).ConfigureAwait(false);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -531,6 +532,46 @@
                 _stream.Write(data, 0, data.Length);
             }
         }
+
+        /// <summary>
+        /// Send data (Synchronous)
+        /// </summary>
+        /// <param name="channel">The channel.</param>
+        /// <param name="frame">The frame.</param>
+        public void SendData(int channel, ReadOnlySpan<byte> frame)
+        {
+            if (frame == null)
+                throw new ArgumentNullException(nameof(frame));
+            if (frame.Length > 0xFFFF)
+                throw new ArgumentException("frame too large", nameof(frame));
+            Contract.EndContractBlock();
+
+            if (!_transport.Connected)
+            {
+                if (!AutoReconnect)
+                    throw new Exception("Connection is lost");
+
+                _logger.LogWarning("Reconnect to a client, strange.");
+                Reconnect();
+            }
+
+            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            data[0] = 36; // '$' character
+            data[1] = (byte)channel;
+            data[2] = (byte)((frame.Length & 0xFF00) >> 8);
+            data[3] = (byte)(frame.Length & 0x00FF);
+            frame.CopyTo(data.AsSpan(4));
+            lock (_stream)
+            {
+                _stream.Write(data, 0, data.Length);
+            }
+        }
+        /// <summary>
+        /// Send data (Synchronous)
+        /// </summary>
+        /// <param name="channel">The channel.</param>
+        /// <param name="frame">The frame.</param>
+        public void SendData(int channel, ReadOnlyMemory<byte> frame) => SendData(channel, frame.Span);
 
         #region IDisposable Membres
 

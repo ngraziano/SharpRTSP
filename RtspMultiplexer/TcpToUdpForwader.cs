@@ -145,10 +145,10 @@
                 RtspData data = e.Message as RtspData;
                 if (data != null)
                 {
-                    byte[] frame = data.Data;
+                    ReadOnlyMemory<byte> frame = data.Data;
                     if (data.Channel == this.SourceInterleavedVideo)
                     {
-                        ForwardVUdpPort.BeginSend(frame, frame.Length, new AsyncCallback(EndSendVideo), frame);
+                        ForwardVUdpPort.BeginSend(frame.ToArray(), frame.Length, new AsyncCallback(EndSendVideo), frame);
                     }
                 }
             }

@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Collections.Generic;
 using System.Net;
 
 namespace Rtsp
 {
-
     // WWW-Authentication and Authorization Headers
     public abstract class Authentication
     {
@@ -16,6 +16,7 @@ namespace Rtsp
         }
 
         public abstract string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes);
+        public abstract bool IsValid(RtspMessage received_message);
 
         public static Authentication Create(NetworkCredential credential, string authenticateHeader)
         {
@@ -27,18 +28,18 @@ namespace Rtsp
 
             if (authenticateHeader.StartsWith("Digest", StringComparison.OrdinalIgnoreCase))
             {
-                int spaceIndex = authenticateHeader.IndexOf(' ');
+                int spaceIndex = authenticateHeader.IndexOf(' ', StringComparison.Ordinal);
 
                 if (spaceIndex != -1)
                 {
-                    string parameters = authenticateHeader.Substring(++spaceIndex);
+                    string parameters = authenticateHeader[++spaceIndex..];
 
                     Dictionary<string, string> parameterNameToValueMap = ParseParameters(parameters);
 
                     if (!parameterNameToValueMap.TryGetValue("REALM", out string realm))
-                        throw new ArgumentException("\"realm\" parameter is not found");
+                        throw new ArgumentException("\"realm\" parameter is not found", "REALM");
                     if (!parameterNameToValueMap.TryGetValue("NONCE", out string nonce))
-                        throw new ArgumentException("\"nonce\" parameter is not found");
+                        throw new ArgumentException("\"nonce\" parameter is not found", "NONCE");
 
                     parameterNameToValueMap.TryGetValue("QOP", out string qop);
                     return new AuthenticationDigest(credential, realm, nonce, qop);
@@ -51,30 +52,29 @@ namespace Rtsp
 
         private static Dictionary<string, string> ParseParameters(string parameters)
         {
-            var parameterNameToValueMap = new Dictionary<string, string>();
+            Dictionary<string, string> parameterNameToValueMap = new(StringComparer.OrdinalIgnoreCase);
 
             int parameterStartOffset = 0;
             while (parameterStartOffset < parameters.Length)
             {
                 int equalsSignIndex = parameters.IndexOf('=', parameterStartOffset);
 
-                if (equalsSignIndex == -1)
-                    break;
+                if (equalsSignIndex == -1) { break; }
 
                 int parameterNameLength = equalsSignIndex - parameterStartOffset;
-                string parameterName = parameters.Substring(parameterStartOffset, parameterNameLength).Trim()
-                    .ToUpperInvariant();
+                string parameterName = parameters.Substring(parameterStartOffset, parameterNameLength).Trim().ToUpperInvariant();
 
                 ++equalsSignIndex;
 
                 int nonSpaceIndex = equalsSignIndex;
 
-                if (nonSpaceIndex == parameters.Length)
-                    break;
+                if (nonSpaceIndex == parameters.Length) { break; }
 
                 while (parameters[nonSpaceIndex] == ' ')
+                {
                     if (++nonSpaceIndex == parameters.Length)
-                        break;
+                    { break; }
+                }
 
                 int parameterValueStartPos;
                 int parameterValueEndPos;
@@ -84,22 +84,17 @@ namespace Rtsp
                 {
                     parameterValueStartPos = parameters.IndexOf('\"', equalsSignIndex);
 
-                    if (parameterValueStartPos == -1)
-                        break;
+                    if (parameterValueStartPos == -1) { break; }
 
                     ++parameterValueStartPos;
 
                     parameterValueEndPos = parameters.IndexOf('\"', parameterValueStartPos);
 
-                    if (parameterValueEndPos == -1)
-                        break;
+                    if (parameterValueEndPos == -1) { break; }
 
                     commaIndex = parameters.IndexOf(',', parameterValueEndPos + 1);
 
-                    if (commaIndex != -1)
-                        parameterStartOffset = ++commaIndex;
-                    else
-                        parameterStartOffset = parameters.Length;
+                    parameterStartOffset = commaIndex != -1 ? ++commaIndex : parameters.Length;
                 }
                 else
                 {

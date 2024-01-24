@@ -200,7 +200,7 @@ namespace Rtsp.Tests
 
             Assert.AreEqual(11, dataMessage.Channel);
             Assert.AreSame(testedListener, dataMessage.SourcePort);
-            Assert.AreEqual(data, dataMessage.Data);
+            Assert.AreEqual(data, dataMessage.Data.ToArray());
         }
 
         [Test]
@@ -308,9 +308,10 @@ namespace Rtsp.Tests
             Assert.That(result[index++], Is.EqualTo(data.Channel));
             Assert.That(result[index++], Is.EqualTo((dataLenght & 0xFF00) >> 8));
             Assert.That(result[index++], Is.EqualTo(dataLenght & 0x00FF));
+            byte[] dataArray = data.Data.ToArray();
             for (int i = 0; i < dataLenght; i++)
             {
-                Assert.That(result[index++], Is.EqualTo(data.Data[i]));
+                Assert.That(result[index++], Is.EqualTo(dataArray[i]));
             }
         }
 
@@ -343,9 +344,10 @@ namespace Rtsp.Tests
             Assert.That(result[index++], Is.EqualTo(data.Channel));
             Assert.That(result[index++], Is.EqualTo((dataLenght & 0xFF00) >> 8));
             Assert.That(result[index++], Is.EqualTo(dataLenght & 0x00FF));
+            byte[] dataArray = data.Data.ToArray();
             for (int i = 0; i < dataLenght; i++)
             {
-                Assert.That(result[index++], Is.EqualTo(data.Data[i]));
+                Assert.That(result[index++], Is.EqualTo(dataArray[i]));
             }
         }
 

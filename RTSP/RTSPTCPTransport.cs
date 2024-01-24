@@ -39,8 +39,8 @@ namespace Rtsp
         /// </summary>
         /// <param name="aHost">A host.</param>
         /// <param name="aPortNumber">A port number.</param>
-        public RtspTcpTransport(string aHost, int aPortNumber, NetworkCredential credential)
-            : this(new TcpClient(aHost, aPortNumber), credential)
+        public RtspTcpTransport(Uri uri, NetworkCredential credential)
+            : this(new TcpClient(uri.Host, uri.Port), credential)
         { }
 
         #region IRtspTransport Membres

@@ -39,7 +39,7 @@ namespace RtspMulticaster
             else
             {
                 response.ReturnCode = 200;
-                string sdp = Encoding.UTF8.GetString(request.Data);
+                string sdp = Encoding.UTF8.GetString(request.Data.Span);
                 var session = new RtspPushDescription(request.RtspUri.AbsolutePath, sdp);
                 PushDescriptions[request.RtspUri.AbsolutePath] = session;
                 foreach (var path in GetAllControlPath(sdp, request.RtspUri))

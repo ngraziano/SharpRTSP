@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +22,7 @@ namespace Rtsp
 
             if (!string.IsNullOrEmpty(qop))
             {
-                int commaIndex = qop.IndexOf(',');
+                int commaIndex = qop.IndexOf(',', StringComparison.OrdinalIgnoreCase);
                 _qop = commaIndex > -1 ? qop[..commaIndex] : qop;
             }
             uint cnonce = (uint)Guid.NewGuid().GetHashCode();
@@ -54,7 +55,62 @@ namespace Rtsp
             }
             return sb.ToString();
         }
+        public override bool IsValid(RtspMessage received_message)
+        {
+            string? authorization = received_message.Headers["Authorization"];
 
+            // Check Username, URI, Nonce and the MD5 hashed Response
+            if (authorization != null && authorization.StartsWith("Digest ", StringComparison.Ordinal))
+            {
+                string value_str = authorization.Substring(7); // remove 'Digest '
+                string[] values = value_str.Split(',');
+                string? auth_header_username = null;
+                string? auth_header_realm = null;
+                string? auth_header_nonce = null;
+                string? auth_header_uri = null;
+                string? auth_header_response = null;
+
+                foreach (string value in values)
+                {
+                    string[] tuple = value.Trim().Split(new char[] { '=' }, 2); // split on first '=' 
+                    if (tuple.Length == 2 && tuple[0].Equals("username", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_username = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                    }
+                    else if (tuple.Length == 2 && tuple[0].Equals("realm", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_realm = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                    }
+                    else if (tuple.Length == 2 && tuple[0].Equals("nonce", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_nonce = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                    }
+                    else if (tuple.Length == 2 && tuple[0].Equals("uri", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_uri = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                    }
+                    else if (tuple.Length == 2 && tuple[0].Equals("response", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_response = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                    }
+                }
+
+                // Create the MD5 Hash using all parameters passed in the Auth Header with the 
+                // addition of the 'Password'
+                MD5 md5 = MD5.Create();
+                string hashA1 = CalculateMD5Hash(md5, auth_header_username + ":" + auth_header_realm + ":" + Credentials.Password);
+                string hashA2 = CalculateMD5Hash(md5, received_message.Method + ":" + auth_header_uri);
+                string expected_response = CalculateMD5Hash(md5, hashA1 + ":" + auth_header_nonce + ":" + hashA2);
+
+                // Check if everything matches
+                // ToDo - extract paths from the URIs (ignoring SETUP's trackID)
+                return (string.Equals(auth_header_username, Credentials.UserName, StringComparison.OrdinalIgnoreCase))
+                    && (string.Equals(auth_header_realm, _realm, StringComparison.OrdinalIgnoreCase))
+                    && (string.Equals(auth_header_nonce, _nonce, StringComparison.OrdinalIgnoreCase))
+                    && (string.Equals(auth_header_response, expected_response, StringComparison.OrdinalIgnoreCase));
+            }
+            return false;
+        }
 
         // MD5 (lower case)
         private static string CalculateMD5Hash(MD5 md5_session, string input)
