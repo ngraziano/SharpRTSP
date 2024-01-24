@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System;
+using System.Net.Sockets;
 
 namespace Rtsp
 {
@@ -9,11 +10,11 @@ namespace Rtsp
         private const int SIO_UDP_CONNRESET = -1744830452;
         private static readonly byte[] EmptyOptionInValue = new byte[] { 0, 0, 0, 0 };
 
-        public static Socket CreateTcpClient() => new(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) 
+        public static Socket CreateTcpClient() => new(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
         {
-            ReceiveBufferSize=TcpReceiveBufferDefaultSize,
-            DualMode=true,
-            NoDelay=true,
+            ReceiveBufferSize = TcpReceiveBufferDefaultSize,
+            DualMode = true,
+            NoDelay = true,
         };
         public static Socket CreateUdpClient()
         {
@@ -22,7 +23,12 @@ namespace Rtsp
                 ReceiveBufferSize = UdpReceiveBufferDefaultSize,
                 DualMode = true,
             };
-            socket.IOControl((IOControlCode)SIO_UDP_CONNRESET, EmptyOptionInValue, null);
+
+            try
+            {
+                socket.IOControl((IOControlCode)SIO_UDP_CONNRESET, EmptyOptionInValue, null);
+            }
+            catch (PlatformNotSupportedException) { }
             return socket;
         }
     }
