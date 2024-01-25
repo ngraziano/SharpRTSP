@@ -14,7 +14,7 @@ namespace Rtsp.Messages
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Data message");
-            if (Data == null)
+            if (Data.IsEmpty)
                 stringBuilder.AppendLine("Data : null");
             else
                 stringBuilder.AppendLine($"Data length :-{Data.Length}-");
@@ -33,7 +33,7 @@ namespace Rtsp.Messages
         {
             Channel = Channel,
             SourcePort = SourcePort,
-            Data = Data is null ? null : Data.Clone() as byte[],
+            Data = Data,
         };
     }
 }

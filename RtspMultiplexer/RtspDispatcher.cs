@@ -238,7 +238,7 @@
             else
             {
                 destination = new RtspListener(
-                    new RtspTcpTransport(destinationUri.Host, destinationUri.Port)
+                    new RtspTcpTransport(destinationUri, new())
                     );
 
                 // un peu pourri mais pas d'autre idée...
@@ -916,7 +916,7 @@
                 sdpEncoding = Encoding.UTF8;
 
 
-            string sdpFile = sdpEncoding.GetString(aMessage.Data);
+            string sdpFile = sdpEncoding.GetString(aMessage.Data.Span);
 
             using (StringReader readsdp = new StringReader(sdpFile))
             {

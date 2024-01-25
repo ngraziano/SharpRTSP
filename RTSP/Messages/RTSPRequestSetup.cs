@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 
 namespace Rtsp.Messages
 {
@@ -17,7 +16,9 @@ namespace Rtsp.Messages
         public RtspTransport[] GetTransports()
         {
             if (!Headers.TryGetValue(RtspHeaderNames.Transport, out string? transportString) || transportString is null)
-                return new RtspTransport[] { new RtspTransport() };
+            {
+                return new RtspTransport[] { new() };
+            }
 
             return transportString.Split(',').Select(RtspTransport.Parse).ToArray();
         }
@@ -25,8 +26,10 @@ namespace Rtsp.Messages
         public void AddTransport(RtspTransport newTransport)
         {
             string actualTransport = string.Empty;
-            if (Headers.ContainsKey(RtspHeaderNames.Transport))
-                actualTransport = Headers[RtspHeaderNames.Transport] + ",";
+            if (Headers.TryGetValue(RtspHeaderNames.Transport, out string? value))
+            {
+                actualTransport = value + ",";
+            }
             Headers[RtspHeaderNames.Transport] = actualTransport + newTransport.ToString();
         }
     }

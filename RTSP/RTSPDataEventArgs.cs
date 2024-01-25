@@ -11,7 +11,7 @@ namespace Rtsp
         /// Initializes a new instance of the <see cref="RTSPDataEventArgs"/> class.
         /// </summary>
         /// <param name="data">A data.</param>
-        public RtspDataEventArgs(byte[] data)
+        public RtspDataEventArgs(ReadOnlyMemory<byte> data)
         {
             Data = data;
         }
@@ -20,6 +20,6 @@ namespace Rtsp
         /// Gets or sets the message.
         /// </summary>
         /// <value>The message.</value>
-        public byte[] Data { get; set; }
+        public ReadOnlyMemory<byte> Data { get; set; }
     }
 }

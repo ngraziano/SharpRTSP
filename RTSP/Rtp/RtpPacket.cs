@@ -3,13 +3,13 @@ using System.Linq;
 
 namespace Rtsp.Rtp
 {
-    public class RtpPacket
+    public readonly ref struct RtpPacket
     {
-        private readonly byte[] rawData;
+        private readonly ReadOnlySpan<byte> rawData;
 
-        public RtpPacket(byte[] rawData)
+        public RtpPacket(ReadOnlyMemory<byte> rawData)
         {
-            this.rawData = rawData;
+            this.rawData = rawData.Span;
         }
 
         public int Version => (rawData[0] >> 6) & 0x03;
@@ -28,11 +28,11 @@ namespace Rtsp.Rtp
 
         private int ExtensionSize => HasExtension ? ((rawData[HeaderSize + 2] << 8) + rawData[HeaderSize + 3] + 1) * 4 : 0;
 
-        private int PaddingSize => HasPadding ? rawData[^1] : 0;
+        private int PaddingSize => HasPadding ? rawData[rawData.Length - 1] : 0;
 
         public int PayloadSize => rawData.Length - HeaderSize - ExtensionSize - PaddingSize;
 
-        public ReadOnlyMemory<byte> Payload => rawData.AsMemory()[(HeaderSize + ExtensionSize)..^PaddingSize];
+        public ReadOnlyMemory<byte> Payload => new(rawData[(HeaderSize + ExtensionSize)..^PaddingSize].ToArray());
         public ReadOnlyMemory<byte> Extension => new(rawData[HeaderSize..ExtensionSize].ToArray());
     }
 }

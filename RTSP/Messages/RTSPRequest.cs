@@ -117,9 +117,13 @@ namespace Rtsp.Messages
             get
             {
                 if (commandArray.Length < 2 || commandArray[1] == "*")
+                {
                     return null;
+                }
                 if (_RtspUri == null)
+                {
                     Uri.TryCreate(commandArray[1], UriKind.Absolute, out _RtspUri);
+                }
                 return _RtspUri;
             }
             set
@@ -144,9 +148,9 @@ namespace Rtsp.Messages
                 ReturnCode = 200,
                 CSeq = CSeq
             };
-            if (Headers.ContainsKey(RtspHeaderNames.Session))
+            if (Headers.TryGetValue(RtspHeaderNames.Session, out string? value))
             {
-                returnValue.Headers[RtspHeaderNames.Session] = Headers[RtspHeaderNames.Session];
+                returnValue.Headers[RtspHeaderNames.Session] = value;
             }
 
             return returnValue;

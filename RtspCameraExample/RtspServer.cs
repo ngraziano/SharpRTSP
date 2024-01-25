@@ -27,6 +27,7 @@ public class RtspServer : IDisposable
     private readonly ILogger _logger;
     private CancellationTokenSource? _Stopping;
     private Thread? _ListenTread;
+    private uint _nonceCounter = 0;
 
     const int video_payload_type = 96; // = user defined payload, requuired for H264
     byte[]? raw_sps;
@@ -37,6 +38,7 @@ public class RtspServer : IDisposable
     private readonly List<RTSPConnection> rtspConnectionList = []; // list of RTSP Listeners
 
     int session_handle = 1;
+    private readonly NetworkCredential credential;
     private readonly Authentication? auth;
 
     /// <summary>
@@ -57,10 +59,12 @@ public class RtspServer : IDisposable
         if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
         {
             const string realm = "SharpRTSPServer";
-            auth = new AuthenticationDigest(username, password, realm);
+            credential = new(username, password);
+            auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty);
         }
         else
         {
+            credential = new();
             auth = null;
         }
 
@@ -96,7 +100,7 @@ public class RtspServer : IDisposable
                 _logger.LogDebug("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
 
                 // Hand the incoming TCP connection over to the RTSP classes
-                var rtsp_socket = new RtspTcpTransport(oneClient);
+                var rtsp_socket = new RtspTcpTransport(oneClient, credential);
                 RtspListener newListener = new(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                 newListener.MessageReceived += RTSPMessageReceived;
 
@@ -178,7 +182,7 @@ public class RtspServer : IDisposable
                 {
                     // Send a 401 Authentication Failed reply, then close the RTSP Socket
                     RtspResponse authorization_response = message.CreateResponse();
-                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader());
+                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, Array.Empty<byte>()));
                     authorization_response.ReturnCode = 401;
                     listener.SendMessage(authorization_response);
 
@@ -195,7 +199,7 @@ public class RtspServer : IDisposable
                 // Send a 401 Authentication Failed with extra info in WWW-Authenticate
                 // to tell the Client if we are using Basic or Digest Authentication
                 RtspResponse authorization_response = message.CreateResponse();
-                authorization_response.AddHeader("WWW-Authenticate: " + auth.GetHeader()); // 'Basic' or 'Digest'
+                authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, Array.Empty<byte>())); // 'Basic' or 'Digest'
                 authorization_response.ReturnCode = 401;
                 listener.SendMessage(authorization_response);
                 return;

@@ -1,7 +1,9 @@
-﻿using Rtsp.Messages;
+﻿using Rtsp;
+using Rtsp.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +12,26 @@ namespace RtspClientExample
 {
     public static class RTSPMessageAuthExtension
     {
+        public static void AddAuthorization(this RtspMessage message, NetworkCredential credentials, Authentication authentication, Uri uri, uint commandCounter)
+        {
+            switch (authentication)
+            {
+                case AuthenticationBasic basic:
+                    {
+                        string authorization = basic.GetResponse(commandCounter, string.Empty, string.Empty, Array.Empty<byte>());
+                        message.Headers.Add(RtspHeaderNames.Authorization, authorization);
+                    }
+                    break;
+                case AuthenticationDigest digest:
+                    {
+                        string authorization = digest.GetResponse(commandCounter, uri.AbsoluteUri, message.Method, Array.Empty<byte>());
+                        message.Headers.Add(RtspHeaderNames.Authorization, authorization);
+
+                    }
+                    break;
+            }
+        }
+
         // Generate Basic or Digest Authorization
         public static void AddAuthorization(this RtspMessage message, string username, string password,
             string auth_type, string realm, string nonce, string url)

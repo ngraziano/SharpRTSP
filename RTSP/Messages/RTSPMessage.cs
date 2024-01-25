@@ -179,7 +179,7 @@
         /// </summary>
         public void AdjustContentLength()
         {
-            if (Data?.Length > 0)
+            if (!Data.IsEmpty)
             {
                 Headers["Content-Length"] = Data.Length.ToString(CultureInfo.InvariantCulture);
             }
@@ -202,14 +202,13 @@
                 throw new ArgumentNullException(nameof(stream));
             if (!stream.CanWrite)
             {
-                throw
-                  new ArgumentException("Stream CanWrite == false, can't send message to it", nameof(stream));
+                throw new ArgumentException("Stream CanWrite == false, can't send message to it", nameof(stream));
             }
             // </pex>
             Contract.EndContractBlock();
 
             Encoding encoder = Encoding.UTF8;
-            var outputString = new StringBuilder();
+            StringBuilder outputString = new();
 
             AdjustContentLength();
 
@@ -227,10 +226,45 @@
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
-                if (Data?.Length > 0)
-                    stream.Write(Data.AsSpan());
+                if (!Data.IsEmpty)
+                    stream.Write(Data.Span);
             }
             stream.Flush();
+        }
+
+        /// <summary>
+        /// Equivalent to <see cref="SendTo(Stream)"/> but without a stream, just a byte[] array to return
+        /// </summary>
+        /// <returns></returns>
+        public byte[] Prepare()
+        {
+            MemoryStream ms = new();
+            Encoding encoder = Encoding.UTF8;
+            StringBuilder outputString = new();
+
+            AdjustContentLength();
+
+            // output header
+            outputString.Append(Command);
+            outputString.Append("\r\n");
+            foreach (KeyValuePair<string, string?> item in Headers)
+            {
+                outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
+            }
+            outputString.Append("\r\n");
+            byte[] buffer = encoder.GetBytes(outputString.ToString());
+            lock (ms)
+            {
+                ms.Write(buffer, 0, buffer.Length);
+
+                // Output data
+                if (!Data .IsEmpty)
+                {
+                    ms.Write(Data.Span);
+                }
+            }
+
+            return ms.ToArray();
         }
 
         /// <summary>
@@ -246,9 +280,9 @@
                 stringBuilder.Append("Header : ").Append(item.Key).Append(": ").AppendLine(item.Value);
             }
 
-            if (Data?.Length > 0)
+            if (!Data.IsEmpty)
             {
-                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data)).Append('-').AppendLine();
+                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data.Span)).Append('-').AppendLine();
             }
 
             return stringBuilder.ToString();
@@ -268,7 +302,7 @@
             {
                 returnValue.Headers.Add(item.Key, item.Value);
             }
-            returnValue.Data = Data != null ? Data.Clone() as byte[] : null;
+            returnValue.Data = Data;
             returnValue.SourcePort = SourcePort;
 
             return returnValue;
