@@ -679,7 +679,7 @@ namespace Rtsp.Rtp
             {
                 var payload = payloadMemory.Span;
 
-                if (rtp_payloads.Count < JPEG_HEADER_SIZE) { return null; }
+                if (payload.Length < JPEG_HEADER_SIZE) { return null; }
 
                 int offset = 1;
                 int fragmentOffset = payload[offset] << 16 | payload[offset + 1] << 8 | payload[offset + 2];
@@ -699,7 +699,7 @@ namespace Rtsp.Rtp
 
                 if (type > 63)
                 {
-                    dri = payload[offset] << 8 | payload[offset];
+                    dri = payload[offset] << 8 | payload[offset + 1];
                     offset += 4;
                 }
 
@@ -750,7 +750,7 @@ namespace Rtsp.Rtp
                 int dataSize = payload.Length - offset;
                 if (dataSize < 0) { return null; }
 
-                _frameStream.Write(payload);
+                _frameStream.Write(payload[offset..]);
             }
 
             return _frameStream.ToArray();
