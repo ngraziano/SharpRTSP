@@ -13,7 +13,7 @@ namespace Rtsp.Sdp
 
             // end of file ?
             if (string.IsNullOrEmpty(line))
-                return new (string.Empty, string.Empty);
+                return new(string.Empty, string.Empty);
 
             string[] parts = line.Split(new char[] { '=' }, 2);
             if (parts.Length != 2)
@@ -21,7 +21,7 @@ namespace Rtsp.Sdp
             if (parts[0].Length != 1)
                 throw new InvalidDataException();
 
-            return new (parts[0], parts[1]);
+            return new(parts[0], parts[1]);
         }
 
         /// <summary>
@@ -29,8 +29,9 @@ namespace Rtsp.Sdp
         /// As define in RFC 4566
         /// </summary>
         /// <param name="sdpStream">The SDP stream.</param>
-        /// <returns></returns>
-        public static SdpFile Read(TextReader sdpStream)
+        /// <param name="strictParsing">if set to <c>false</c> accept some error seen with camera.</param>
+        /// <returns>Parsed SDP file</returns>
+        public static SdpFile Read(TextReader sdpStream, bool strictParsing = false)
         {
             SdpFile returnValue = new();
             KeyValuePair<string, string> value = GetKeyValue(sdpStream);
@@ -58,8 +59,7 @@ namespace Rtsp.Sdp
             }
 
             // Session mandatory.
-            // However the MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
-            // does not include the 'Session' so supress InvalidDatarException
+
             if (value.Key == "s")
             {
                 returnValue.Session = value.Value;
@@ -67,7 +67,10 @@ namespace Rtsp.Sdp
             }
             else
             {
-                // throw new InvalidDataException(); // we should throw, but instead we just ignore the error
+                // However the MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
+                // does not include the 'Session' so supress InvalidDatarException
+                if (strictParsing)
+                    throw new InvalidDataException("session missing");
             }
 
             // Session Information optional
@@ -151,7 +154,18 @@ namespace Rtsp.Sdp
             // Skip over all other Key/Value pairs until the 'm=' key
             while (value.Key != "m" && value.Key != string.Empty)
             {
+                if(strictParsing)
+                    throw new InvalidDataException("Unexpected key/value pair");
+
                 value = GetKeyValue(sdpStream);
+
+                // For old sony SNC-CS20 we need to collect all attributes
+                //Attribute optional multiple
+                while (value.Key == "a")
+                {
+                    returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
+                    value = GetKeyValue(sdpStream);
+                }
             }
 
             // Media
