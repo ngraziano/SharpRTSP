@@ -133,7 +133,7 @@ namespace Rtsp.Messages
                 {
                     Array.Resize(ref commandArray, 3);
                 }
-                commandArray[1] = (value != null ? value.ToString().TrimEnd('/') : "*");
+                commandArray[1] = value != null ? value.ToString() : "*";
             }
         }
 
