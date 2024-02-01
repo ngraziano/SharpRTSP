@@ -732,6 +732,10 @@ namespace RtspClientExample
                         RtspUri = _uri,
                         Session = session
                     };
+
+                    // Need for old sony camera SNC-CS20
+                    play_message.Headers.Add("range", "npt=0.000-");
+
                     play_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
                     rtspClient?.SendMessage(play_message);
                 }
@@ -766,6 +770,13 @@ namespace RtspClientExample
             // These are the channels we request. The camera confirms the channel in the SETUP Reply.
             // But, a Panasonic decides to use different channels in the reply.
             int nextFreeRtpChannel = 0;
+
+            // For old sony cameras, we need to use the control uri from the sdp
+            var customControlUri = sdp_data.Attributs.FirstOrDefault(x => x.Key == "control");
+            if (customControlUri is not null)
+            {
+                _uri = new Uri(_uri!, customControlUri.Value);
+            }
 
             // Process each 'Media' Attribute in the SDP (each sub-stream)
             // to look for first supported video substream
@@ -984,17 +995,20 @@ namespace RtspClientExample
             if (attrib is not null)
             {
                 string sdp_control = attrib.Value;
-                string control;  // the "track" or "stream id"
 
-                if (sdp_control.ToLower().StartsWith("rtsp://") || sdp_control.ToLower().StartsWith("http://"))
+                if (sdp_control.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase)
+                    || sdp_control.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                 {
-                    control = sdp_control; //absolute path
+                    // the "track" or "stream id"
+                    string control = sdp_control; //absolute path
+                    controlUri = new Uri(control);
                 }
                 else
                 {
-                    control = _uri + "/" + sdp_control; // relative path
+                    // relative path
+                    controlUri = new Uri(_uri!, sdp_control);
                 }
-                controlUri = new Uri(control);
+
             }
 
             return controlUri;

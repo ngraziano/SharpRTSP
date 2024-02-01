@@ -25,7 +25,9 @@ namespace RtspClientExample
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
 
-            string url = "http://192.168.3.72/profile1/media.smp";
+            string url = "rtsp://192.168.0.89/media/video2";
+
+            // string url = "http://192.168.3.72/profile1/media.smp";
             string username = "admin";
             string password = "Admin123!";
             // Axis Tests
@@ -172,6 +174,17 @@ namespace RtspClientExample
 
             };
 
+            int indexImg = 0;
+            client.ReceivedJpeg += (_, args) =>
+            {
+                foreach (var data in args.Data)
+                {
+                    string filename = "rtsp_capture_" + now + "-" + indexImg++ + ".jpg";
+                    using var fs = new FileStream(filename, FileMode.Create);
+                    fs.Write(data.Span);
+                }
+            };
+
             client.ReceivedG711 += (_, args) =>
             {
                 if (fs_a == null && args.Format.Equals("PCMU"))
@@ -265,7 +278,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
@@ -297,7 +310,8 @@ namespace RtspClientExample
 
         private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)
         {
-            fs_v.Write(new byte[] { 0x00, 0x00, 0x00, 0x01 }, 0, 4);  // Write Start Code
+            // Write Start Code
+            fs_v.Write([0x00, 0x00, 0x00, 0x01]);
             fs_v.Write(nal);
         }
     }
