@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 
@@ -6,16 +7,16 @@ namespace Rtsp.Rtp
 {
     public class JPEGPayload : IPayloadProcessor
     {
-        const int MARKER_SOF0 = 0xffc0;          // start-of-frame, baseline scan
-        const int MARKER_SOI = 0xffd8;           // start of image
-        const int MARKER_EOI = 0xffd9;           // end of image
-        const int MARKER_SOS = 0xffda;           // start of scan
-        const int MARKER_DRI = 0xffdd;           // restart interval
-        const int MARKER_DQT = 0xffdb;           // define quantization tables
-        const int MARKER_DHT = 0xffc4;           // huffman tables
-        const int MARKER_APP_FIRST = 0xffe0;
-        const int MARKER_APP_LAST = 0xffef;
-        const int MARKER_COMMENT = 0xfffe;
+        const ushort MARKER_SOF0 = 0xffc0;          // start-of-frame, baseline scan
+        const ushort MARKER_SOI = 0xffd8;           // start of image
+        const ushort MARKER_EOI = 0xffd9;           // end of image
+        const ushort MARKER_SOS = 0xffda;           // start of scan
+        const ushort MARKER_DRI = 0xffdd;           // restart interval
+        const ushort MARKER_DQT = 0xffdb;           // define quantization tables
+        const ushort MARKER_DHT = 0xffc4;           // huffman tables
+        const ushort MARKER_APP_FIRST = 0xffe0;
+        const ushort MARKER_APP_LAST = 0xffef;
+        const ushort MARKER_COMMENT = 0xfffe;
 
         const int JPEG_HEADER_SIZE = 8;
         const int JPEG_MAX_SIZE = 16 * 1024 * 1024;
@@ -108,7 +109,6 @@ namespace Rtsp.Rtp
 
 
         readonly MemoryStream _frameStream = new(64 * 1024);
-        //private readonly List<byte[]> temporary_rtp_payloads = [];
         private readonly List<ReadOnlyMemory<byte>> temporaryRtpPayloads = new(256);
 
         private ReadOnlyMemory<byte> extensionMemory;
@@ -125,14 +125,14 @@ namespace Rtsp.Rtp
 
         private bool _hasExternalQuantizationTable;
 
-        private byte[] _jpegHeaderBytes = Array.Empty<byte>();
+        private byte[] _jpegHeaderBytes = [];
 
-        private byte[] _quantizationTables = Array.Empty<byte>();
+        private byte[] _quantizationTables = [];
         private int _quantizationTablesLength;
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-            temporaryRtpPayloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
+            temporaryRtpPayloads.Add(packet.Payload);
 
             if (packet.HasExtension)
             {
@@ -149,10 +149,10 @@ namespace Rtsp.Rtp
                 extensionMemory = null;
                 hasExtensionMemory = false;
 
-                return new() { nalUnits };
+                return [nalUnits];
             }
             // we don't have a frame yet. Keep accumulating RTP packets
-            return new();
+            return [];
         }
 
         private ReadOnlyMemory<byte> ProcessJPEGRTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
@@ -162,18 +162,20 @@ namespace Rtsp.Rtp
             if (hasExtensionMemory)
             {
                 ReadOnlySpan<byte> extension = extensionMemory.Span;
-                int extensionType = (extension[0] << 8) + (extension[1] << 0);
+                int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
                 if (extensionType == MARKER_SOI)
                 {
                     int headerPosition = 4;
                     int extensionSize = extension.Length;
                     while (headerPosition < (extensionSize - 4))
                     {
-                        int blockType = (extension[headerPosition] << 8) + extension[headerPosition + 1];
-                        int blockSize = (extension[headerPosition + 2] << 8) + extension[headerPosition + 3];
+                        int blockType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
+                        int blockSize = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 2)..]);
 
                         if (blockType == MARKER_SOF0)
                         {
+                            // TODO simplify this : the method search SOF0 marker and extract width and height but we
+                            // are already at the SOF0 marker
                             if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
                             {
                                 _extensionFrameWidth = width / 8;
@@ -209,7 +211,7 @@ namespace Rtsp.Rtp
 
                 if (type > 63)
                 {
-                    dri = payload[offset] << 8 | payload[offset + 1];
+                    dri = BinaryPrimitives.ReadInt16BigEndian(payload[offset..]);
                     offset += 4;
                 }
 
@@ -222,16 +224,16 @@ namespace Rtsp.Rtp
                         if (mbz == 0)
                         {
                             _hasExternalQuantizationTable = true;
-                            int quantizationTablesLength = payload[offset + 2] << 8 | payload[offset + 3];
+                            int quantizationTablesLength = BinaryPrimitives.ReadUInt16BigEndian(payload[(offset + 2)..]);
                             offset += 4;
 
-                            if (!ArrayUtils.IsBytesEquals(payload.ToArray(), offset, quantizationTablesLength, _quantizationTables, 0, _quantizationTablesLength))
+                            if (!payload[offset..(offset + quantizationTablesLength)].SequenceEqual(_quantizationTables.AsSpan()[0.._quantizationTablesLength]))
                             {
                                 if (_quantizationTables.Length < quantizationTablesLength)
                                 {
                                     _quantizationTables = new byte[quantizationTablesLength];
                                 }
-                                Buffer.BlockCopy(payload.ToArray(), offset, _quantizationTables, 0, quantizationTablesLength);
+                                payload[offset..(offset + quantizationTablesLength)].CopyTo(_quantizationTables);
                                 _quantizationTablesLength = quantizationTablesLength;
                                 quantizationTableChanged = true;
                             }
@@ -239,8 +241,12 @@ namespace Rtsp.Rtp
                         }
                     }
 
-                    if (quantizationTableChanged || _currentType != type || _currentQ != q || _currentFrameWidth != width || _currentFrameHeight != height ||
-                        _currentDri != dri)
+                    if (quantizationTableChanged
+                        || _currentType != type
+                        || _currentQ != q
+                        || _currentFrameWidth != width
+                        || _currentFrameHeight != height
+                        || _currentDri != dri)
                     {
                         _currentType = type;
                         _currentQ = q;
@@ -307,17 +313,17 @@ namespace Rtsp.Rtp
             int qtablesCount = qtlen > 64 ? 2 : 1;
             return 485 + qtablesCount * 5 + qtlen + (dri > 0 ? 6 : 0);
         }
-        private void FillJpegHeader(byte[] buffer, int type, int width, int height, int dri)
+        private void FillJpegHeader(Span<byte> buffer, int type, int width, int height, int dri)
         {
             int qtablesCount = _quantizationTablesLength > 64 ? 2 : 1;
             int offset = 0;
 
-            buffer[offset++] = 0xFF;
-            buffer[offset++] = 0xD8;
-            buffer[offset++] = 0xFF;
-            buffer[offset++] = 0xe0;
-            buffer[offset++] = 0x00;
-            buffer[offset++] = 0x10;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_SOI);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_APP_FIRST);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], 16);
+            offset += 2;
             buffer[offset++] = (byte)'J';
             buffer[offset++] = (byte)'F';
             buffer[offset++] = (byte)'I';
@@ -333,25 +339,27 @@ namespace Rtsp.Rtp
             buffer[offset++] = 0x00;
             buffer[offset++] = 0x00;
 
+
+
             if (dri > 0)
             {
-                buffer[offset++] = 0xFF;
-                buffer[offset++] = 0xdd;
-                buffer[offset++] = 0x00;
-                buffer[offset++] = 0x04;
-                buffer[offset++] = (byte)(dri >> 8);
-                buffer[offset++] = (byte)dri;
+                BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_DRI);
+                offset += 2;
+                BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], 4);
+                offset += 2;
+                BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)dri);
+                offset += 2;
             }
 
             int tableSize = qtablesCount == 1 ? _quantizationTablesLength : _quantizationTablesLength / 2;
-            buffer[offset++] = 0xFF;
-            buffer[offset++] = 0xdb;
-            buffer[offset++] = 0x00;
-            buffer[offset++] = (byte)(tableSize + 3);
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_DQT);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)(tableSize + 3));
+            offset += 2;
             buffer[offset++] = 0x00;
 
             int qtablesOffset = 0;
-            Buffer.BlockCopy(_quantizationTables, qtablesOffset, buffer, offset, tableSize);
+            _quantizationTables.AsSpan(0, tableSize).CopyTo(buffer[offset..]);
             qtablesOffset += tableSize;
             offset += tableSize;
 
@@ -359,24 +367,24 @@ namespace Rtsp.Rtp
             {
                 tableSize = _quantizationTablesLength - _quantizationTablesLength / 2;
 
-                buffer[offset++] = 0xFF;
-                buffer[offset++] = 0xdb;
-                buffer[offset++] = 0x00;
-                buffer[offset++] = (byte)(tableSize + 3);
+                BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_DQT);
+                offset += 2;
+                BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)(tableSize + 3));
+                offset += 2;
                 buffer[offset++] = 0x01;
-                Buffer.BlockCopy(_quantizationTables, qtablesOffset, buffer, offset, tableSize);
+                _quantizationTables.AsSpan(qtablesOffset, tableSize).CopyTo(buffer[offset..]);
                 offset += tableSize;
             }
 
-            buffer[offset++] = 0xFF;
-            buffer[offset++] = 0xc0;
-            buffer[offset++] = 0x00;
-            buffer[offset++] = 0x11;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_SOF0);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], 17);
+            offset += 2;
             buffer[offset++] = 0x08;
-            buffer[offset++] = (byte)(height >> 8);
-            buffer[offset++] = (byte)height;
-            buffer[offset++] = (byte)(width >> 8);
-            buffer[offset++] = (byte)width;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)height);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)width);
+            offset += 2;
             buffer[offset++] = 0x03;
             buffer[offset++] = 0x01;
             buffer[offset++] = (type & 1) != 0 ? (byte)0x22 : (byte)0x21;
@@ -388,26 +396,15 @@ namespace Rtsp.Rtp
             buffer[offset++] = 0x11;
             buffer[offset++] = qtablesCount == 1 ? (byte)0x00 : (byte)0x01;
 
-            CreateHuffmanHeader(buffer, offset, LumDcCodelens, LumDcCodelens.Length, LumDcSymbols, LumDcSymbols.Length,
-                0, 0);
-            offset += 5 + LumDcCodelens.Length + LumDcSymbols.Length;
+            offset += CreateHuffmanHeader(buffer[offset..], LumDcCodelens, LumDcSymbols, 0, 0);
+            offset += CreateHuffmanHeader(buffer[offset..], LumAcCodelens, LumAcSymbols, 0, 1);
+            offset += CreateHuffmanHeader(buffer[offset..], ChmDcCodelens, ChmDcSymbols, 1, 0);
+            offset += CreateHuffmanHeader(buffer[offset..], ChmAcCodelens, ChmAcSymbols, 1, 1);
 
-            CreateHuffmanHeader(buffer, offset, LumAcCodelens, LumAcCodelens.Length, LumAcSymbols, LumAcSymbols.Length,
-                0, 1);
-            offset += 5 + LumAcCodelens.Length + LumAcSymbols.Length;
-
-            CreateHuffmanHeader(buffer, offset, ChmDcCodelens, ChmDcCodelens.Length, ChmDcSymbols, ChmDcSymbols.Length,
-                1, 0);
-            offset += 5 + ChmDcCodelens.Length + ChmDcSymbols.Length;
-
-            CreateHuffmanHeader(buffer, offset, ChmAcCodelens, ChmAcCodelens.Length, ChmAcSymbols, ChmAcSymbols.Length,
-                1, 1);
-            offset += 5 + ChmAcCodelens.Length + ChmAcSymbols.Length;
-
-            buffer[offset++] = 0xFF;
-            buffer[offset++] = 0xda;
-            buffer[offset++] = 0x00;
-            buffer[offset++] = 0x0C;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_SOS);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], 0x0C);
+            offset += 2;
             buffer[offset++] = 0x03;
             buffer[offset++] = 0x01;
             buffer[offset++] = 0x00;
@@ -420,17 +417,19 @@ namespace Rtsp.Rtp
             buffer[offset] = 0x00;
         }
 
-        private static void CreateHuffmanHeader(byte[] buffer, int offset, byte[] codelens, int ncodes, byte[] symbols,
-                int nsymbols, int tableNo, int tableClass)
+        private static int CreateHuffmanHeader(Span<byte> buffer, Span<byte> codelens, Span<byte> symbols, int tableNo, int tableClass)
         {
-            buffer[offset++] = 0xff;
-            buffer[offset++] = 0xc4;
-            buffer[offset++] = 0;
-            buffer[offset++] = (byte)(3 + ncodes + nsymbols);
+            int offset = 0;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], MARKER_DHT);
+            offset += 2;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer[offset..], (ushort)(3 + codelens.Length + symbols.Length));
+            offset += 2;
             buffer[offset++] = (byte)(tableClass << 4 | tableNo);
-            Buffer.BlockCopy(codelens, 0, buffer, offset, ncodes);
-            offset += ncodes;
-            Buffer.BlockCopy(symbols, 0, buffer, offset, nsymbols);
+            codelens.CopyTo(buffer[offset..]);
+            offset += codelens.Length;
+            symbols.CopyTo(buffer[offset..]);
+            offset += symbols.Length;
+            return offset;
         }
 
         private static int JpegExtractExtensionWidthHeight(ReadOnlySpan<byte> extension, int headerPosition, int size, out int width, out int height)
