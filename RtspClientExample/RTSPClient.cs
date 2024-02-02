@@ -241,7 +241,7 @@ namespace RtspClientExample
             if (e.Data.IsEmpty)
                 return;
 
-            var rtpPacket = new RtpPacket(e.Data);
+            var rtpPacket = new RtpPacket(e.Data.Span);
 
 
             if (rtpPacket.PayloadType != video_payload)
@@ -364,7 +364,7 @@ namespace RtspClientExample
                 return;
 
             // Received some Audio Data on the correct channel.
-            var rtpPacket = new RtpPacket(e.Data);
+            var rtpPacket = new RtpPacket(e.Data.Span);
 
             // Check the payload type in the RTP packet matches the Payload Type value from the SDP
             if (rtpPacket.PayloadType != audio_payload)

@@ -7,9 +7,9 @@ namespace Rtsp.Rtp
     {
         private readonly ReadOnlySpan<byte> rawData;
 
-        public RtpPacket(ReadOnlyMemory<byte> rawData)
+        public RtpPacket(ReadOnlySpan<byte> rawData)
         {
-            this.rawData = rawData.Span;
+            this.rawData = rawData;
         }
 
         public int Version => (rawData[0] >> 6) & 0x03;
@@ -32,7 +32,7 @@ namespace Rtsp.Rtp
 
         public int PayloadSize => rawData.Length - HeaderSize - ExtensionSize - PaddingSize;
 
-        public ReadOnlyMemory<byte> Payload => new(rawData[(HeaderSize + ExtensionSize)..^PaddingSize].ToArray());
-        public ReadOnlyMemory<byte> Extension => new(rawData[HeaderSize..ExtensionSize].ToArray());
+        public ReadOnlySpan<byte> Payload => rawData[(HeaderSize + ExtensionSize)..^PaddingSize];
+        public ReadOnlySpan<byte> Extension => rawData[HeaderSize..ExtensionSize];
     }
 }

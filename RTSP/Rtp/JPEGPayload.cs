@@ -109,10 +109,7 @@ namespace Rtsp.Rtp
 
 
         readonly MemoryStream _frameStream = new(64 * 1024);
-        private readonly List<ReadOnlyMemory<byte>> temporaryRtpPayloads = new(256);
-
-        private ReadOnlyMemory<byte> extensionMemory;
-        private bool hasExtensionMemory;
+        private readonly List<byte[]> temporaryRtpPayloads = [];
 
         private int _currentDri;
         private int _currentQ;
@@ -132,12 +129,12 @@ namespace Rtsp.Rtp
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-            temporaryRtpPayloads.Add(packet.Payload);
+            // need to copy data here to keep get ownership
+            temporaryRtpPayloads.Add(packet.Payload.ToArray());
 
             if (packet.HasExtension)
             {
-                extensionMemory = packet.Extension;
-                hasExtensionMemory = true;
+                ProcessExtension(packet.Extension);
             }
 
             if (packet.IsMarker)
@@ -145,47 +142,15 @@ namespace Rtsp.Rtp
                 // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the results
                 ReadOnlyMemory<byte> nalUnits = ProcessJPEGRTPFrame(temporaryRtpPayloads);
                 temporaryRtpPayloads.Clear();
-
-                extensionMemory = null;
-                hasExtensionMemory = false;
-
                 return [nalUnits];
             }
             // we don't have a frame yet. Keep accumulating RTP packets
             return [];
         }
 
-        private ReadOnlyMemory<byte> ProcessJPEGRTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
+        private ReadOnlyMemory<byte> ProcessJPEGRTPFrame(List<byte[]> rtp_payloads)
         {
             _frameStream.SetLength(0);
-
-            if (hasExtensionMemory)
-            {
-                ReadOnlySpan<byte> extension = extensionMemory.Span;
-                int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
-                if (extensionType == MARKER_SOI)
-                {
-                    int headerPosition = 4;
-                    int extensionSize = extension.Length;
-                    while (headerPosition < (extensionSize - 4))
-                    {
-                        int blockType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
-                        int blockSize = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 2)..]);
-
-                        if (blockType == MARKER_SOF0)
-                        {
-                            // TODO simplify this : the method search SOF0 marker and extract width and height but we
-                            // are already at the SOF0 marker
-                            if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
-                            {
-                                _extensionFrameWidth = width / 8;
-                                _extensionFrameHeight = height / 8;
-                            }
-                        }
-                        headerPosition += (blockSize + 2);
-                    }
-                }
-            }
 
             foreach (ReadOnlyMemory<byte> payloadMemory in rtp_payloads)
             {
@@ -271,6 +236,33 @@ namespace Rtsp.Rtp
 
             return _frameStream.ToArray();
 
+        }
+
+        private void ProcessExtension(ReadOnlySpan<byte> extension)
+        {
+            int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
+            if (extensionType == MARKER_SOI)
+            {
+                int headerPosition = 4;
+                int extensionSize = extension.Length;
+                while (headerPosition < (extensionSize - 4))
+                {
+                    int blockType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
+                    int blockSize = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 2)..]);
+
+                    if (blockType == MARKER_SOF0)
+                    {
+                        // TODO simplify this : the method search SOF0 marker and extract width and height but we
+                        // are already at the SOF0 marker
+                        if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
+                        {
+                            _extensionFrameWidth = width / 8;
+                            _extensionFrameHeight = height / 8;
+                        }
+                    }
+                    headerPosition += (blockSize + 2);
+                }
+            }
         }
 
         private void ReInitializeJpegHeader()

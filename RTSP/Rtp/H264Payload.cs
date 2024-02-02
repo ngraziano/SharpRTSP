@@ -33,7 +33,7 @@ namespace Rtsp.Rtp
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
             // Add to the list of payloads for the current Frame of video
-            temporaryRtpPayloads.Add(packet.Payload);
+            temporaryRtpPayloads.Add(packet.Payload.ToArray());
 
             if (packet.IsMarker)
             {

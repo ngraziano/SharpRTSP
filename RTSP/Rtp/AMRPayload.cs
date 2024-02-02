@@ -16,12 +16,12 @@ namespace Rtsp.Rtp
             // First byte is the Payload Header
             if (packet.PayloadSize < 1)
             {
-                return new();
+                return [];
             }
             // byte payloadHeader = payload[0];
 
             // The rest of the RTP packet is the AMR data
-            return new() { packet.Payload[1..] };
+            return [packet.Payload[1..].ToArray()];
         }
     }
 }

@@ -39,7 +39,8 @@ namespace Rtsp.Rtp
         {
             // Add payload to the List of payloads for the current Frame of Video
             // ie all the payloads with M=0 up to the final payload where M=1
-            temporary_rtp_payloads.Add(packet.Payload); // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
+            // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
+            temporary_rtp_payloads.Add(packet.Payload.ToArray());
 
             if (packet.IsMarker)
             {
@@ -51,7 +52,7 @@ namespace Rtsp.Rtp
             }
 
             // we don't have a frame yet. Keep accumulating RTP packets
-            return new();
+            return [];
         }
 
         // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp

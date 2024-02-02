@@ -19,9 +19,8 @@ namespace Rtsp.Rtp
             // 3 - R2b 50 octets containing Layer 0 plus Layer 2 data
             // 4 - R3 60 octets containing Layer 0 plus Layer 1 plus Layer 2 data
 
-            var rtpPaylodMemory = packet.Payload;
-            var rtpPayloadSpan = packet.Payload.Span;
-            byte modeIndex = (byte)(rtpPayloadSpan[0] & 0x07);
+            var rtpPayload = packet.Payload;
+            byte modeIndex = (byte)(rtpPayload[0] & 0x07);
             int sizeOfOneFrame = modeIndex switch
             {
                 1 => 40,
@@ -37,14 +36,14 @@ namespace Rtsp.Rtp
             }
 
             // Return just the basic u-Law or A-Law audio (the Layer 0 audio)
-            List<ReadOnlyMemory<byte>> audio_data = new();
+            List<ReadOnlyMemory<byte>> audio_data = [];
 
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
-            while (frame_start + sizeOfOneFrame < rtpPayloadSpan.Length)
+            while (frame_start + sizeOfOneFrame < rtpPayload.Length)
             {
                 // only copy the Layer 0 data (the first 40 bytes)
-                audio_data.Add(rtpPaylodMemory[frame_start..(frame_start + 40)]);
+                audio_data.Add(rtpPayload[frame_start..(frame_start + 40)].ToArray());
                 frame_start += sizeOfOneFrame;
             }
             return audio_data;

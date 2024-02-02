@@ -115,8 +115,7 @@ namespace Rtsp.Rtp
             List<ReadOnlyMemory<byte>> audio_data = new();
 
             int position = 0;
-            var rtpPayloadMemory = packet.Payload;
-            var rtp_payload = packet.Payload.Span;
+            var rtp_payload = packet.Payload;
 
             // 2 bytes for AU Header Length, 2 bytes of AU Header payload
             while (position + 4 <= packet.PayloadSize)
@@ -134,7 +133,7 @@ namespace Rtsp.Rtp
                 // extract the AAC block
                 if (position + aac_frame_size > rtp_payload.Length) break; // not enough data to copy
 
-                audio_data.Add(rtpPayloadMemory[position..(position + aac_frame_size)]);
+                audio_data.Add(rtp_payload[position..(position + aac_frame_size)].ToArray());
                 position += aac_frame_size;
             }
 

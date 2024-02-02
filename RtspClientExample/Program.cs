@@ -177,12 +177,14 @@ namespace RtspClientExample
             int indexImg = 0;
             client.ReceivedJpeg += (_, args) =>
             {
+                
                 foreach (var data in args.Data)
                 {
                     string filename = "rtsp_capture_" + now + "-" + indexImg++ + ".jpg";
                     using var fs = new FileStream(filename, FileMode.Create);
                     fs.Write(data.Span);
                 }
+                
             };
 
             client.ReceivedG711 += (_, args) =>

@@ -9,7 +9,7 @@ namespace Rtsp.Rtp
     {
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-            return new() { packet.Payload };
+            return  [ packet.Payload.ToArray() ];
         }
     }
 }
