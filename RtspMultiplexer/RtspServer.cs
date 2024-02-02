@@ -55,7 +55,7 @@
                 {
                     TcpClient oneClient = _RTSPServerListener.AcceptTcpClient();
                     RtspListener newListener = new RtspListener(
-                        new RtspTcpTransport(oneClient, new()));
+                        new RtspTcpTransport(oneClient));
                     RTSPDispatcher.Instance.AddListener(newListener);
                     newListener.Start();
                 }

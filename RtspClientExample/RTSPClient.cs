@@ -114,7 +114,7 @@ namespace RtspClientExample
             {
                 rtspSocket = _uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.InvariantCultureIgnoreCase) ?
                     new RtspHttpTransport(_uri, _credentials) :
-                    new RtspTcpTransport(_uri, _credentials);
+                    new RtspTcpTransport(_uri);
             }
             catch
             {

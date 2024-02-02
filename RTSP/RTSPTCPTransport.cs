@@ -12,7 +12,6 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
-        private readonly NetworkCredential _credentials;
         private readonly IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
 
@@ -23,7 +22,7 @@ namespace Rtsp
         /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
         /// <param name="tcpConnection">The underlying TCP connection.</param>
-        public RtspTcpTransport(TcpClient tcpConnection, NetworkCredential credential)
+        public RtspTcpTransport(TcpClient tcpConnection)
         {
             if (tcpConnection == null)
                 throw new ArgumentNullException(nameof(tcpConnection));
@@ -31,7 +30,6 @@ namespace Rtsp
 
             _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
             _RtspServerClient = tcpConnection;
-            _credentials = credential;
         }
 
         /// <summary>
@@ -39,8 +37,8 @@ namespace Rtsp
         /// </summary>
         /// <param name="aHost">A host.</param>
         /// <param name="aPortNumber">A port number.</param>
-        public RtspTcpTransport(Uri uri, NetworkCredential credential)
-            : this(new TcpClient(uri.Host, uri.Port), credential)
+        public RtspTcpTransport(Uri uri)
+            : this(new TcpClient(uri.Host, uri.Port))
         { }
 
         #region IRtspTransport Membres

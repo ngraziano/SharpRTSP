@@ -238,7 +238,7 @@
             else
             {
                 destination = new RtspListener(
-                    new RtspTcpTransport(destinationUri, new())
+                    new RtspTcpTransport(destinationUri)
                     );
 
                 // un peu pourri mais pas d'autre idée...

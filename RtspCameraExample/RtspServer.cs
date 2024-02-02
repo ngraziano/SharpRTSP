@@ -100,7 +100,7 @@ public class RtspServer : IDisposable
                 _logger.LogDebug("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
 
                 // Hand the incoming TCP connection over to the RTSP classes
-                var rtsp_socket = new RtspTcpTransport(oneClient, credential);
+                var rtsp_socket = new RtspTcpTransport(oneClient);
                 RtspListener newListener = new(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                 newListener.MessageReceived += RTSPMessageReceived;
 
