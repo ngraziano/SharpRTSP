@@ -244,7 +244,9 @@
                 // un peu pourri mais pas d'autre idée...
                 // pour avoir vraiment des clef avec IP....
                 if (_serverListener.ContainsKey(destination.RemoteAdress))
+                {
                     destination = _serverListener[destination.RemoteAdress];
+                }
                 else
                 {
                     AddListener(destination);

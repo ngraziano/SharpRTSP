@@ -35,8 +35,7 @@ namespace Rtsp
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>
-        /// <param name="aHost">A host.</param>
-        /// <param name="aPortNumber">A port number.</param>
+        /// <param name="uri">The RTSP uri to connect to.</param>
         public RtspTcpTransport(Uri uri)
             : this(new TcpClient(uri.Host, uri.Port))
         { }
