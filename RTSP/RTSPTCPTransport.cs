@@ -14,8 +14,7 @@ namespace Rtsp
     {
         private readonly IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
-
-        private uint _commandCounter = 0;
+        private uint _commandCounter;
 
 
         /// <summary>

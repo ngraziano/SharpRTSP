@@ -42,7 +42,7 @@ namespace RtspClientExample
         Uri? _uri;                      // RTSP URI (username & password will be stripped out
         string session = "";             // RTSP Session
         private Authentication? _authentication;
-        private NetworkCredential _credentials;
+        private NetworkCredential _credentials = new();
         readonly uint ssrc = 12345;
         bool clientWantsVideo = false; // Client wants to receive Video
         bool clientWantsAudio = false; // Client wants to receive Audio
@@ -90,8 +90,8 @@ namespace RtspClientExample
             {
                 if (_uri.UserInfo.Length > 0)
                 {
-                    _credentials = new(_uri.UserInfo.Split(new char[] { ':' })[0], _uri.UserInfo.Split(new char[] { ':' })[1]);
-                    _uri = new(_uri.GetComponents((UriComponents.AbsoluteUri & ~UriComponents.UserInfo),
+                    _credentials = new(_uri.UserInfo.Split(':')[0], _uri.UserInfo.Split(':')[1]);
+                    _uri = new(_uri.GetComponents(UriComponents.AbsoluteUri & ~UriComponents.UserInfo,
                                                  UriFormat.UriEscaped));
                 }
                 else
@@ -195,7 +195,7 @@ namespace RtspClientExample
                 RtspUri = _uri,
                 Session = session
             };
-            pause_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+            pause_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
             rtspClient?.SendMessage(pause_message);
         }
 
@@ -207,7 +207,7 @@ namespace RtspClientExample
                 RtspUri = _uri,
                 Session = session
             };
-            play_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+            play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
             rtspClient?.SendMessage(play_message);
         }
 
@@ -220,7 +220,7 @@ namespace RtspClientExample
                 RtspUri = _uri,
                 Session = session
             };
-            teardown_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+            teardown_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
             rtspClient?.SendMessage(teardown_message);
 
             // Stop the keepalive timer
@@ -544,19 +544,15 @@ namespace RtspClientExample
                 }
 
                 // Check if the Reply has an Authenticate header.
-                if (message.ReturnCode == 401 && message.Headers.ContainsKey(RtspHeaderNames.WWWAuthenticate))
+                if (message.ReturnCode == 401 && message.Headers.TryGetValue(RtspHeaderNames.WWWAuthenticate, out string? value))
                 {
-
                     // Process the WWW-Authenticate header
                     // EG:   Basic realm="AProxy"
                     // EG:   Digest realm="AXIS_WS_ACCC8E3A0A8F", nonce="000057c3Y810622bff50b36005eb5efeae118626a161bf", stale=FALSE
                     // EG:   Digest realm="IP Camera(21388)", nonce="534407f373af1bdff561b7b4da295354", stale="FALSE"
 
-                    string www_authenticate = message.Headers[RtspHeaderNames.WWWAuthenticate] ?? string.Empty;
+                    string www_authenticate = value ?? string.Empty;
                     _authentication = Authentication.Create(_credentials, www_authenticate);
-
-
-
                     _logger.LogDebug($"WWW Authorize parsed for {_authentication}");
                 }
 
@@ -564,7 +560,7 @@ namespace RtspClientExample
 
                 if (resend_message is not null)
                 {
-                    resend_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+                    resend_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
                     rtspClient?.SendMessage(resend_message);
                 }
                 return;
@@ -606,7 +602,7 @@ namespace RtspClientExample
                     {
                         RtspUri = _uri
                     };
-                    describe_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+                    describe_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
                     rtspClient?.SendMessage(describe_message);
                 }
                 else
@@ -736,7 +732,7 @@ namespace RtspClientExample
                     // Need for old sony camera SNC-CS20
                     play_message.Headers.Add("range", "npt=0.000-");
 
-                    play_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+                    play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
                     rtspClient?.SendMessage(play_message);
                 }
             }
@@ -905,7 +901,7 @@ namespace RtspClientExample
                                 RtspUri = video_uri
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
 
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
@@ -967,7 +963,7 @@ namespace RtspClientExample
                                 RtspUri = audio_uri,
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
 
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
@@ -1065,7 +1061,7 @@ namespace RtspClientExample
                     };
 
 
-            keepAliveMessage.AddAuthorization(_credentials, _authentication!, _uri!, rtspSocket!.CommandCounter);
+            keepAliveMessage.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
             rtspClient?.SendMessage(keepAliveMessage);
         }
 
