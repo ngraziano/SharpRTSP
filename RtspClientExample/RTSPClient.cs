@@ -123,7 +123,7 @@ namespace RtspClientExample
                 return;
             }
 
-            if (rtspSocket.Connected == false)
+            if (!rtspSocket.Connected)
             {
                 rtspSocketStatus = RTSP_STATUS.ConnectFailed;
                 _logger.LogWarning("Error - did not connect");
@@ -189,38 +189,53 @@ namespace RtspClientExample
 
         public void Pause()
         {
+            if(rtspSocket is null || _uri is null)
+            {
+                throw new InvalidOperationException("Not connected");
+            }
+
             // Send PAUSE
             RtspRequest pause_message = new RtspRequestPause
             {
                 RtspUri = _uri,
                 Session = session
             };
-            pause_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+            pause_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
             rtspClient?.SendMessage(pause_message);
         }
 
         public void Play()
         {
+            if (rtspSocket is null || _uri is null)
+            {
+                throw new InvalidOperationException("Not connected");
+            }
+
             // Send PLAY
             RtspRequest play_message = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session
             };
-            play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+            play_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
             rtspClient?.SendMessage(play_message);
         }
 
 
         public void Stop()
         {
+            if (rtspSocket is null || _uri is null)
+            {
+                throw new InvalidOperationException("Not connected");
+            }
+
             // Send TEARDOWN
             RtspRequest teardown_message = new RtspRequestTeardown
             {
                 RtspUri = _uri,
                 Session = session
             };
-            teardown_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+            teardown_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
             rtspClient?.SendMessage(teardown_message);
 
             // Stop the keepalive timer
@@ -560,7 +575,7 @@ namespace RtspClientExample
 
                 if (resend_message is not null)
                 {
-                    resend_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+                    resend_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                     rtspClient?.SendMessage(resend_message);
                 }
                 return;
@@ -602,7 +617,7 @@ namespace RtspClientExample
                     {
                         RtspUri = _uri
                     };
-                    describe_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+                    describe_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                     rtspClient?.SendMessage(describe_message);
                 }
                 else
@@ -732,7 +747,7 @@ namespace RtspClientExample
                     // Need for old sony camera SNC-CS20
                     play_message.Headers.Add("range", "npt=0.000-");
 
-                    play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.CommandCounter);
+                    play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                     rtspClient?.SendMessage(play_message);
                 }
             }
@@ -901,7 +916,7 @@ namespace RtspClientExample
                                 RtspUri = video_uri
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
+                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
 
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
@@ -963,7 +978,7 @@ namespace RtspClientExample
                                 RtspUri = audio_uri,
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
+                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
 
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
@@ -1061,7 +1076,7 @@ namespace RtspClientExample
                     };
 
 
-            keepAliveMessage.AddAuthorization(_authentication!, _uri!, rtspSocket!.CommandCounter);
+            keepAliveMessage.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
             rtspClient?.SendMessage(keepAliveMessage);
         }
 

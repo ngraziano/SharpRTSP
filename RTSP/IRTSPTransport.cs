@@ -18,9 +18,9 @@
         string RemoteAddress { get; }
 
         /// <summary>
-        /// Keep track of issued commands...
+        /// Get next command index. Increment at each call.
         /// </summary>
-        uint CommandCounter { get; }
+        uint NextCommandIndex();
 
         /// <summary>
         /// Closes this instance.

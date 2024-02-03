@@ -10,7 +10,7 @@ using System.Text;
 
 namespace Rtsp
 {
-    public class RtspHttpTransport : IRtspTransport
+    public class RtspHttpTransport : IRtspTransport, IDisposable
     {
         private readonly NetworkCredential _credentials;
         private readonly Uri _uri;
@@ -25,6 +25,7 @@ namespace Rtsp
 
         private uint _commandCounter = 0;
         private string _sessionCookie = string.Empty;
+        private bool disposedValue;
 
         public RtspHttpTransport(Uri uri, NetworkCredential credentials)
         {
@@ -37,7 +38,7 @@ namespace Rtsp
         public string RemoteAddress => $"{_uri}";
         public bool Connected => _streamDataClient != null && _streamDataClient.Connected;
 
-        public uint CommandCounter => ++_commandCounter;
+        public uint NextCommandIndex() => ++_commandCounter;
 
         public void Close()
         {
@@ -120,11 +121,11 @@ namespace Rtsp
                 string request = ComposePostRequest(base64CommandBytes);
                 byte[] requestBytes = Encoding.ASCII.GetBytes(request);
 
-                ArraySegment<byte>[] sendList = new ArraySegment<byte>[]
-                {
+                ArraySegment<byte>[] sendList =
+                [
                     new(requestBytes),
-                    new(base64CommandBytes) 
-                };
+                    new(base64CommandBytes),
+                ];
 
                 _commandsClient.Send(sendList, SocketFlags.None);
             }
@@ -132,7 +133,7 @@ namespace Rtsp
 
         private string ComposeGetRequest()
         {
-            string authorizationHeader = GetAuthorizationHeader(CommandCounter, "GET", Array.Empty<byte>());
+            string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "GET", []);
 
             StringBuilder sb = new();
             sb.AppendLine($"GET {_uri.PathAndQuery} HTTP/1.0");
@@ -148,7 +149,7 @@ namespace Rtsp
 
         private string ComposePostRequest(byte[] commandBytes)
         {
-            string authorizationHeader = GetAuthorizationHeader(CommandCounter, "POST", commandBytes);
+            string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "POST", commandBytes);
 
             StringBuilder sb = new();
             sb.AppendLine($"POST {_uri.PathAndQuery} HTTP/1.0");
@@ -167,19 +168,13 @@ namespace Rtsp
 
         private string GetAuthorizationHeader(uint counter, string method, byte[] requestBytes)
         {
-            string authorizationHeader;
-
-            if (_authentication != null)
+            if (_authentication == null)
             {
-                string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes);
-                authorizationHeader = $"Authorization: {headerValue}\r\n";
-            }
-            else
-            {
-                authorizationHeader = string.Empty;
+                return string.Empty;
             }
 
-            return authorizationHeader;
+            string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes);
+            return $"Authorization: {headerValue}\r\n";
         }
 
         private static int ReadUntilEndOfHeaders(Stream stream, byte[] buffer, int length)
@@ -215,6 +210,25 @@ namespace Rtsp
             } while (endOfHeaders == -1);
 
             return totalRead;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Close();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Ne changez pas ce code. Placez le code de nettoyage dans la méthode 'Dispose(bool disposing)'
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

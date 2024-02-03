@@ -53,7 +53,7 @@ namespace Rtsp
         /// <value>The remote address.</value>
         public string RemoteAddress => string.Format(CultureInfo.InvariantCulture, "{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
 
-        public uint CommandCounter => ++_commandCounter;
+        public uint NextCommandIndex() => ++_commandCounter;
 
         /// <summary>
         /// Closes this instance.

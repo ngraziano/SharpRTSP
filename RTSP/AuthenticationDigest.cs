@@ -62,36 +62,41 @@ namespace Rtsp
             // Check Username, URI, Nonce and the MD5 hashed Response
             if (authorization != null && authorization.StartsWith("Digest ", StringComparison.Ordinal))
             {
-                string value_str = authorization.Substring(7); // remove 'Digest '
-                string[] values = value_str.Split(',');
+                // remove 'Digest '
+                var value_str = authorization[7..];
                 string? auth_header_username = null;
                 string? auth_header_realm = null;
                 string? auth_header_nonce = null;
                 string? auth_header_uri = null;
                 string? auth_header_response = null;
 
-                foreach (string value in values)
+                foreach (string value in value_str.Split(','))
                 {
-                    string[] tuple = value.Trim().Split(new char[] { '=' }, 2); // split on first '=' 
-                    if (tuple.Length == 2 && tuple[0].Equals("username", StringComparison.OrdinalIgnoreCase))
+                    string[] tuple = value.Trim().Split('=', 2);
+                    if (tuple.Length != 2)
                     {
-                        auth_header_username = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                        continue;
                     }
-                    else if (tuple.Length == 2 && tuple[0].Equals("realm", StringComparison.OrdinalIgnoreCase))
+                    string var = tuple[1].Trim([' ', '\"']);
+                    if (tuple[0].Equals("username", StringComparison.OrdinalIgnoreCase))
                     {
-                        auth_header_realm = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                        auth_header_username = var;
                     }
-                    else if (tuple.Length == 2 && tuple[0].Equals("nonce", StringComparison.OrdinalIgnoreCase))
+                    else if (tuple[0].Equals("realm", StringComparison.OrdinalIgnoreCase))
                     {
-                        auth_header_nonce = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                        auth_header_realm = var;
                     }
-                    else if (tuple.Length == 2 && tuple[0].Equals("uri", StringComparison.OrdinalIgnoreCase))
+                    else if (tuple[0].Equals("nonce", StringComparison.OrdinalIgnoreCase))
                     {
-                        auth_header_uri = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                        auth_header_nonce = var;
                     }
-                    else if (tuple.Length == 2 && tuple[0].Equals("response", StringComparison.OrdinalIgnoreCase))
+                    else if (tuple[0].Equals("uri", StringComparison.OrdinalIgnoreCase))
                     {
-                        auth_header_response = tuple[1].Trim(new char[] { ' ', '\"' }); // trim space and quotes
+                        auth_header_uri = var;
+                    }
+                    else if (tuple[0].Equals("response", StringComparison.OrdinalIgnoreCase))
+                    {
+                        auth_header_response = var;
                     }
                 }
 
@@ -116,15 +121,7 @@ namespace Rtsp
         private static string CalculateMD5Hash(MD5 md5_session, string input)
         {
             byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-            byte[] hash = md5_session.ComputeHash(inputBytes);
-
-            var output = new StringBuilder();
-            for (int i = 0; i < hash.Length; i++)
-            {
-                output.Append(hash[i].ToString("x2"));
-            }
-
-            return output.ToString();
+            return CalculateMD5Hash(md5_session, inputBytes);
         }
         private static string CalculateMD5Hash(MD5 md5_session, byte[] input)
         {
