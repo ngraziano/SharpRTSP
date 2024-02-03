@@ -26,7 +26,7 @@
             // We can't determine the message 
             if (string.IsNullOrEmpty(aRequestLine))
                 return new RtspMessage();
-            string[] requestParts = aRequestLine.Split(' ', 3);
+            string[] requestParts = aRequestLine.Split([' '], 3);
             RtspMessage returnValue;
             if (requestParts.Length == 3)
             {
@@ -79,8 +79,8 @@
         /// <value>The command.</value>
         public string Command
         {
-            get => commandArray is null ? string.Empty : string.Join(' ', commandArray);
-            set => commandArray = value is null ? new string[] { string.Empty } : value.Split(' ', 3);
+            get => commandArray is null ? string.Empty : string.Join(" ", commandArray);
+            set => commandArray = value is null ? new string[] { string.Empty } : value.Split([' '], 3);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@
             }
 
             //spliter
-            string[] elements = line.Split(':', 2);
+            string[] elements = line.Split([':'], 2);
             if (elements.Length == 2)
             {
                 Headers[elements[0].Trim()] = elements[1].TrimStart();
@@ -282,7 +282,7 @@
 
             if (!Data.IsEmpty)
             {
-                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data.Span)).Append('-').AppendLine();
+                stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data.Span.ToArray())).Append('-').AppendLine();
             }
 
             return stringBuilder.ToString();
