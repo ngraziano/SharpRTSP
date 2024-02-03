@@ -28,7 +28,7 @@ namespace Rtsp
 
             if (authenticateHeader.StartsWith("Digest", StringComparison.OrdinalIgnoreCase))
             {
-                int spaceIndex = authenticateHeader.IndexOf(' ', StringComparison.Ordinal);
+                int spaceIndex = authenticateHeader.IndexOf(" ", StringComparison.Ordinal);
 
                 if (spaceIndex != -1)
                 {

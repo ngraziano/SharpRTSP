@@ -28,7 +28,7 @@ namespace Rtsp
                 string base64_str = authorization.Substring(6); // remove 'Basic '
                 byte[] data = Convert.FromBase64String(base64_str);
                 string decoded = Encoding.UTF8.GetString(data);
-                int split_position = decoded.IndexOf(':', StringComparison.Ordinal);
+                int split_position = decoded.IndexOf(":", StringComparison.Ordinal);
                 string decoded_username = decoded[..split_position];
                 string decoded_password = decoded[(split_position + 1)..];
 
