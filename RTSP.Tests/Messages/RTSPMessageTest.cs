@@ -13,10 +13,10 @@ namespace Rtsp.Messages.Tests
         public void GetRtspMessageRequest(string requestLine, RtspRequest.RequestType requestType)
         {
             RtspMessage oneMessage = RtspMessage.GetRtspMessage(requestLine);
-            Assert.IsInstanceOf<RtspRequest>(oneMessage);
+            Assert.That(oneMessage, Is.InstanceOf<RtspRequest>());
 
             RtspRequest oneRequest = oneMessage as RtspRequest;
-            Assert.AreEqual(requestType, oneRequest.RequestTyped);
+            Assert.That(oneRequest.RequestTyped, Is.EqualTo(requestType));
         }
 
         //Put a name on test to permit VSNunit to handle them.
@@ -25,11 +25,14 @@ namespace Rtsp.Messages.Tests
         public void GetRtspMessageResponse(string requestLine, int returnCode, string returnMessage)
         {
             RtspMessage oneMessage = RtspMessage.GetRtspMessage(requestLine);
-            Assert.IsInstanceOf<RtspResponse>(oneMessage);
+            Assert.That(oneMessage, Is.InstanceOf<RtspResponse>());
 
             RtspResponse oneResponse = oneMessage as RtspResponse;
-            Assert.AreEqual(returnCode, oneResponse.ReturnCode);
-            Assert.AreEqual(returnMessage, oneResponse.ReturnMessage);
+            Assert.Multiple(() =>
+            {
+                Assert.That(oneResponse.ReturnCode, Is.EqualTo(returnCode));
+                Assert.That(oneResponse.ReturnMessage, Is.EqualTo(returnMessage));
+            });
         }
     }
 }

@@ -12,11 +12,11 @@ namespace Rtsp.Tests
             RtspUtils.RegisterUri();
 
             // Check that rtsp is well registred
-            Assert.IsTrue(Uri.CheckSchemeName("rtsp"));
+            Assert.That(Uri.CheckSchemeName("rtsp"), Is.True);
 
             // Check that the default port is well defined.
-            Uri testUri = new Uri("rtsp://exemple.com/test");
-            Assert.AreEqual(554, testUri.Port);
+            Uri testUri = new("rtsp://exemple.com/test");
+            Assert.That(testUri.Port, Is.EqualTo(554));
         }
     }
 }

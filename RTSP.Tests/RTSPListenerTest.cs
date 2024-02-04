@@ -37,8 +37,8 @@ namespace Rtsp.Tests
             _mockTransport.When(x => x.Close()).Do(_ => _connected = false);
             _mockTransport.When(x => x.Reconnect()).Do(_ => _connected = true);
 
-            _receivedData = new List<RtspChunk>();
-            _receivedMessage = new List<RtspChunk>();
+            _receivedData = [];
+            _receivedMessage = [];
         }
 
         [Test]
@@ -68,23 +68,31 @@ namespace Rtsp.Tests
             // Check the transport was closed.
             _mockTransport.Received().Close();
             //Check the message recevied
-            Assert.AreEqual(1, _receivedMessage.Count);
+            Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RtspRequest>(theMessage);
-            Assert.AreEqual(0, theMessage.Data.Length);
-            Assert.AreSame(testedListener, theMessage.SourcePort);
+            Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
+            Assert.Multiple(() =>
+            {
+                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
+            });
 
             RtspRequest theRequest = theMessage as RtspRequest;
-            Assert.AreEqual(RtspRequest.RequestType.OPTIONS, theRequest.RequestTyped);
-            Assert.AreEqual(3, theRequest.Headers.Count);
-            Assert.AreEqual(1, theRequest.CSeq);
-            Assert.Contains("Require", theRequest.Headers.Keys);
-            Assert.Contains("Proxy-Require", theRequest.Headers.Keys);
-            Assert.AreEqual(null, theRequest.RtspUri);
+            Assert.Multiple(() =>
+            {
+                Assert.That(theRequest.RequestTyped, Is.EqualTo(RtspRequest.RequestType.OPTIONS));
+                Assert.That(theRequest.Headers, Has.Count.EqualTo(3));
+                Assert.That(theRequest.CSeq, Is.EqualTo(1));
+            });
+            Assert.That(theRequest.Headers.Keys, Does.Contain("Require"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(theRequest.Headers.Keys, Does.Contain("Proxy-Require"));
+                Assert.That(theRequest.RtspUri, Is.EqualTo(null));
 
-            Assert.AreEqual(0, _receivedData.Count);
+                Assert.That(_receivedData, Is.Empty);
+            });
         }
-
 
         [Test]
         public void ReceivePlayMessage()
@@ -109,19 +117,25 @@ namespace Rtsp.Tests
             // Check the transport was closed.
             _mockTransport.Received().Close();
             //Check the message recevied
-            Assert.AreEqual(1, _receivedMessage.Count);
+            Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RtspRequest>(theMessage);
-            Assert.AreEqual(0, theMessage.Data.Length);
-            Assert.AreSame(testedListener, theMessage.SourcePort);
+            Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
+            Assert.Multiple(() =>
+            {
+                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
+            });
 
             RtspRequest theRequest = theMessage as RtspRequest;
-            Assert.AreEqual(RtspRequest.RequestType.PLAY, theRequest.RequestTyped);
-            Assert.AreEqual(1, theRequest.Headers.Count);
-            Assert.AreEqual(835, theRequest.CSeq);
-            Assert.AreEqual("rtsp://audio.example.com/audio", theRequest.RtspUri.ToString());
+            Assert.Multiple(() =>
+            {
+                Assert.That(theRequest.RequestTyped, Is.EqualTo(RtspRequest.RequestType.PLAY));
+                Assert.That(theRequest.Headers, Has.Count.EqualTo(1));
+                Assert.That(theRequest.CSeq, Is.EqualTo(835));
+                Assert.That(theRequest.RtspUri.ToString(), Is.EqualTo("rtsp://audio.example.com/audio"));
 
-            Assert.AreEqual(0, _receivedData.Count);
+                Assert.That(_receivedData, Is.Empty);
+            });
         }
 
         [Test]
@@ -148,19 +162,25 @@ namespace Rtsp.Tests
             // Check the transport was closed.
             _mockTransport.Received().Close();
             //Check the message recevied
-            Assert.AreEqual(1, _receivedMessage.Count);
+            Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
-            Assert.IsInstanceOf<RtspResponse>(theMessage);
-            Assert.AreEqual(0, theMessage.Data.Length);
-            Assert.AreSame(testedListener, theMessage.SourcePort);
+            Assert.That(theMessage, Is.InstanceOf<RtspResponse>());
+            Assert.Multiple(() =>
+            {
+                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
+            });
 
             RtspResponse theResponse = theMessage as RtspResponse;
-            Assert.AreEqual(551, theResponse.ReturnCode);
-            Assert.AreEqual("Option not supported", theResponse.ReturnMessage);
-            Assert.AreEqual(2, theResponse.Headers.Count);
-            Assert.AreEqual(302, theResponse.CSeq);
+            Assert.Multiple(() =>
+            {
+                Assert.That(theResponse.ReturnCode, Is.EqualTo(551));
+                Assert.That(theResponse.ReturnMessage, Is.EqualTo("Option not supported"));
+                Assert.That(theResponse.Headers, Has.Count.EqualTo(2));
+                Assert.That(theResponse.CSeq, Is.EqualTo(302));
 
-            Assert.AreEqual(0, _receivedData.Count);
+                Assert.That(_receivedData, Is.Empty);
+            });
         }
 
         [Test]
@@ -192,15 +212,21 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            //Check the message recevied
-            Assert.AreEqual(0, _receivedMessage.Count);
-            Assert.AreEqual(1, _receivedData.Count);
-            Assert.IsInstanceOf<RtspData>(_receivedData[0]);
+            Assert.Multiple(() =>
+            {
+                //Check the message recevied
+                Assert.That(_receivedMessage, Is.Empty);
+                Assert.That(_receivedData, Has.Count.EqualTo(1));
+            });
+            Assert.That(_receivedData[0], Is.InstanceOf<RtspData>());
             var dataMessage = _receivedData[0] as RtspData;
 
-            Assert.AreEqual(11, dataMessage.Channel);
-            Assert.AreSame(testedListener, dataMessage.SourcePort);
-            Assert.AreEqual(data, dataMessage.Data.ToArray());
+            Assert.Multiple(() =>
+            {
+                Assert.That(dataMessage.Channel, Is.EqualTo(11));
+                Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
+                Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
+            });
         }
 
         [Test]
@@ -222,8 +248,11 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            Assert.AreEqual(0, _receivedMessage.Count);
-            Assert.AreEqual(0, _receivedData.Count);
+            Assert.Multiple(() =>
+            {
+                Assert.That(_receivedMessage, Is.Empty);
+                Assert.That(_receivedData, Is.Empty);
+            });
         }
 
         [Test]
@@ -249,9 +278,12 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            //Check the message recevied
-            Assert.AreEqual(0, _receivedMessage.Count);
-            Assert.AreEqual(0, _receivedData.Count);
+            Assert.Multiple(() =>
+            {
+                //Check the message recevied
+                Assert.That(_receivedMessage, Is.Empty);
+                Assert.That(_receivedData, Is.Empty);
+            });
         }
 
         [Test]
@@ -279,7 +311,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void SendDataAsync()
+        public void SendDataBeginEnd()
         {
             const int dataLenght = 300;
 
@@ -352,7 +384,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void SendDataTooLargeAsync()
+        public void SendDataTooLargeBeginEnd()
         {
             const int dataLenght = 0x10001;
 

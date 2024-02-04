@@ -9,49 +9,48 @@ namespace Rtsp.Messages.Tests
         public void PortCoupleOnePort()
         {
             var pc = new PortCouple(1212);
-            Assert.AreEqual(1212, pc.First);
-            Assert.IsFalse(pc.IsSecondPortPresent);
+            Assert.That(pc.First, Is.EqualTo(1212));
+            Assert.That(pc.IsSecondPortPresent, Is.False);
         }
 
         [Test()]
         public void PortCoupleTwoPort()
         {
             var pc = new PortCouple(1212, 1215);
-            Assert.AreEqual(1212, pc.First);
-            Assert.IsTrue(pc.IsSecondPortPresent);
-            Assert.AreEqual(1215, pc.Second);
+            Assert.That(pc.First, Is.EqualTo(1212));
+            Assert.That(pc.IsSecondPortPresent, Is.True);
+            Assert.That(pc.Second, Is.EqualTo(1215));
         }
-
 
         [Test()]
         public void ParseOnePort()
         {
             var pc = PortCouple.Parse("1212");
-            Assert.AreEqual(1212, pc.First);
-            Assert.IsFalse(pc.IsSecondPortPresent);
+            Assert.That(pc.First, Is.EqualTo(1212));
+            Assert.That(pc.IsSecondPortPresent, Is.False);
         }
 
         [Test()]
         public void ParseTwoPort()
         {
             var pc = PortCouple.Parse("1212-1215");
-            Assert.AreEqual(1212, pc.First);
-            Assert.IsTrue(pc.IsSecondPortPresent);
-            Assert.AreEqual(1215, pc.Second);
+            Assert.That(pc.First, Is.EqualTo(1212));
+            Assert.That(pc.IsSecondPortPresent, Is.True);
+            Assert.That(pc.Second, Is.EqualTo(1215));
         }
 
         [Test()]
         public void ToStringOnePort()
         {
             var pc = new PortCouple(1212);
-            Assert.AreEqual("1212", pc.ToString());
+            Assert.That(pc.ToString(), Is.EqualTo("1212"));
         }
 
         [Test()]
         public void ToStringTwoPort()
         {
             var pc = new PortCouple(1212, 1215);
-            Assert.AreEqual("1212-1215", pc.ToString());
+            Assert.That(pc.ToString(), Is.EqualTo("1212-1215"));
         }
     }
 }

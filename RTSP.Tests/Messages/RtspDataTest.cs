@@ -9,16 +9,21 @@ namespace Rtsp.Messages.Tests
         [Test]
         public void Clone()
         {
-            RtspData testObject = new RtspData();
-            testObject.Channel = 1234;
-            testObject.Data = new byte[] { 45, 63, 36, 42, 65, 00, 99 };
-            testObject.SourcePort = new RtspListener(Substitute.For<IRtspTransport>());
+            RtspData testObject = new()
+            {
+                Channel = 1234,
+                Data = new byte[] { 45, 63, 36, 42, 65, 00, 99 },
+                SourcePort = new RtspListener(Substitute.For<IRtspTransport>())
+            };
             RtspData cloneObject = testObject.Clone() as RtspData;
 
-            Assert.IsNotNull(cloneObject);
-            Assert.AreEqual(testObject.Channel, cloneObject.Channel);
-            Assert.AreEqual(testObject.Data, cloneObject.Data);
-            Assert.AreSame(testObject.SourcePort, cloneObject.SourcePort);
+            Assert.That(cloneObject,Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(cloneObject.Channel, Is.EqualTo(testObject.Channel));
+                Assert.That(cloneObject.Data, Is.EqualTo(testObject.Data));
+                Assert.That(cloneObject.SourcePort, Is.SameAs(testObject.SourcePort));
+            });
         }
     }
 }

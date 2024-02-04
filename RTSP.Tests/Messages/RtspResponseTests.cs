@@ -13,7 +13,7 @@ namespace Rtsp.Messages.Tests
                 Session = "12345"
             };
 
-            Assert.AreEqual("12345", testObject.Headers[RtspHeaderNames.Session]);
+            Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("12345"));
         }
 
         [Test()]
@@ -25,7 +25,7 @@ namespace Rtsp.Messages.Tests
                 Timeout = 10
             };
 
-            Assert.AreEqual("12345;timeout=10", testObject.Headers[RtspHeaderNames.Session]);
+            Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("12345;timeout=10"));
         }
 
         [Test()]
@@ -35,8 +35,11 @@ namespace Rtsp.Messages.Tests
 
             testObject.Headers[RtspHeaderNames.Session] = "12345";
 
-            Assert.AreEqual("12345", testObject.Session);
-            Assert.AreEqual(60, testObject.Timeout);
+            Assert.Multiple(() =>
+            {
+                Assert.That(testObject.Session, Is.EqualTo("12345"));
+                Assert.That(testObject.Timeout, Is.EqualTo(60));
+            });
         }
 
         [Test()]
@@ -46,8 +49,11 @@ namespace Rtsp.Messages.Tests
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
 
-            Assert.AreEqual("12345", testObject.Session);
-            Assert.AreEqual(33, testObject.Timeout);
+            Assert.Multiple(() =>
+            {
+                Assert.That(testObject.Session, Is.EqualTo("12345"));
+                Assert.That(testObject.Timeout, Is.EqualTo(33));
+            });
         }
 
         [Test()]
@@ -58,9 +64,12 @@ namespace Rtsp.Messages.Tests
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=29";
             testObject.Timeout = 33;
 
-            Assert.AreEqual("12345", testObject.Session);
-            Assert.AreEqual(33, testObject.Timeout);
-            Assert.AreEqual("12345;timeout=33", testObject.Headers[RtspHeaderNames.Session]);
+            Assert.Multiple(() =>
+            {
+                Assert.That(testObject.Session, Is.EqualTo("12345"));
+                Assert.That(testObject.Timeout, Is.EqualTo(33));
+                Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("12345;timeout=33"));
+            });
         }
 
         [Test()]
@@ -72,9 +81,12 @@ namespace Rtsp.Messages.Tests
 
             testObject.Session = "456";
 
-            Assert.AreEqual("456", testObject.Session);
-            Assert.AreEqual(33, testObject.Timeout);
-            Assert.AreEqual("456;timeout=33", testObject.Headers[RtspHeaderNames.Session]);
+            Assert.Multiple(() =>
+            {
+                Assert.That(testObject.Session, Is.EqualTo("456"));
+                Assert.That(testObject.Timeout, Is.EqualTo(33));
+                Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("456;timeout=33"));
+            });
         }
     }
 }
