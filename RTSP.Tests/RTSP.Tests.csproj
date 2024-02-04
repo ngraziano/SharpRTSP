@@ -4,6 +4,12 @@
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 
 	</PropertyGroup>
+	<ItemGroup>
+	  <None Remove="Rtp\Data\img_jpg_0.jpg" />
+	  <None Remove="Rtp\Data\jpeg_0.rtp" />
+	  <None Remove="Rtp\Data\jpeg_1.rtp" />
+	  <None Remove="Rtp\Data\jpeg_2.rtp" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
@@ -11,6 +17,10 @@
 		</CodeAnalysisDependentAssemblyPaths>
 	</ItemGroup>
 	<ItemGroup>
+		<EmbeddedResource Include="Rtp\Data\img_jpg_0.jpg" />
+		<EmbeddedResource Include="Rtp\Data\jpeg_0.rtp" />
+		<EmbeddedResource Include="Rtp\Data\jpeg_1.rtp" />
+		<EmbeddedResource Include="Rtp\Data\jpeg_2.rtp" />
 		<EmbeddedResource Include="Sdp\Data\test1.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test2.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test3.sdp" />
@@ -19,11 +29,10 @@
 		<ProjectReference Include="..\RTSP\RTSP.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.HighPerformance" Version="8.2.2" />
 		<PackageReference Include="NSubstitute" Version="5.1.0" />
 		<PackageReference Include="NUnit" Version="4.0.1" />
 		<PackageReference Include="NUnit.Analyzers" Version="4.0.1">
-			<PrivateAssets>all</PrivateAssets>
+		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />

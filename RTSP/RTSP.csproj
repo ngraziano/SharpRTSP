@@ -44,11 +44,7 @@
     <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>Build</CodeContractsReferenceAssembly>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <!-- Generated files to the obj\GeneratedFiles folder  -->
-    <EmitCompilerGeneratedFiles>True</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
+ 
   <ItemGroup>
     <None Include="..\README.md" Link="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
