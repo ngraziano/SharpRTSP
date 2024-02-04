@@ -8,7 +8,7 @@ namespace Rtsp
         public static NameValueCollection ParseHeaders(StreamReader headersReader)
         {
             NameValueCollection headers = new();
-            string header;
+            string? header;
             while (!string.IsNullOrEmpty(header = headersReader.ReadLine()))
             {
                 int colonPos = header.IndexOf(':');

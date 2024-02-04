@@ -36,12 +36,12 @@ namespace Rtsp
 
                     Dictionary<string, string> parameterNameToValueMap = ParseParameters(parameters);
 
-                    if (!parameterNameToValueMap.TryGetValue("REALM", out string realm))
+                    if (!parameterNameToValueMap.TryGetValue("REALM", out var realm) || realm is null)
                         throw new ArgumentException("\"realm\" parameter is not found", "REALM");
-                    if (!parameterNameToValueMap.TryGetValue("NONCE", out string nonce))
+                    if (!parameterNameToValueMap.TryGetValue("NONCE", out var nonce) || nonce is null)
                         throw new ArgumentException("\"nonce\" parameter is not found", "NONCE");
 
-                    parameterNameToValueMap.TryGetValue("QOP", out string qop);
+                    parameterNameToValueMap.TryGetValue("QOP", out var qop);
                     return new AuthenticationDigest(credential, realm, nonce, qop);
                 }
             }

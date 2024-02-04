@@ -77,7 +77,7 @@ namespace Rtsp
             using MemoryStream ms = new(buffer, 0, read);
             using StreamReader streamReader = new(ms, Encoding.ASCII);
 
-            string responseLine = streamReader.ReadLine();
+            string? responseLine = streamReader.ReadLine();
             if (string.IsNullOrEmpty(responseLine)) { throw new HttpBadResponseException("Empty response"); }
 
             string[] tokens = responseLine.Split(' ');
@@ -91,7 +91,7 @@ namespace Rtsp
                 _authentication == null)
             {
                 NameValueCollection headers = HeadersParser.ParseHeaders(streamReader);
-                string authenticateHeader = headers.Get(WellKnownHeaders.WwwAuthenticate);
+                string? authenticateHeader = headers.Get(WellKnownHeaders.WwwAuthenticate);
 
                 if (string.IsNullOrEmpty(authenticateHeader))
                     throw new HttpBadResponseCodeException(statusCode);

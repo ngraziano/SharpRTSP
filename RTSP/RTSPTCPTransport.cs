@@ -27,7 +27,7 @@ namespace Rtsp
                 throw new ArgumentNullException(nameof(tcpConnection));
             Contract.EndContractBlock();
 
-            _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
+            _currentEndPoint = tcpConnection.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The remote endpoint can not be get");
             _RtspServerClient = tcpConnection;
         }
 

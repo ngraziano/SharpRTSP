@@ -15,7 +15,7 @@ namespace Rtsp
         private readonly string? _qop;
         private readonly string _cnonce;
 
-        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string qop) : base(credentials)
+        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop) : base(credentials)
         {
             _realm = realm ?? throw new ArgumentNullException(nameof(realm));
             _nonce = nonce ?? throw new ArgumentNullException(nameof(nonce));

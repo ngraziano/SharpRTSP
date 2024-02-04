@@ -47,7 +47,7 @@ namespace RtspCameraExample
             h264encoder.CodeAndSaveFrame(yuv_data);
 
             // Get the NAL (which has the 00 00 00 01 header)
-            byte[] nal_with_header = h264encoder.nal;
+            byte[] nal_with_header = h264encoder.nal ?? [0x00, 0x00, 0x00, 0x01];
             byte[] nal = new byte[nal_with_header.Length - 4];
             Array.Copy(nal_with_header, 4, nal, 0, nal.Length);
             return nal;

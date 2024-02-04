@@ -9,7 +9,7 @@ namespace Rtsp.Sdp
     {
         private static KeyValuePair<string, string> GetKeyValue(TextReader sdpStream)
         {
-            string line = sdpStream.ReadLine();
+            string? line = sdpStream.ReadLine();
 
             // end of file ?
             if (string.IsNullOrEmpty(line))

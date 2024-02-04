@@ -135,7 +135,7 @@
                                 lock (_sentMessage)
                                 {
                                     // add the original question to the response.
-                                    if (_sentMessage.TryGetValue(response.CSeq, out RtspRequest originalRequest))
+                                    if (_sentMessage.TryGetValue(response.CSeq, out var originalRequest))
                                     {
                                         _sentMessage.Remove(response.CSeq);
                                         response.OriginalRequest = originalRequest;
