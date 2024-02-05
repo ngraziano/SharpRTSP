@@ -109,7 +109,6 @@ namespace Rtsp.Rtp
 
 
         readonly MemoryStream _frameStream = new(64 * 1024);
-        private readonly List<byte[]> temporaryRtpPayloads = [];
 
         private int _currentDri;
         private int _currentQ;
@@ -117,8 +116,8 @@ namespace Rtsp.Rtp
         private int _currentFrameWidth;
         private int _currentFrameHeight;
 
-        private int _extensionFrameWidth = 0;
-        private int _extensionFrameHeight = 0;
+        private int _extensionFrameWidth;
+        private int _extensionFrameHeight;
 
         private bool _hasExternalQuantizationTable;
 
@@ -129,113 +128,103 @@ namespace Rtsp.Rtp
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-            // need to copy data here to keep get ownership
-            temporaryRtpPayloads.Add(packet.Payload.ToArray());
-
             if (packet.HasExtension)
             {
                 ProcessExtension(packet.Extension);
             }
+            ProcessJPEGRTPFrame(packet.Payload);
 
-            if (packet.IsMarker)
+            if (!packet.IsMarker)
             {
-                // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the results
-                ReadOnlyMemory<byte> nalUnits = ProcessJPEGRTPFrame(temporaryRtpPayloads);
-                temporaryRtpPayloads.Clear();
-                return [nalUnits];
+                // we don't have a frame yet. Keep accumulating RTP packets
+                return [];
             }
-            // we don't have a frame yet. Keep accumulating RTP packets
-            return [];
+            // End Marker is set. The frame is complete
+            var data = _frameStream.ToArray();
+            _frameStream.SetLength(0);
+            return [data];
         }
 
-        private ReadOnlyMemory<byte> ProcessJPEGRTPFrame(List<byte[]> rtp_payloads)
+        private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)
         {
-            _frameStream.SetLength(0);
+            if (payload.Length < JPEG_HEADER_SIZE) { return false; }
 
-            foreach (ReadOnlyMemory<byte> payloadMemory in rtp_payloads)
+            int offset = 1;
+            int fragmentOffset = payload[offset] << 16 | payload[offset + 1] << 8 | payload[offset + 2];
+            offset += 3;
+
+            int type = payload[offset++];
+            int q = payload[offset++];
+            int width = payload[offset++] * 8;
+            int height = payload[offset++] * 8;
+            int dri = 0;
+
+            if (width == 0 && height == 0 && _extensionFrameWidth > 0 && _extensionFrameHeight > 0)
             {
-                var payload = payloadMemory.Span;
-
-                if (payload.Length < JPEG_HEADER_SIZE) { return null; }
-
-                int offset = 1;
-                int fragmentOffset = payload[offset] << 16 | payload[offset + 1] << 8 | payload[offset + 2];
-                offset += 3;
-
-                int type = payload[offset++];
-                int q = payload[offset++];
-                int width = payload[offset++] * 8;
-                int height = payload[offset++] * 8;
-                int dri = 0;
-
-                if (width == 0 && height == 0 && _extensionFrameWidth > 0 && _extensionFrameHeight > 0)
-                {
-                    width = _extensionFrameWidth * 8;
-                    height = _extensionFrameHeight * 8;
-                }
-
-                if (type > 63)
-                {
-                    dri = BinaryPrimitives.ReadInt16BigEndian(payload[offset..]);
-                    offset += 4;
-                }
-
-                if (fragmentOffset == 0)
-                {
-                    bool quantizationTableChanged = false;
-                    if (q > 127)
-                    {
-                        int mbz = payload[offset];
-                        if (mbz == 0)
-                        {
-                            _hasExternalQuantizationTable = true;
-                            int quantizationTablesLength = BinaryPrimitives.ReadUInt16BigEndian(payload[(offset + 2)..]);
-                            offset += 4;
-
-                            if (!payload[offset..(offset + quantizationTablesLength)].SequenceEqual(_quantizationTables.AsSpan()[0.._quantizationTablesLength]))
-                            {
-                                if (_quantizationTables.Length < quantizationTablesLength)
-                                {
-                                    _quantizationTables = new byte[quantizationTablesLength];
-                                }
-                                payload[offset..(offset + quantizationTablesLength)].CopyTo(_quantizationTables);
-                                _quantizationTablesLength = quantizationTablesLength;
-                                quantizationTableChanged = true;
-                            }
-                            offset += quantizationTablesLength;
-                        }
-                    }
-
-                    if (quantizationTableChanged
-                        || _currentType != type
-                        || _currentQ != q
-                        || _currentFrameWidth != width
-                        || _currentFrameHeight != height
-                        || _currentDri != dri)
-                    {
-                        _currentType = type;
-                        _currentQ = q;
-                        _currentFrameWidth = width;
-                        _currentFrameHeight = height;
-                        _currentDri = dri;
-
-                        ReInitializeJpegHeader();
-                    }
-
-                    _frameStream.Write(_jpegHeaderBytes, 0, _jpegHeaderBytes.Length);
-                }
-
-                if (fragmentOffset != 0 && _frameStream.Position == 0) { return null; /* ? */ }
-                if (_frameStream.Position > JPEG_MAX_SIZE) { return null; }
-
-                int dataSize = payload.Length - offset;
-                if (dataSize < 0) { return null; }
-
-                _frameStream.Write(payload[offset..]);
+                width = _extensionFrameWidth;
+                height = _extensionFrameHeight;
             }
 
-            return _frameStream.ToArray();
+            if (type > 63)
+            {
+                dri = BinaryPrimitives.ReadInt16BigEndian(payload[offset..]);
+                offset += 4;
+            }
 
+            if (fragmentOffset == 0)
+            {
+                bool quantizationTableChanged = false;
+                if (q > 127)
+                {
+                    int mbz = payload[offset];
+                    if (mbz == 0)
+                    {
+                        _hasExternalQuantizationTable = true;
+                        int quantizationTablesLength = BinaryPrimitives.ReadUInt16BigEndian(payload[(offset + 2)..]);
+                        offset += 4;
+
+                        if (!payload[offset..(offset + quantizationTablesLength)].SequenceEqual(_quantizationTables.AsSpan()[0.._quantizationTablesLength]))
+                        {
+                            if (_quantizationTables.Length < quantizationTablesLength)
+                            {
+                                _quantizationTables = new byte[quantizationTablesLength];
+                            }
+                            payload[offset..(offset + quantizationTablesLength)].CopyTo(_quantizationTables);
+                            _quantizationTablesLength = quantizationTablesLength;
+                            quantizationTableChanged = true;
+                        }
+                        offset += quantizationTablesLength;
+                    }
+                }
+
+                if (quantizationTableChanged
+                    || _currentType != type
+                    || _currentQ != q
+                    || _currentFrameWidth != width
+                    || _currentFrameHeight != height
+                    || _currentDri != dri)
+                {
+                    _currentType = type;
+                    _currentQ = q;
+                    _currentFrameWidth = width;
+                    _currentFrameHeight = height;
+                    _currentDri = dri;
+
+                    ReInitializeJpegHeader();
+                }
+
+                _frameStream.Write(_jpegHeaderBytes, 0, _jpegHeaderBytes.Length);
+            }
+
+            if (fragmentOffset != 0 && _frameStream.Position == 0) { return false; }
+            if (_frameStream.Position > JPEG_MAX_SIZE) { return false; }
+
+            int dataSize = payload.Length - offset;
+            if (dataSize < 0) { return false; }
+
+            _frameStream.Write(payload[offset..]);
+
+            return true;
         }
 
         private void ProcessExtension(ReadOnlySpan<byte> extension)
@@ -252,13 +241,8 @@ namespace Rtsp.Rtp
 
                     if (blockType == MARKER_SOF0)
                     {
-                        // TODO simplify this : the method search SOF0 marker and extract width and height but we
-                        // are already at the SOF0 marker
-                        if (JpegExtractExtensionWidthHeight(extension, headerPosition, blockSize + 2, out int width, out int height) == 1)
-                        {
-                            _extensionFrameWidth = width / 8;
-                            _extensionFrameHeight = height / 8;
-                        }
+                        _extensionFrameHeight = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 5)..]);
+                        _extensionFrameWidth = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 7)..]);
                     }
                     headerPosition += (blockSize + 2);
                 }
@@ -422,28 +406,6 @@ namespace Rtsp.Rtp
             symbols.CopyTo(buffer[offset..]);
             offset += symbols.Length;
             return offset;
-        }
-
-        private static int JpegExtractExtensionWidthHeight(ReadOnlySpan<byte> extension, int headerPosition, int size, out int width, out int height)
-        {
-            width = -1;
-            height = -1;
-
-            if (size < 17) { return -3; }
-
-            int i = 0;
-            do
-            {
-                if (extension[headerPosition + i] == 0xFF && extension[headerPosition + i + 1] == 0xC0)
-                {
-                    height = ((extension[headerPosition + i + 5] << 8) & 0x0000FF00) | (extension[headerPosition + i + 6] & 0x000000FF);
-                    width = ((extension[headerPosition + i + 7] << 8) & 0x0000FF00) | (extension[headerPosition + i + 8] & 0x000000FF);
-                    return 1;
-                }
-                ++i;
-            }
-            while (i < (size - 17));
-            return 0;
         }
     }
 }
