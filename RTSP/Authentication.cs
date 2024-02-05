@@ -28,7 +28,7 @@ namespace Rtsp
 
             if (authenticateHeader.StartsWith("Digest", StringComparison.OrdinalIgnoreCase))
             {
-                int spaceIndex = authenticateHeader.IndexOf(" ", StringComparison.Ordinal);
+                int spaceIndex = authenticateHeader.IndexOf(' ', StringComparison.Ordinal);
 
                 if (spaceIndex != -1)
                 {
@@ -37,16 +37,16 @@ namespace Rtsp
                     Dictionary<string, string> parameterNameToValueMap = ParseParameters(parameters);
 
                     if (!parameterNameToValueMap.TryGetValue("REALM", out var realm) || realm is null)
-                        throw new ArgumentException("\"realm\" parameter is not found", "REALM");
+                        throw new ArgumentException("\"realm\" parameter is not found in header", nameof(authenticateHeader));
                     if (!parameterNameToValueMap.TryGetValue("NONCE", out var nonce) || nonce is null)
-                        throw new ArgumentException("\"nonce\" parameter is not found", "NONCE");
+                        throw new ArgumentException("\"nonce\" parameter is not found in header", nameof(authenticateHeader));
 
                     parameterNameToValueMap.TryGetValue("QOP", out var qop);
                     return new AuthenticationDigest(credential, realm, nonce, qop);
                 }
             }
 
-            throw new ArgumentOutOfRangeException(authenticateHeader,
+            throw new ArgumentOutOfRangeException(nameof(authenticateHeader),
                 $"Invalid authenticate header: {authenticateHeader}");
         }
 

@@ -19,7 +19,7 @@
     {
         private readonly ILogger _logger;
         private readonly IRtspTransport _transport;
-        private readonly Dictionary<int, RtspRequest> _sentMessage = new();
+        private readonly Dictionary<int, RtspRequest> _sentMessage = [];
 
         private CancellationTokenSource? _cancelationTokenSource;
         private Task? _mainTask;

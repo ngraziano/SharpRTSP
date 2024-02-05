@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -36,7 +37,7 @@ namespace Rtsp.Sdp
 
             Contract.EndContractBlock();
 
-            var listValues = value.Split(new char[] { ':' }, 2);
+            var listValues = value.Split(':', 2);
 
             Attribut returnValue;
 
@@ -44,6 +45,7 @@ namespace Rtsp.Sdp
             if (attributMap.TryGetValue(listValues[0], out var childType))
             {
                 var defaultContructor = childType.GetConstructor(Type.EmptyTypes);
+                Debug.Assert(defaultContructor is not null, "The child type must have an empty constructor");
                 returnValue = (defaultContructor.Invoke(Type.EmptyTypes) as Attribut)!;
             }
             else

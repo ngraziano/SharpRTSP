@@ -13,5 +13,15 @@ namespace Rtsp
         {
             Code = code;
         }
+
+        public HttpBadResponseCodeException() { }
+
+        public HttpBadResponseCodeException(string? message) : base(message)
+        {
+        }
+
+        public HttpBadResponseCodeException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
     }
 }

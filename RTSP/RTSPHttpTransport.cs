@@ -22,7 +22,6 @@ namespace Rtsp
 
         private Authentication? _authentication;
 
-
         private uint _commandCounter = 0;
         private string _sessionCookie = string.Empty;
         private bool disposedValue;

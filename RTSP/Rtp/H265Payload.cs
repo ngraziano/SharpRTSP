@@ -21,7 +21,7 @@ namespace Rtsp.Rtp
         // F Bit, Type, Layer ID and TID
 
         int single, agg, frag = 0; // used for diagnostics stats
-        bool has_donl = false;
+        private readonly bool has_donl = false;
 
         private readonly List<ReadOnlyMemory<byte>> temporary_rtp_payloads = new(); // used to assemble the RTP packets that form one RTP Frame
                                                                                     // Eg all the RTP Packets from M=0 through to M=1
@@ -97,9 +97,6 @@ namespace Rtsp.Rtp
                 {
                     _logger.LogDebug("Single NAL");
                     single++;
-
-                    //TODO - Handle DONL
-
                     nal_units.Add(payloadMemory);
                 }
 

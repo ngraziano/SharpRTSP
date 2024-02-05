@@ -41,9 +41,9 @@ namespace RtspCameraExample
 
         private readonly List<RTSPConnection> rtspConnectionList = []; // list of RTSP Listeners
 
-    int session_handle = 1;
-    private readonly NetworkCredential credential;
-    private readonly Authentication? auth;
+        int session_handle = 1;
+        private readonly NetworkCredential credential;
+        private readonly Authentication? auth;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RTSPServer"/> class.
@@ -60,17 +60,17 @@ namespace RtspCameraExample
 
             Contract.EndContractBlock();
 
-        if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
-        {
-            const string realm = "SharpRTSPServer";
-            credential = new(username, password);
-            auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty);
-        }
-        else
-        {
-            credential = new();
-            auth = null;
-        }
+            if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+            {
+                const string realm = "SharpRTSPServer";
+                credential = new(username, password);
+                auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty);
+            }
+            else
+            {
+                credential = new();
+                auth = null;
+            }
 
             RtspUtils.RegisterUri();
             _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
@@ -186,7 +186,7 @@ namespace RtspCameraExample
                     {
                         // Send a 401 Authentication Failed reply, then close the RTSP Socket
                         RtspResponse authorization_response = message.CreateResponse();
-                        authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, Array.Empty<byte>())); // 'Basic' or 'Digest'
+                        authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, [])); // 'Basic' or 'Digest'
                         authorization_response.ReturnCode = 401;
                         listener.SendMessage(authorization_response);
 
@@ -203,7 +203,7 @@ namespace RtspCameraExample
                     // Send a 401 Authentication Failed with extra info in WWW-Authenticate
                     // to tell the Client if we are using Basic or Digest Authentication
                     RtspResponse authorization_response = message.CreateResponse();
-                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, Array.Empty<byte>()));
+                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, []));
                     authorization_response.ReturnCode = 401;
                     listener.SendMessage(authorization_response);
                     return;
@@ -433,7 +433,7 @@ namespace RtspCameraExample
                             // found the session
                             session_found = true;
 
-                            string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
+                            const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
                             string rtp_info = "url=" + message.RtspUri + ";seq=" + connection.video.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
                                                                                                                     // Add audio too
                             rtp_info += ",url=" + message.RtspUri + ";seq=" + connection.audio.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
@@ -607,8 +607,9 @@ namespace RtspCameraExample
                 // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
                 // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
                 bool fragmenting = false;
-                // TODO check mtu for UDP
-                int packetMTU = 65535 - 8 - 20 - 16; // 65535 -8 for UDP header, -20 for IP header, -16 normal RTP header len. ** LESS RTP EXTENSIONS !!!
+
+                int packetMTU = 1400; // 65535; 
+                packetMTU += -8 - 20 - 16; // -8 for UDP header, -20 for IP header, -16 normal RTP header len. ** LESS RTP EXTENSIONS !!!
 
                 if (raw_nal.Length > packetMTU) fragmenting = true;
 
@@ -743,7 +744,7 @@ namespace RtspCameraExample
                         RTCPUtils.WriteSenderReport(rtcpSenderReport, now, rtp_timestamp, connection.video.rtp_packet_count, connection.video.octet_count);
 
                         Debug.Assert(connection.video.transport_reply != null, "If connection.video.transport_reply is null here the program did not handle well connection problem");
-                        
+
                         // Send RTCP over RTSP (Interleaved)
                         if (connection.video.transport_reply.LowerTransport == RtspTransport.LowerTransportType.TCP)
                         {

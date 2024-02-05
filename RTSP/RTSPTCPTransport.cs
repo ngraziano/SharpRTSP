@@ -16,7 +16,6 @@ namespace Rtsp
         private TcpClient _RtspServerClient;
         private uint _commandCounter;
 
-
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
         /// </summary>

@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Rtsp.Sdp
 {
     public class H264Parameters : IDictionary<string, string>
     {
-        private readonly Dictionary<string, string> parameters = new();
+        private readonly Dictionary<string, string> parameters = [];
 
         public List<byte[]> SpropParameterSets
         {
             get
             {
-                List<byte[]> result = new();
+                List<byte[]> result = [];
 
                 if (ContainsKey("sprop-parameter-sets") && this["sprop-parameter-sets"] != null)
                 {
@@ -27,7 +28,7 @@ namespace Rtsp.Sdp
         public static H264Parameters Parse(string parameterString)
         {
             var result = new H264Parameters();
-            foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
+            foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split('=', 2)))
             {
                 if (!string.IsNullOrWhiteSpace(pair[0]))
                     result[pair[0]] = pair.Length > 1 ? pair[1] : string.Empty;
@@ -72,7 +73,7 @@ namespace Rtsp.Sdp
 
         public bool Remove(string key) => parameters.Remove(key);
 
-        public bool TryGetValue(string key, out string value) => parameters.TryGetValue(key, out value);
+        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value) => parameters.TryGetValue(key, out value);
 
         IEnumerator IEnumerable.GetEnumerator() => ((IDictionary<string, string>)parameters).GetEnumerator();
     }

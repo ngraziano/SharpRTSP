@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 // Parse 'fmtp' attribute in SDP
@@ -11,13 +12,13 @@ namespace Rtsp.Sdp
 {
     public class H265Parameters : IDictionary<string, string>
     {
-        private readonly Dictionary<string, string> parameters = new();
+        private readonly Dictionary<string, string> parameters = [];
 
         public List<byte[]> SpropParameterSets
         {
             get
             {
-                List<byte[]> result = new();
+                List<byte[]> result = [];
 
                 if (ContainsKey("sprop-vps") && this["sprop-vps"] != null)
                 {
@@ -40,7 +41,7 @@ namespace Rtsp.Sdp
         public static H265Parameters Parse(string parameterString)
         {
             var result = new H265Parameters();
-            foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split(new char[] { '=' }, 2)))
+            foreach (var pair in parameterString.Split(';').Select(x => x.Trim().Split('=', 2)))
             {
                 if (!string.IsNullOrWhiteSpace(pair[0]))
                     result[pair[0]] = pair.Length > 1 ? pair[1] : string.Empty;
@@ -136,7 +137,7 @@ namespace Rtsp.Sdp
             return parameters.Remove(key);
         }
 
-        public bool TryGetValue(string key, out string value)
+        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value)
         {
             return parameters.TryGetValue(key, out value);
         }

@@ -37,16 +37,16 @@ namespace RtspCameraExample
             private readonly SimpleH264Encoder h264Encoder;
             private readonly SimpleG711Encoder ulaw_encoder;
 
-            byte[] raw_sps;
-            byte[] raw_pps;
+            private readonly byte[] raw_sps;
+            private readonly byte[] raw_pps;
 
-            int port = 8554;
-            string username = "user";      // or use NUL if there is no username
-            string password = "password";  // or use NUL if there is no password
+            private readonly int port = 8554;
+            private readonly string username = "user";      // or use NUL if there is no username
+            private readonly string password = "password";  // or use NUL if there is no password
 
-            int width = 1280; // 192;
-            int height = 1024; // 128;
-            uint fps = 25;
+            private readonly int width = 1280; // 192;
+            private readonly int height = 1024; // 128;
+            private readonly uint fps = 25;
 
             public Demo(ILoggerFactory loggerFactory)
             {
@@ -70,7 +70,7 @@ namespace RtspCameraExample
                     throw;
                 }
 
-                Console.WriteLine("RTSP URL is rtsp://" + username + ":" + password + "@" + "hostname:" + port);
+                Console.WriteLine($"RTSP URL is rtsp://{username}:{password}@hostname:{port}");
 
 
                 /////////////////////////////////////////
@@ -127,7 +127,7 @@ namespace RtspCameraExample
                 
                 // Compress the YUV and feed into the RTSP Server
                 byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
-                bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
+                const bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
 
 
                 // Put the NALs into a List
@@ -138,7 +138,7 @@ namespace RtspCameraExample
                 // changes properties (eg a new resolution or framerate which gives a new SPS or PPS).
                 // Also looking towards H265, the VPS/SPS/PPS do not need to be in the SDP so would be added here.
 
-                bool add_sps_pps_to_keyframe = true;
+                const bool add_sps_pps_to_keyframe = true;
                 if (add_sps_pps_to_keyframe && isKeyframe)
                 {
                     nal_array.Add(raw_sps);

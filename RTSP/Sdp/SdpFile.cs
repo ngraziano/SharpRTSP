@@ -15,7 +15,7 @@ namespace Rtsp.Sdp
             if (string.IsNullOrEmpty(line))
                 return new(string.Empty, string.Empty);
 
-            string[] parts = line.Split(new char[] { '=' }, 2);
+            string[] parts = line.Split('=', 2);
             if (parts.Length != 2)
                 throw new InvalidDataException();
             if (parts[0].Length != 1)
@@ -154,7 +154,7 @@ namespace Rtsp.Sdp
             // Skip over all other Key/Value pairs until the 'm=' key
             while (value.Key != "m" && value.Key != string.Empty)
             {
-                if(strictParsing)
+                if (strictParsing)
                     throw new InvalidDataException("Unexpected key/value pair");
 
                 value = GetKeyValue(sdpStream);

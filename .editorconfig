@@ -1,0 +1,8 @@
+﻿[*.cs]
+
+# CA1510: Can't be used in netstandart 2.0
+dotnet_diagnostic.CA1510.severity = silent
+
+# Just because I don't like this rule
+dotnet_diagnostic.IDE0290.severity = silent
+

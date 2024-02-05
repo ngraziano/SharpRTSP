@@ -6,7 +6,6 @@ using System.Text;
 
 namespace Rtsp
 {
-
     // WWW-Authentication and Authorization Headers
     public class AuthenticationDigest : Authentication
     {
@@ -60,7 +59,7 @@ namespace Rtsp
             string? authorization = received_message.Headers["Authorization"];
 
             // Check Username, URI, Nonce and the MD5 hashed Response
-            if (authorization != null && authorization.StartsWith("Digest ", StringComparison.Ordinal))
+            if (authorization?.StartsWith("Digest ", StringComparison.Ordinal) == true)
             {
                 // remove 'Digest '
                 var value_str = authorization[7..];

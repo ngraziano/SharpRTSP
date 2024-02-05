@@ -7,7 +7,7 @@ namespace Rtsp
     {
         public static NameValueCollection ParseHeaders(StreamReader headersReader)
         {
-            NameValueCollection headers = new();
+            NameValueCollection headers = [];
             string? header;
             while (!string.IsNullOrEmpty(header = headersReader.ReadLine()))
             {
