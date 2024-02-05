@@ -15,7 +15,7 @@ namespace Rtsp
         public override string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes)
         {
             string usernamePasswordHash = $"{Credentials.UserName}:{Credentials.Password}";
-            return $"Bassic {Convert.ToBase64String(Encoding.UTF8.GetBytes(usernamePasswordHash))}";
+            return $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes(usernamePasswordHash))}";
         }
         public override bool IsValid(RtspMessage received_message)
         {
