@@ -108,7 +108,7 @@ namespace Rtsp.Rtp
             ];
 
 
-        readonly MemoryStream _frameStream = new(64 * 1024);
+        private readonly MemoryStream _frameStream = new(64 * 1024);
 
         private int _currentDri;
         private int _currentQ;

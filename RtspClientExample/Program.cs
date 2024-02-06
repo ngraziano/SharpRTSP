@@ -177,10 +177,13 @@ namespace RtspClientExample
             int indexImg = 0;
             client.ReceivedJpeg += (_, args) =>
             {
-                
+                // Ugly to do it each time.
+                // The interface need to change have an event on new file
+                Directory.CreateDirectory("rtsp_capture_" + now);
+
                 foreach (var data in args.Data)
                 {
-                    string filename = "rtsp_capture_" + now + "-" + indexImg++ + ".jpg";
+                    string filename = Path.Combine("rtsp_capture_" + now ,  indexImg++ + ".jpg");
                     using var fs = new FileStream(filename, FileMode.Create);
                     fs.Write(data.Span);
                 }
