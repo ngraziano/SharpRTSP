@@ -4,6 +4,7 @@ using Rtsp.Messages;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 
@@ -208,6 +209,59 @@ namespace Rtsp.Tests
             // Run
             testedListener.Start();
             System.Threading.Thread.Sleep(500);
+            testedListener.Stop();
+
+            // Check the transport was closed.
+            _mockTransport.Received().Close();
+            Assert.Multiple(() =>
+            {
+                //Check the message recevied
+                Assert.That(_receivedMessage, Is.Empty);
+                Assert.That(_receivedData, Has.Count.EqualTo(1));
+            });
+            Assert.That(_receivedData[0], Is.InstanceOf<RtspData>());
+            var dataMessage = _receivedData[0] as RtspData;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(dataMessage.Channel, Is.EqualTo(11));
+                Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
+                Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
+            });
+        }
+
+        [Test]
+        public void ReceiveDataInTwoPart()
+        {
+            var rnd = new Random();
+            byte[] data = new byte[0x0234];
+            rnd.NextBytes(data);
+
+            byte[] buffer = new byte[data.Length + 4];
+            buffer[0] = 0x24; // $
+            buffer[1] = 11;
+            buffer[2] = 0x02;
+            buffer[3] = 0x34;
+            Buffer.BlockCopy(data, 0, buffer, 4, data.Length);
+
+            using var pipeServer = new AnonymousPipeServerStream();
+            using var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString());
+
+            _mockTransport.GetStream().Returns(pipeClient);
+
+            // Setup test object.
+            var testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += MessageReceived;
+            testedListener.DataReceived += DataReceived;
+
+            // Run
+            testedListener.Start();
+            pipeServer.Write(buffer.AsSpan()[0..100]);
+            System.Threading.Thread.Sleep(20);
+            pipeServer.Write(buffer.AsSpan()[100..]);
+
+            System.Threading.Thread.Sleep(500);
+
             testedListener.Stop();
 
             // Check the transport was closed.
