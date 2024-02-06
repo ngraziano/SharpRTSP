@@ -83,8 +83,12 @@ namespace Rtsp.Sdp
             // Uri optional
             if (value.Key == "u")
             {
-                returnValue.Url = new Uri(value.Value);
-                value = GetKeyValue(sdpStream);
+                try
+                {
+                    returnValue.Url = new Uri(value.Value);
+                    value = GetKeyValue(sdpStream);
+                }
+                catch {/* skip if cannot parse, some cams returns empty values for optional ones... */  }
             }
 
             // Email optional
