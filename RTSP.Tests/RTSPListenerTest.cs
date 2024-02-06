@@ -256,10 +256,14 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
+            // first message in two part
             pipeServer.Write(buffer.AsSpan()[0..100]);
             System.Threading.Thread.Sleep(20);
             pipeServer.Write(buffer.AsSpan()[100..]);
-
+            // second message
+            pipeServer.Write(buffer);
+            // add some data not finished
+            pipeServer.Write(buffer.AsSpan()[100..]);
             System.Threading.Thread.Sleep(500);
 
             testedListener.Stop();
@@ -270,10 +274,20 @@ namespace Rtsp.Tests
             {
                 //Check the message recevied
                 Assert.That(_receivedMessage, Is.Empty);
-                Assert.That(_receivedData, Has.Count.EqualTo(1));
+                Assert.That(_receivedData, Has.Count.EqualTo(2));
             });
             Assert.That(_receivedData[0], Is.InstanceOf<RtspData>());
             var dataMessage = _receivedData[0] as RtspData;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(dataMessage.Channel, Is.EqualTo(11));
+                Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
+                Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
+            });
+
+            Assert.That(_receivedData[1], Is.InstanceOf<RtspData>());
+            dataMessage = _receivedData[1] as RtspData;
 
             Assert.Multiple(() =>
             {

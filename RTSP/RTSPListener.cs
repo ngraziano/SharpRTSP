@@ -366,7 +366,7 @@
                         if (!currentMessage.Data.IsEmpty)
                         {
                             // Read the remaning data
-                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, token).ConfigureAwait(false);
+                            int byteCount = await commandStream.ReadAsync(currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -408,7 +408,7 @@
                     case ReadingState.MoreInterleavedData when currentMessage is not null:
                         // apparently non blocking
                         {
-                            int byteCount = await commandStream.ReadAsync(currentMessage.Data, token).ConfigureAwait(false);
+                            int byteCount = await commandStream.ReadAsync(currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
