@@ -81,5 +81,30 @@ namespace Rtsp.Sdp.Tests
             // Check the reader have read everything
             Assert.That(testReader.ReadToEnd(), Is.EqualTo(string.Empty));
         }
+
+        [Test]
+        public void Read4()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test4.sdp");
+            using var testReader = new StreamReader(sdpFile);
+            SdpFile readenSDP = SdpFile.Read(testReader);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(readenSDP.Version, Is.EqualTo(0));
+                Assert.That(readenSDP.Origin.Username, Is.EqualTo("-"));
+                Assert.That(readenSDP.Origin.SessionId, Is.EqualTo("1707291593123122"));
+                Assert.That(readenSDP.Origin.SessionVersion, Is.EqualTo("1"));
+                Assert.That(readenSDP.Origin.NetType, Is.EqualTo("IN"));
+                Assert.That(readenSDP.Origin.AddressType, Is.EqualTo("IP4"));
+                Assert.That(readenSDP.Origin.UnicastAddress, Is.EqualTo("192.168.3.80"));
+                Assert.That(readenSDP.Session, Is.EqualTo("profile1"));
+                Assert.That(readenSDP.Url, Is.Null);
+                Assert.That(readenSDP.Email, Is.EqualTo("admin@"));
+
+                Assert.That(readenSDP.Attributs, Has.Count.EqualTo(2));
+                Assert.That(readenSDP.Medias, Has.Count.EqualTo(2));
+            });
+        }
     }
 }
