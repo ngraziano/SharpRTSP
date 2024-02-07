@@ -106,5 +106,15 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(2));
             });
         }
+
+        [Test]
+        public void Read4Strict()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test4.sdp");
+            using var testReader = new StreamReader(sdpFile);
+            Assert.That(
+                () => SdpFile.Read(testReader, true),
+                Throws.InstanceOf<InvalidDataException>());
+        }
     }
 }
