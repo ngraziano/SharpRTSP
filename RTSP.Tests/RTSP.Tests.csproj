@@ -9,6 +9,7 @@
 	  <None Remove="Rtp\Data\jpeg_0.rtp" />
 	  <None Remove="Rtp\Data\jpeg_1.rtp" />
 	  <None Remove="Rtp\Data\jpeg_2.rtp" />
+	  <None Remove="Sdp\Data\test4.sdp" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -24,6 +25,7 @@
 		<EmbeddedResource Include="Sdp\Data\test1.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test2.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test3.sdp" />
+		<EmbeddedResource Include="Sdp\Data\test4.sdp" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\RTSP\RTSP.csproj" />
