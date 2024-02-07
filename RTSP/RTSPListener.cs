@@ -4,10 +4,12 @@
     using Microsoft.Extensions.Logging.Abstractions;
     using Rtsp.Messages;
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
     using System.IO;
     using System.Net.Sockets;
+    using System.Runtime.InteropServices;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -366,7 +368,13 @@
                         if (!currentMessage.Data.IsEmpty)
                         {
                             // Read the remaning data
+
+#if NETSTANDARD2_0
+                            int byteCount = await ReadAsync(commandStream, currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
+#else
                             int byteCount = await commandStream.ReadAsync(currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
+#endif
+
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -408,7 +416,11 @@
                     case ReadingState.MoreInterleavedData when currentMessage is not null:
                         // apparently non blocking
                         {
+#if NETSTANDARD2_0
+                            int byteCount = await ReadAsync(commandStream, currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
+#else
                             int byteCount = await commandStream.ReadAsync(currentMessage.Data[byteReaden..], token).ConfigureAwait(false);
+#endif
                             if (byteCount <= 0)
                             {
                                 currentReadingState = ReadingState.End;
@@ -591,5 +603,32 @@
         }
 
         #endregion
+
+#if NETSTANDARD2_0
+        private static ValueTask<int> ReadAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
+            {
+                return new ValueTask<int>(stream.ReadAsync(array.Array!, array.Offset, array.Count, cancellationToken));
+            }
+
+            byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
+            return FinishReadAsync(stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken), sharedBuffer, buffer);
+
+            static async ValueTask<int> FinishReadAsync(Task<int> readTask, byte[] localBuffer, Memory<byte> localDestination)
+            {
+                try
+                {
+                    int result = await readTask.ConfigureAwait(false);
+                    new ReadOnlySpan<byte>(localBuffer, 0, result).CopyTo(localDestination.Span);
+                    return result;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(localBuffer);
+                }
+            }
+        }
+#endif
     }
 }
