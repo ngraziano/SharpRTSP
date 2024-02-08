@@ -10,7 +10,7 @@
     <Authors>ngraziano</Authors>
     <Product>SharpRTSP</Product>
     <Description>Handle receive and send of Rtsp Messages</Description>
-    <VersionPrefix>1.2.2</VersionPrefix>
+    <VersionPrefix>1.2.3</VersionPrefix>
     <PackageProjectUrl>https://github.com/ngraziano/SharpRTSP</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ngraziano/SharpRTSP</RepositoryUrl>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
