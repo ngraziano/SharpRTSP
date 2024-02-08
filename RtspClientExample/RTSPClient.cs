@@ -189,7 +189,7 @@ namespace RtspClientExample
 
         public void Pause()
         {
-            if(rtspSocket is null || _uri is null)
+            if (rtspSocket is null || _uri is null)
             {
                 throw new InvalidOperationException("Not connected");
             }
@@ -694,11 +694,16 @@ namespace RtspClientExample
                                     if (dataMessage.Channel == videoDataChannel)
                                     {
                                         VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        // release the memory to be used by the next data message
+                                        dataMessage.Dispose();
                                     }
                                     else if (dataMessage.Channel == videoRtcpChannel)
                                     {
                                         RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        // release the memory to be used by the next data message
+                                        dataMessage.Dispose();
                                     }
+
                                 }
                             };
                         }
@@ -714,10 +719,14 @@ namespace RtspClientExample
                                     if (dataMessage.Channel == audioDataChannel)
                                     {
                                         AudioRtpDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        // release the memory to be used by the next data message
+                                        dataMessage.Dispose();
                                     }
                                     else if (dataMessage.Channel == audioRtcpChannel)
                                     {
                                         RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        // release the memory to be used by the next data message
+                                        dataMessage.Dispose();
                                     }
                                 }
                             };

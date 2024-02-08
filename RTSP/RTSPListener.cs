@@ -4,6 +4,7 @@
     using Microsoft.Extensions.Logging.Abstractions;
     using Rtsp.Messages;
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
     using System.IO;
@@ -18,6 +19,7 @@
     public class RtspListener : IDisposable
     {
         private readonly ILogger _logger;
+        private readonly MemoryPool<byte> _memoryPool;
         private readonly IRtspTransport _transport;
         private readonly Dictionary<int, RtspRequest> _sentMessage = [];
 
@@ -32,9 +34,14 @@
         /// </summary>
         /// <param name="connection">The connection.</param>
         /// <param name="logger">Logger</param>
-        public RtspListener(IRtspTransport connection, ILogger<RtspListener>? logger = null)
+        public RtspListener(
+            IRtspTransport connection,
+            ILogger<RtspListener>? logger = null,
+            MemoryPool<byte>? memoryPool = null
+            )
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
 
             _transport = connection ?? throw new ArgumentNullException(nameof(connection));
             _stream = connection.GetStream();
@@ -329,8 +336,8 @@
                                 break;
                             // if first caracter of packet is $ it is an interleaved data packet
                             case '$' when currentReadingState == ReadingState.NewCommand && readOneMessageBuffer.Count == 0:
-                                    currentReadingState = ReadingState.InterleavedData;
-                                    needMoreChar = false;
+                                currentReadingState = ReadingState.InterleavedData;
+                                needMoreChar = false;
                                 break;
                             default:
                                 readOneMessageBuffer.Add((byte)currentByte);
@@ -375,15 +382,12 @@
                             currentReadingState = ReadingState.End;
                         break;
                     case ReadingState.InterleavedData:
-                        currentMessage = new RtspData();
                         int channelByte = commandStream.ReadByte();
                         if (channelByte == -1)
                         {
                             currentReadingState = ReadingState.End;
                             break;
                         }
-                        ((RtspData)currentMessage).Channel = channelByte;
-
                         int sizeByte1 = commandStream.ReadByte();
                         if (sizeByte1 == -1)
                         {
@@ -397,7 +401,12 @@
                             break;
                         }
                         size = (sizeByte1 << 8) + sizeByte2;
-                        currentMessage.Data = new byte[size];
+
+                        var reservedData = _memoryPool.Rent(size);
+                        currentMessage = new RtspData(reservedData, size)
+                        {
+                            Channel = channelByte,
+                        };
                         currentReadingState = ReadingState.MoreInterleavedData;
                         break;
                     case ReadingState.MoreInterleavedData when currentMessage is not null:

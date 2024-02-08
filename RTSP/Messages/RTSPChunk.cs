@@ -11,7 +11,7 @@ namespace Rtsp.Messages
         /// Gets or sets the data associate with the message.
         /// </summary>
         /// <value>Array of byte transmit with the message.</value>
-        public Memory<byte> Data { get; set; }
+        public virtual Memory<byte> Data { get; set; }
 
         /// <summary>
         /// Gets or sets the source port wich receive the message.
