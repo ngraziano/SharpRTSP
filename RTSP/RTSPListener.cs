@@ -279,6 +279,8 @@
                 Start();
         }
 
+        private readonly List<byte> readOneMessageBuffer = new(256);
+
         /// <summary>
         /// Reads one message.
         /// </summary>
@@ -296,7 +298,7 @@
 
             int size = 0;
             int byteReaden = 0;
-            var buffer = new List<byte>(256);
+            readOneMessageBuffer.Clear();
             string oneLine = string.Empty;
             while (currentReadingState != ReadingState.End)
             {
@@ -318,27 +320,20 @@
                                 needMoreChar = false;
                                 break;
                             case '\n':
-                                oneLine = Encoding.UTF8.GetString(buffer.ToArray());
-                                buffer.Clear();
+                                oneLine = Encoding.UTF8.GetString(readOneMessageBuffer.ToArray());
+                                readOneMessageBuffer.Clear();
                                 needMoreChar = false;
                                 break;
                             case '\r':
                                 // simply ignore this
                                 break;
-                            case '$': // if first caracter of packet is $ it is an interleaved data packet
-                                if (currentReadingState == ReadingState.NewCommand && buffer.Count == 0)
-                                {
+                            // if first caracter of packet is $ it is an interleaved data packet
+                            case '$' when currentReadingState == ReadingState.NewCommand && readOneMessageBuffer.Count == 0:
                                     currentReadingState = ReadingState.InterleavedData;
                                     needMoreChar = false;
-                                }
-                                else
-                                {
-                                    goto default;
-                                }
-
                                 break;
                             default:
-                                buffer.Add((byte)currentByte);
+                                readOneMessageBuffer.Add((byte)currentByte);
                                 break;
                         }
                     }
