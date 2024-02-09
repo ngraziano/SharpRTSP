@@ -272,10 +272,10 @@ namespace RtspClientExample
                 return;
             }
 
-            List<ReadOnlyMemory<byte>> nal_units = videoPayloadProcessor.ProcessRTPPacket(rtpPacket); // this will cache the Packets until there is a Frame
+            using var nal_units = videoPayloadProcessor.ProcessPacket(rtpPacket); // this will cache the Packets until there is a Frame
 
 
-            if (nal_units.Count != 0)
+            if (nal_units.Any())
             {
                 if (videoPayloadProcessor is H264Payload)
                 {
@@ -294,7 +294,7 @@ namespace RtspClientExample
                         // Check this frame for SPS and PPS
                         byte[]? sps = null;
                         byte[]? pps = null;
-                        foreach (var nalUnit in nal_units)
+                        foreach (var nalUnit in nal_units.Data)
                         {
                             var nal_unit = nalUnit.Span;
                             if (nal_unit.Length > 0)
@@ -314,7 +314,7 @@ namespace RtspClientExample
                         }
                     }
                     // we have a frame of NAL Units. Write them to the file
-                    ReceivedNALs?.Invoke(this, new(nal_units));
+                    ReceivedNALs?.Invoke(this, new(nal_units.Data));
                 }
 
                 if (videoPayloadProcessor is H265Payload)
@@ -334,7 +334,7 @@ namespace RtspClientExample
                         byte[]? vps = null;
                         byte[]? sps = null;
                         byte[]? pps = null;
-                        foreach (var nalUnit in nal_units)
+                        foreach (var nalUnit in nal_units.Data)
                         {
                             var nal_unit = nalUnit.Span;
                             if (nal_unit.Length > 0)
@@ -355,17 +355,18 @@ namespace RtspClientExample
 
                     }
                     // we have a frame of NAL Units. Write them to the file
-                    ReceivedNALs?.Invoke(this, new(nal_units));
+                    ReceivedNALs?.Invoke(this, new(nal_units.Data));
                 }
 
                 if (videoPayloadProcessor is JPEGPayload)
                 {
-                    ReceivedJpeg?.Invoke(this, new(nal_units));
+                    ReceivedJpeg?.Invoke(this, new(nal_units.Data));
                 }
 
                 if (videoPayloadProcessor is MP2TransportPayload)
                 {
-                    ReceivedMp2t?.Invoke(this, new(nal_units));
+                    ReceivedMp2t?.Invoke(this, new(nal_units.Data));
+                    
                 }
             }
 

@@ -190,5 +190,10 @@ namespace Rtsp.Rtp
             // Output all the NALs that form one RTP Frame (one frame of video)
             return nal_units;
         }
+
+        public RawMediaFrame ProcessPacket(RtpPacket packet)
+        {
+            return new(ProcessRTPPacket(packet), []);
+        }
     }
 }

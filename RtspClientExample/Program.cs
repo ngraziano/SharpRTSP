@@ -20,12 +20,12 @@ namespace RtspClientExample
             });
 
             // Internet Test - Big Buck Bunney
-            //string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=hd&namespace=1&service=201";
+            // string url = "rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?flavour=hd&namespace=1&service=201";
             //string url = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4";
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
 
-            string url = "rtsp://192.168.0.89/media/video2";
+            string url = "rtsp://192.168.0.89/media/video1";
 
             // string url = "http://192.168.3.72/profile1/media.smp";
             string username = "admin";

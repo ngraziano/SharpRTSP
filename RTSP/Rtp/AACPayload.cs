@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace Rtsp.Rtp
@@ -62,14 +63,17 @@ namespace Rtsp.Rtp
 
     public class AACPayload : IPayloadProcessor
     {
+        private readonly MemoryPool<byte> _memoryPool;
+
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
         public int SamplingFrequency { get; set; } = 0;
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
-        public AACPayload(string config_string)
+        public AACPayload(string config_string, MemoryPool<byte>? memoryPool = null)
         {
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
             /***
             5 bits: object type
                 if (object type == 31)
@@ -138,6 +142,12 @@ namespace Rtsp.Rtp
             }
 
             return audio_data;
+        }
+
+        public RawMediaFrame ProcessPacket(RtpPacket packet)
+        {
+            //TODO implement
+            return new RawMediaFrame(ProcessRTPPacket(packet), []);
         }
     }
 }

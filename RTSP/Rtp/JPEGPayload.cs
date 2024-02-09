@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
@@ -109,7 +110,7 @@ namespace Rtsp.Rtp
 
 
         private readonly MemoryStream _frameStream = new(64 * 1024);
-
+        private readonly MemoryPool<byte> _memoryPool;
         private int _currentDri;
         private int _currentQ;
         private int _currentType;
@@ -125,6 +126,11 @@ namespace Rtsp.Rtp
 
         private byte[] _quantizationTables = [];
         private int _quantizationTablesLength;
+
+        public JPEGPayload(MemoryPool<byte>? memoryPool = null)
+        {
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+        }
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
@@ -143,6 +149,27 @@ namespace Rtsp.Rtp
             var data = _frameStream.ToArray();
             _frameStream.SetLength(0);
             return [data];
+        }
+
+        public RawMediaFrame ProcessPacket(RtpPacket packet)
+        {
+            if (packet.HasExtension)
+            {
+                ProcessExtension(packet.Extension);
+            }
+            ProcessJPEGRTPFrame(packet.Payload);
+
+            if (!packet.IsMarker || _frameStream.Length == 0)
+            {
+                // we don't have a frame yet. Keep accumulating RTP packets
+                return new();
+            }
+            // End Marker is set. The frame is complete
+            var length = (int)_frameStream.Length;
+            var memoryOwner = _memoryPool.Rent(length);
+            _frameStream.GetBuffer().AsSpan().CopyTo(memoryOwner.Memory.Span);
+            _frameStream.SetLength(0);
+            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner]);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)
@@ -407,5 +434,7 @@ namespace Rtsp.Rtp
             offset += symbols.Length;
             return offset;
         }
+
+
     }
 }
