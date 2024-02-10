@@ -1,31 +1,13 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
+﻿using System.Buffers;
 
 namespace Rtsp.Rtp
 {
     // This class handles the G711 Payload
     // It has methods to process the RTP Payload
-    public class G711Payload : IPayloadProcessor
+    public class G711Payload : RawPayload
     {
-        private readonly MemoryPool<byte> _memoryPool;
-
-        public G711Payload(MemoryPool<byte>? memoryPool = null)
+        public G711Payload(MemoryPool<byte>? memoryPool = null) : base(memoryPool)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-        }
-
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
-        {
-            return [packet.Payload.ToArray()];
-        }
-
-        public RawMediaFrame ProcessPacket(RtpPacket packet)
-        {
-            var owner = _memoryPool.Rent(packet.PayloadSize);
-            var memory = owner.Memory[..packet.PayloadSize];
-            packet.Payload.CopyTo(memory.Span);
-            return new RawMediaFrame([memory], [owner]);
         }
     }
 }

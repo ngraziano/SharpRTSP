@@ -1,30 +1,13 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
+﻿using System.Buffers;
 
 namespace Rtsp.Rtp
 {
-    public class MP2TransportPayload : IPayloadProcessor
+    // TODO check the RFC 2250
+    public class MP2TransportPayload : RawPayload
     {
-        private readonly MemoryPool<byte> _memoryPool;
-
         public MP2TransportPayload(MemoryPool<byte>? memoryPool = null)
+            : base(memoryPool)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-        }
-
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
-        {
-            // TODO check the RFC 2250
-            return [packet.Payload.ToArray()];
-        }
-
-        public RawMediaFrame ProcessPacket(RtpPacket packet)
-        {
-            var owner = _memoryPool.Rent(packet.PayloadSize);
-            var memory = owner.Memory[..packet.PayloadSize];
-            packet.Payload.CopyTo(memory.Span);
-            return new RawMediaFrame([memory], [owner]);
         }
     }
 }
