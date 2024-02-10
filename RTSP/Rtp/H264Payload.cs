@@ -4,6 +4,7 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -39,9 +40,9 @@ namespace Rtsp.Rtp
                     norm, stap_a, stap_b, mtap16, mtap24, fu_a, fu_b);
 
                 // End Marker is set return the list of NALs
-                var toReturn = nalUnits.ToArray();
+                var toReturn = nalUnits.ToList();
                 nalUnits.Clear();
-                return nalUnits;
+                return toReturn;
             }
             // we don't have a frame yet. Keep accumulating RTP packets
             return [];
@@ -169,8 +170,22 @@ namespace Rtsp.Rtp
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
         {
-            // TODO really use pool
-            return new(ProcessRTPPacket(packet), []);
+            ProcessH264RTPFrame(packet.Payload);
+
+            if (!packet.IsMarker)
+            {
+                // we don't have a frame yet. Keep accumulating RTP packets
+                return new();
+            }
+
+            // Output some statistics
+            _logger.LogDebug("Norm={norm} ST-A={stapA} ST-B={stapB} M16={mtap16} M24={mtap24} FU-A={fuA} FU-B={fuB}",
+                norm, stap_a, stap_b, mtap16, mtap24, fu_a, fu_b);
+
+            // End Marker is set return the list of NALs
+            var toReturn = nalUnits.ToList();
+            nalUnits.Clear();
+            return new RawMediaFrame(toReturn, []);
         }
     }
 }
