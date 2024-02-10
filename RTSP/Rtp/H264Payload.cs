@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
@@ -20,13 +21,15 @@ namespace Rtsp.Rtp
 
         // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
         private readonly List<ReadOnlyMemory<byte>> nalUnits = [];
+        private readonly List<IMemoryOwner<byte>> owners = [];
         // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
         private readonly MemoryStream fragmentedNal = new();
+        private readonly MemoryPool<byte> _memoryPool;
 
-        // Constructor
-        public H264Payload(ILogger<H264Payload>? logger)
+        public H264Payload(ILogger<H264Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
@@ -40,16 +43,17 @@ namespace Rtsp.Rtp
                     norm, stap_a, stap_b, mtap16, mtap24, fu_a, fu_b);
 
                 // End Marker is set return the list of NALs
-                var toReturn = nalUnits.ToList();
+                var nalToReturn = nalUnits.ToList();
                 nalUnits.Clear();
-                return toReturn;
+                owners.Clear();
+                return nalToReturn;
             }
             // we don't have a frame yet. Keep accumulating RTP packets
             return [];
         }
 
         // Process a RTP Packet.
-        // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
+        // Returns a list of NAL Units (with no Size header)
         private void ProcessH264RTPFrame(ReadOnlySpan<byte> payload)
         {
             // Examine the first rtp_payload and the first byte (the NAL header)
@@ -63,7 +67,9 @@ namespace Rtsp.Rtp
             {
                 _logger.LogDebug("Normal NAL");
                 norm++;
-                nalUnits.Add(payload.ToArray());
+                var nalSpan = PrepareNewNal(payload.Length);
+                // copy the rest of the RTP payload to the memory stream
+                payload.CopyTo(nalSpan);
             }
             // There are 4 types of Aggregation Packet (split over RTP payloads)
             else if (nal_header_type == 24)
@@ -82,8 +88,9 @@ namespace Rtsp.Rtp
                     {
                         int size = BinaryPrimitives.ReadUInt16BigEndian(payload[ptr..]);
                         ptr += 2;
-                        // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-                        nalUnits.Add(payload[ptr..(ptr + size)].ToArray());
+                        var nalSpan = PrepareNewNal(size);
+                        // copy the NAL
+                        payload[ptr..(ptr + size)].CopyTo(nalSpan);
                         ptr += size;
                     }
                 }
@@ -154,7 +161,9 @@ namespace Rtsp.Rtp
                     fragmentedNal.Write(payload[2..]);
 
                     // Add the NAL to the array of NAL units
-                    nalUnits.Add(fragmentedNal.ToArray());
+                    var length = (int)fragmentedNal.Length;
+                    var nalSpan = PrepareNewNal(length);
+                    fragmentedNal.GetBuffer().AsSpan()[..length].CopyTo(nalSpan);
                 }
             }
             else if (nal_header_type == 29)
@@ -166,6 +175,20 @@ namespace Rtsp.Rtp
             {
                 _logger.LogDebug("Unknown NAL header {nalHeaderType} not supported", nal_header_type);
             }
+        }
+
+        private Span<byte> PrepareNewNal(int sizeWitoutHeader)
+        {
+            var owner = _memoryPool.Rent(sizeWitoutHeader + 4);
+            owners.Add(owner);
+            var memory = owner.Memory[..(sizeWitoutHeader + 4)];
+            nalUnits.Add(memory);
+            // Add the NAL start code 00 00 00 01
+            memory.Span[0] = 0;
+            memory.Span[1] = 0;
+            memory.Span[2] = 0;
+            memory.Span[3] = 1;
+            return memory[4..].Span;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -183,9 +206,13 @@ namespace Rtsp.Rtp
                 norm, stap_a, stap_b, mtap16, mtap24, fu_a, fu_b);
 
             // End Marker is set return the list of NALs
-            var toReturn = nalUnits.ToList();
+            // clone list of nalUnits and owners
+            var result = new RawMediaFrame(
+                new List<ReadOnlyMemory<byte>>(nalUnits),
+                new List<IMemoryOwner<byte>>(owners));
             nalUnits.Clear();
-            return new RawMediaFrame(toReturn, []);
+            owners.Clear();
+            return result;
         }
     }
 }

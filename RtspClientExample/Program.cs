@@ -25,7 +25,7 @@ namespace RtspClientExample
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
 
-            string url = "rtsp://192.168.0.89/media/video1";
+            //string url = "rtsp://192.168.0.89/media/video1";
 
             // string url = "http://192.168.3.72/profile1/media.smp";
             string username = "admin";
@@ -54,6 +54,9 @@ namespace RtspClientExample
 
             // VLC Server Tests
             //String url = "rtsp://127.0.0.1:8554/test";
+
+            // Happytime RTSP Server
+            string url = "rtsp://127.0.0.1/screenlive";
 
 
 
@@ -120,10 +123,10 @@ namespace RtspClientExample
                     {
                         var nalUnit = nalUnitMem.Span;
                         // Output some H264 stream information
-                        if (h264 && nalUnit.Length > 0)
+                        if (h264 && nalUnit.Length > 5)
                         {
-                            int nal_ref_idc = (nalUnit[0] >> 5) & 0x03;
-                            int nal_unit_type = nalUnit[0] & 0x1F;
+                            int nal_ref_idc = (nalUnit[4] >> 5) & 0x03;
+                            int nal_unit_type = nalUnit[4] & 0x1F;
                             string description = nal_unit_type switch
                             {
                                 1 => "NON IDR NAL",
@@ -135,6 +138,7 @@ namespace RtspClientExample
                                 _ => "OTHER NAL",
                             };
                             Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
+                            fs_v.Write(nalUnit);
                         }
 
                         // Output some H265 stream information
@@ -152,9 +156,9 @@ namespace RtspClientExample
                                 _ => "OTHER NAL",
                             };
                             Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
+                            WriteNalToFile(fs_v, nalUnit);
                         }
 
-                        WriteNalToFile(fs_v, nalUnit);
                     }
                     // fs_v.Flush(true);
                 }
@@ -283,7 +287,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs

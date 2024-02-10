@@ -366,7 +366,7 @@ namespace RtspClientExample
                 if (videoPayloadProcessor is MP2TransportPayload)
                 {
                     ReceivedMp2t?.Invoke(this, new(nal_units.Data));
-                    
+
                 }
             }
 
@@ -616,7 +616,8 @@ namespace RtspClientExample
                     // Send DESCRIBE
                     RtspRequest describe_message = new RtspRequestDescribe
                     {
-                        RtspUri = _uri
+                        RtspUri = _uri,
+                        Headers = { { "Accept", "application/sdp" } },
                     };
                     describe_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                     rtspClient?.SendMessage(describe_message);
@@ -805,7 +806,6 @@ namespace RtspClientExample
             {
                 foreach (Media media in sdp_data.Medias.Where(m => m.MediaType == Media.MediaTypes.video))
                 {
-
                     // search the attributes for control, rtpmap and fmtp
                     // holds SPS and PPS in base64 (h264 video)
                     AttributFmtp? fmtp = media.Attributs.FirstOrDefault(x => x.Key == "fmtp") as AttributFmtp;
@@ -845,6 +845,7 @@ namespace RtspClientExample
                                 "H264" => new H264Payload(null),
                                 "H265" => new H265Payload(h265HasDonl, null),
                                 "JPEG" => new JPEGPayload(),
+                                "MP4V-ES" => new RawPayload(),
                                 _ => null,
                             };
                             video_payload = media.PayloadType;
@@ -862,23 +863,6 @@ namespace RtspClientExample
                                 33 => new MP2TransportPayload(),
                                 _ => null,
                             };
-                        }
-                        else
-                        {
-                            // Check if the Codec Used (EncodingName) is one we support
-                            videoPayloadProcessor = rtpmap?.EncodingName?.ToUpper() switch
-                            {
-                                "H264" => new H264Payload(null),
-                                "H265" => new H265Payload(h265HasDonl, null),
-                                "JPEG" => new JPEGPayload(),
-                                _ => null,
-                            };
-
-                            if (videoPayloadProcessor is not null)
-                            {
-                                // found a valid codec
-
-                            }
                         }
                     }
 
