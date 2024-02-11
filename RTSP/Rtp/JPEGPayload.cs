@@ -167,7 +167,7 @@ namespace Rtsp.Rtp
             // End Marker is set. The frame is complete
             var length = (int)_frameStream.Length;
             var memoryOwner = _memoryPool.Rent(length);
-            _frameStream.GetBuffer().AsSpan().CopyTo(memoryOwner.Memory.Span);
+            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
             _frameStream.SetLength(0);
             return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner]);
         }
