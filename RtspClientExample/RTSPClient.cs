@@ -253,10 +253,10 @@ namespace RtspClientExample
         // A Video RTP packet has been received.
         public void VideoRtpDataReceived(object? sender, RtspDataEventArgs e)
         {
-            if (e.Data.IsEmpty)
+            if (e.Data.Data.IsEmpty)
                 return;
 
-            var rtpPacket = new RtpPacket(e.Data.Span);
+            var rtpPacket = new RtpPacket(e.Data.Data.Span);
 
 
             if (rtpPacket.PayloadType != video_payload)
@@ -376,11 +376,11 @@ namespace RtspClientExample
         // RTP packet (or RTCP packet) has been received.
         public void AudioRtpDataReceived(object? sender, RtspDataEventArgs e)
         {
-            if (e.Data.IsEmpty)
+            if (e.Data.Data.IsEmpty)
                 return;
 
             // Received some Audio Data on the correct channel.
-            var rtpPacket = new RtpPacket(e.Data.Span);
+            var rtpPacket = new RtpPacket(e.Data.Data.Span);
 
             // Check the payload type in the RTP packet matches the Payload Type value from the SDP
             if (rtpPacket.PayloadType != audio_payload)
@@ -433,7 +433,7 @@ namespace RtspClientExample
         // RTCP packet has been received.
         public void RtcpControlDataReceived(object? sender, RtspDataEventArgs e)
         {
-            if (e.Data.IsEmpty)
+            if (e.Data.Data.IsEmpty)
                 return;
 
             _logger.LogDebug("Received a RTCP message ");
@@ -447,16 +447,16 @@ namespace RtspClientExample
 
             // There can be multiple RTCP packets transmitted together. Loop ever each one
 
-            long packetIndex = 0;
-            byte[] span = e.Data.ToArray();
-            while (packetIndex < e.Data.Length)
+            int packetIndex = 0;
+            var span = e.Data.Data.Span;
+            while (packetIndex < e.Data.Data.Length)
             {
 
                 int rtcp_version = (span[packetIndex + 0] >> 6);
                 int rtcp_padding = (span[packetIndex + 0] >> 5) & 0x01;
                 int rtcp_reception_report_count = (span[packetIndex + 0] & 0x1F);
                 byte rtcp_packet_type = span[packetIndex + 1]; // Values from 200 to 207
-                uint rtcp_length = (uint)(span[packetIndex + 2] << 8) + (uint)(span[packetIndex + 3]); // number of 32 bit words
+                int rtcp_length = (int)(span[packetIndex + 2] << 8) + (int)(span[packetIndex + 3]); // number of 32 bit words
                 uint rtcp_ssrc = (uint)(span[packetIndex + 4] << 24) + (uint)(span[packetIndex + 5] << 16)
                     + (uint)(span[packetIndex + 6] << 8) + (uint)(span[packetIndex + 7]);
 
@@ -695,13 +695,13 @@ namespace RtspClientExample
                                 {
                                     if (dataMessage.Channel == videoDataChannel)
                                     {
-                                        VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
                                         // release the memory to be used by the next data message
                                         dataMessage.Dispose();
                                     }
                                     else if (dataMessage.Channel == videoRtcpChannel)
                                     {
-                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
                                         // release the memory to be used by the next data message
                                         dataMessage.Dispose();
                                     }
@@ -720,13 +720,13 @@ namespace RtspClientExample
                                 {
                                     if (dataMessage.Channel == audioDataChannel)
                                     {
-                                        AudioRtpDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        AudioRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
                                         // release the memory to be used by the next data message
                                         dataMessage.Dispose();
                                     }
                                     else if (dataMessage.Channel == audioRtcpChannel)
                                     {
-                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage.Data));
+                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
                                         // release the memory to be used by the next data message
                                         dataMessage.Dispose();
                                     }

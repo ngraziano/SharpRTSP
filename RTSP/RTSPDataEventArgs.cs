@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 
 namespace Rtsp
 {
@@ -10,8 +11,8 @@ namespace Rtsp
         /// <summary>
         /// Initializes a new instance of the <see cref="RTSPDataEventArgs"/> class.
         /// </summary>
-        /// <param name="data">A data.</param>
-        public RtspDataEventArgs(ReadOnlyMemory<byte> data)
+        /// <param name="data">Data .</param>
+        public RtspDataEventArgs(RtspData data)
         {
             Data = data;
         }
@@ -20,6 +21,6 @@ namespace Rtsp
         /// Gets or sets the message.
         /// </summary>
         /// <value>The message.</value>
-        public ReadOnlyMemory<byte> Data { get; set; }
+        public RtspData Data { get; set; }
     }
 }

@@ -80,8 +80,8 @@ namespace Rtsp
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            _dataReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(dataSocket, OnDataReceived), TaskCreationOptions.LongRunning);
-            _controlReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(controlSocket, OnControlReceived), TaskCreationOptions.LongRunning);
+            _dataReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(dataSocket, OnDataReceived, DataPort), TaskCreationOptions.LongRunning);
+            _controlReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(controlSocket, OnControlReceived, ControlPort), TaskCreationOptions.LongRunning);
         }
 
         /// <summary>
@@ -122,15 +122,18 @@ namespace Rtsp
         /// <summary>
         /// Does the video job.
         /// </summary>
-        private static async Task DoWorkerJobAsync(UdpClient socket, Action<RtspDataEventArgs> handler)
+        private static async Task DoWorkerJobAsync(UdpClient client, Action<RtspDataEventArgs> handler, int port)
         {
             try
             {
                 // loop until we get an exception eg the socket closed
                 while (true)
                 {
-                    var data = await socket.ReceiveAsync();
-                    handler(new RtspDataEventArgs(data.Buffer));
+                    var data = await client.ReceiveAsync();
+                    handler(new RtspDataEventArgs(new RtspData() { 
+                        Data = data.Buffer,
+                        Channel = port,
+                    }));
                 }
             }
             catch (ObjectDisposedException)
