@@ -142,9 +142,9 @@ namespace RtspClientExample
                         }
 
                         // Output some H265 stream information
-                        if (h265 && nalUnit.Length > 0)
+                        if (h265 && nalUnit.Length > 5)
                         {
-                            int nal_unit_type = (nalUnit[0] >> 1) & 0x3F;
+                            int nal_unit_type = (nalUnit[4] >> 1) & 0x3F;
                             string description = nal_unit_type switch
                             {
                                 1 => "NON IDR NAL",
@@ -156,11 +156,10 @@ namespace RtspClientExample
                                 _ => "OTHER NAL",
                             };
                             Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
-                            WriteNalToFile(fs_v, nalUnit);
+                            fs_v.Write(nalUnit);
                         }
 
                     }
-                    // fs_v.Flush(true);
                 }
             };
 

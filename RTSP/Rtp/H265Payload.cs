@@ -1,8 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -20,180 +23,213 @@ namespace Rtsp.Rtp
         // NAL Units have a 2 byte header comprising of
         // F Bit, Type, Layer ID and TID
 
-        int single, agg, frag = 0; // used for diagnostics stats
-        private readonly bool has_donl = false;
+        private readonly bool hasDonl;
 
-        private readonly List<ReadOnlyMemory<byte>> temporary_rtp_payloads = new(); // used to assemble the RTP packets that form one RTP Frame
-                                                                                    // Eg all the RTP Packets from M=0 through to M=1
-
-        private readonly MemoryStream fragmented_nal = new(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
+        private readonly List<ReadOnlyMemory<byte>> nals = [];
+        private readonly List<IMemoryOwner<byte>> owners = [];
+        // used to concatenate fragmented NALs where NALs are split over RTP packets
+        private readonly MemoryStream fragmentedNal = new();
+        private readonly MemoryPool<byte> _memoryPool;
 
         // Constructor
-        public H265Payload(bool has_donl, ILogger<H265Payload>? logger)
+        public H265Payload(bool hasDonl, ILogger<H265Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
-            this.has_donl = has_donl;
+            this.hasDonl = hasDonl;
+
             _logger = logger as ILogger ?? NullLogger.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+
         }
 
         public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-            // Add payload to the List of payloads for the current Frame of Video
-            // ie all the payloads with M=0 up to the final payload where M=1
-            // Todo Could optimise this and go direct to Process Frame if just 1 packet in frame
-            temporary_rtp_payloads.Add(packet.Payload.ToArray());
+            ProcessRTPFrame(packet.Payload);
 
             if (packet.IsMarker)
             {
-                // End Marker is set. Process the list of RTP Packets (forming 1 RTP frame) and save the NALs to a file
-                var nal_units = ProcessRTPFrame(temporary_rtp_payloads);
-                temporary_rtp_payloads.Clear();
-
-                return nal_units;
+                // End Marker is set return the list of NALs
+                var nalToReturn = nals.ToList();
+                nals.Clear();
+                owners.Clear();
+                return nalToReturn;
             }
 
             // we don't have a frame yet. Keep accumulating RTP packets
             return [];
         }
 
-        // Process a RTP Frame. A RTP Frame can consist of several RTP Packets which have the same Timestamp
-        // Returns a list of NAL Units (with no 00 00 00 01 header and with no Size header)
-        private List<ReadOnlyMemory<byte>> ProcessRTPFrame(List<ReadOnlyMemory<byte>> rtp_payloads)
+        /// <summary>
+        /// Process a RTP Frame and extract the NAL and add it to the list.
+        /// </summary>
+        /// <param name="payload">An RTP packer</param>
+        private void ProcessRTPFrame(ReadOnlySpan<byte> payload)
         {
-            _logger.LogDebug("RTP Data comprised of {payloadCount} rtp packets", rtp_payloads.Count);
 
-            var nal_units = new List<ReadOnlyMemory<byte>>(); // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
+            // Examine the first two bytes of the RTP data, the Payload Header
+            // F (Forbidden Bit),
+            // Type of NAL Unit (or VCL NAL Unit if Type is < 32),
+            // LayerId
+            // TID  (TemporalID = TID - 1)
+            /*+---------------+---------------+
+             *|0|1|2|3|4|5|6|7|0|1|2|3|4|5|6|7|
+             *+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+             *|F|   Type    |  LayerId  | TID |
+             *+-------------+-----------------+
+             */
 
-            foreach (var payloadMemory in rtp_payloads)
+            int payloadHeader = BinaryPrimitives.ReadUInt16BigEndian(payload);
+            int Fbit = payloadHeader >> 15 & 0x01;
+            if (Fbit != 0)
             {
-                var payload = payloadMemory.Span;
-                // Examine the first two bytes of the RTP data, the Payload Header
-                // F (Forbidden Bit),
-                // Type of NAL Unit (or VCL NAL Unit if Type is < 32),
-                // LayerId
-                // TID  (TemporalID = TID - 1)
-                /*+---------------+---------------+
-                 *|0|1|2|3|4|5|6|7|0|1|2|3|4|5|6|7|
-                 *+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                 *|F|   Type    |  LayerId  | TID |
-                 *+-------------+-----------------+
-                 */
+                _logger.LogWarning("F Bit is set in H265 Payload Header, invalid packet");
+                return;
+            }
 
-                int payload_header = payload[0] << 8 | payload[1];
-                int payload_header_f_bit = payload_header >> 15 & 0x01;
-                int payload_header_type = payload_header >> 9 & 0x3F;
-                int payload_header_layer_id = payload_header >> 3 & 0x3F;
-                int payload_header_tid = payload_header & 0x7;
+            int type = payloadHeader >> 9 & 0x3F;
+            // int payload_header_layer_id = payloadHeader >> 3 & 0x3F;
+            // int payload_header_tid = payloadHeader & 0x7;
 
-                // There are three ways to Packetize NAL units into RTP Packets
-                //  Single NAL Unit Packet
-                //  Aggregation Packet (payload_header_type = 48)
-                //  Fragmentation Unit (payload_header_type = 49)
+            // There are three ways to Packetize NAL units into RTP Packets
+            //  Single NAL Unit Packet
+            //  Aggregation Packet (payload_header_type = 48)
+            //  Fragmentation Unit (payload_header_type = 49)
 
+            // Aggregation Packet
+            if (type == 48)
+            {
+                SplitAggregationPayload(payload);
+            }
+            // Fragmentation Unit
+            else if (type == 49)
+            {
+                AggragateFragmentationPayload(payload, payloadHeader);
+            }
+            else
+            {
                 // Single NAL Unit Packet
                 // 32=VPS
                 // 33=SPS
                 // 34=PPS
-                if (payload_header_type != 48 && payload_header_type != 49)
-                {
-                    _logger.LogDebug("Single NAL");
-                    single++;
-                    nal_units.Add(payloadMemory);
-                }
-
-                // Aggregation Packet
-                else if (payload_header_type == 48)
-                {
-                    _logger.LogDebug("Aggregation Packet");
-                    agg++;
-
-                    // RTP packet contains multiple NALs, each with a 16 bit header
-                    //   Read 16 byte size
-                    //   Read NAL
-                    // Use a Try/Catch to protect from bad RTP data where block sizes exceed the
-                    // available data
-                    try
-                    {
-                        int ptr = 2; // start after 16 bit Payload Header
-
-                        // loop until the ptr has moved beyond the length of the data
-                        while (ptr < payload.Length - 1)
-                        {
-                            if (has_donl) ptr += 2; // step over the DONL data
-                            int size = (payload[ptr] << 8) + (payload[ptr + 1] << 0);
-                            ptr += 2;
-                            nal_units.Add(payloadMemory[ptr..(ptr + size)]); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-                            ptr += size;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "H265 Aggregate Packet processing error");
-                    }
-                }
-
-                // Fragmentation Unit
-                else if (payload_header_type == 49)
-                {
-                    _logger.LogDebug("Fragmentation Unit");
-                    frag++;
-
-                    // Parse Fragmentation Unit Header
-                    int fu_header_s = payload[2] >> 7 & 0x01;  // start marker
-                    int fu_header_e = payload[2] >> 6 & 0x01;  // end marker
-                    int fu_header_type = payload[2] >> 0 & 0x3F; // fu type
-
-                    _logger.LogDebug("Frag FU-A s={headerS} e={headerE}", fu_header_s, fu_header_e);
-
-                    // Check Start and End flags
-                    if (fu_header_s == 1)
-                    {
-                        // Start of Fragment.
-                        // Initiise the fragmented_nal byte array
-
-                        // Empty the stream
-                        fragmented_nal.SetLength(0);
-
-                        // Reconstrut the NAL header from the rtp_payload_header, replacing the Type with FU Type
-                        int nal_header = payload_header & 0x81FF; // strip out existing 'type'
-                        nal_header |= fu_header_type << 9;
-
-                        fragmented_nal.WriteByte((byte)(nal_header >> 8 & 0xFF));
-                        fragmented_nal.WriteByte((byte)(nal_header >> 0 & 0xFF));
-                    }
-
-                    // Part of Fragment
-                    // Append this payload to the fragmented_nal
-
-                    if (has_donl)
-                    {
-                        // start copying after the DONL data
-                        fragmented_nal.Write(payload[5..]);
-                    }
-                    else
-                    {
-                        // there is no DONL data
-                        fragmented_nal.Write(payload[3..]);
-                    }
-
-                    if (fu_header_e == 1)
-                    {
-                        // Add the NAL to the array of NAL units
-                        nal_units.Add(fragmented_nal.ToArray());
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Unknown Payload Header Type = {payloadHeaderType}", payload_header_type);
-                }
+                _logger.LogTrace("Single NAL");
+                var nalSpan = PrepareNewNal(payload.Length);
+                payload.CopyTo(nalSpan);
             }
 
-            // Output all the NALs that form one RTP Frame (one frame of video)
-            return nal_units;
+        }
+
+        private void AggragateFragmentationPayload(ReadOnlySpan<byte> payload, int payloadHeader)
+        {
+            _logger.LogTrace("Fragmentation Unit");
+
+            // Parse Fragmentation Unit Header
+            int fu_header_s = payload[2] >> 7 & 0x01;  // start marker
+            int fu_header_e = payload[2] >> 6 & 0x01;  // end marker
+            int fu_header_type = payload[2] >> 0 & 0x3F; // fu type
+
+            _logger.LogTrace("Frag FU-A s={headerS} e={headerE}", fu_header_s, fu_header_e);
+
+            // Check Start and End flags
+            if (fu_header_s == 1)
+            {
+                // Start of Fragment.
+                // Initiise the fragmented_nal byte array
+
+                // Empty the stream
+                fragmentedNal.SetLength(0);
+
+                // Reconstrut the NAL header from the rtp_payload_header, replacing the Type with FU Type
+                int nal_header = payloadHeader & 0x81FF; // strip out existing 'type'
+                nal_header |= fu_header_type << 9;
+                fragmentedNal.WriteByte((byte)(nal_header >> 8 & 0xFF));
+                fragmentedNal.WriteByte((byte)(nal_header >> 0 & 0xFF));
+            }
+
+            // Part of Fragment
+            // Append this payload to the fragmented_nal
+
+            if (hasDonl)
+            {
+                // start copying after the DONL data
+                fragmentedNal.Write(payload[5..]);
+            }
+            else
+            {
+                // there is no DONL data
+                fragmentedNal.Write(payload[3..]);
+            }
+
+            if (fu_header_e == 1)
+            {
+                // Add the NAL to the array of NAL units
+                var length = (int)fragmentedNal.Length;
+                var nalSpan = PrepareNewNal(length);
+                fragmentedNal.GetBuffer().AsSpan()[..length].CopyTo(nalSpan);
+            }
+        }
+
+        private void SplitAggregationPayload(ReadOnlySpan<byte> payload)
+        {
+            _logger.LogTrace("Aggregation Packet");
+
+            // RTP packet contains multiple NALs, each with a 16 bit header
+            //   Read 16 byte size
+            //   Read NAL
+            // Use a Try/Catch to protect from bad RTP data where block sizes exceed the
+            // available data
+            try
+            {
+                int ptr = 2; // start after 16 bit Payload Header
+                             // loop until the ptr has moved beyond the length of the data
+                while (ptr < payload.Length - 1)
+                {
+                    if (hasDonl) ptr += 2; // step over the DONL data
+                    int size = BinaryPrimitives.ReadUInt16BigEndian(payload[ptr..]);
+
+                    ptr += 2;
+                    var nalSpan = PrepareNewNal(size);
+                    // copy the NAL
+                    payload[ptr..(ptr + size)].CopyTo(nalSpan);
+                    ptr += size;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "H265 Aggregate Packet processing error");
+            }
+        }
+
+        private Span<byte> PrepareNewNal(int sizeWitoutHeader)
+        {
+            var owner = _memoryPool.Rent(sizeWitoutHeader + 4);
+            owners.Add(owner);
+            var memory = owner.Memory[..(sizeWitoutHeader + 4)];
+            nals.Add(memory);
+            // Add the NAL start code 00 00 00 01
+            memory.Span[0] = 0;
+            memory.Span[1] = 0;
+            memory.Span[2] = 0;
+            memory.Span[3] = 1;
+            return memory[4..].Span;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
         {
-            return new(ProcessRTPPacket(packet), []);
+            ProcessRTPFrame(packet.Payload);
+
+            if (!packet.IsMarker)
+            {
+                // we don't have a frame yet. Keep accumulating RTP packets
+                return new();
+            }
+
+            // End Marker is set return the list of NALs
+            // clone list of nalUnits and owners
+            var result = new RawMediaFrame(
+                new List<ReadOnlyMemory<byte>>(nals),
+                new List<IMemoryOwner<byte>>(owners));
+            nals.Clear();
+            owners.Clear();
+            return result;
         }
     }
 }
