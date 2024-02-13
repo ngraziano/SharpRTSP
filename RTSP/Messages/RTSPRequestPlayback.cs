@@ -17,7 +17,7 @@ public class RTSPRequestPlayback : RtspRequestPlay
     {
         if(seekTimeFrom> seekTimeTo) { throw new ArgumentException("seekTimeFrom cannot be after seekTimeTo", nameof(seekTimeFrom)); }
 
-        Headers.Add("range", FormattableString.Invariant($"clock={seekTimeFrom:yyyyMMdd}T{seekTimeFrom:HHmmss}-{seekTimeTo:yyyyMMdd}T{seekTimeTo:HHmmss}-"));
+        Headers.Add("range", FormattableString.Invariant($"clock={seekTimeFrom:yyyyMMdd}T{seekTimeFrom:HHmmss}-{seekTimeTo:yyyyMMdd}T{seekTimeTo:HHmmss}"));
         Headers.Add("scale", FormattableString.Invariant($"{scale}"));
     }
 }
