@@ -66,6 +66,16 @@ namespace RtspClientExample
         // setup messages still to send
         readonly Queue<RtspRequestSetup> setupMessages = new();
 
+        /// <summary>
+        /// Provides a seek time for the playback...
+        /// </summary>
+        public DateTime? PlaybackSeekTime { get; set; } = null;
+        /// <summary>
+        /// Must play playback in reverse?
+        /// </summary>
+        /// <remarks>Values <= -1.0 provide a reverse playback, while > 0.0 is normal playback speed </remarks>
+        public double PlaybackScale { get; set; } = 1.0;
+
         // Constructor
         public RTSPClient(ILoggerFactory loggerFactory)
         {
@@ -221,6 +231,41 @@ namespace RtspClientExample
             rtspClient?.SendMessage(play_message);
         }
 
+        public void Playback(DateTime seek, double scale = -1.0)
+        {
+            if (rtspSocket is null || _uri is null)
+            {
+                throw new InvalidOperationException("Not connected");
+            }
+
+            // Send PLAY
+            RtspRequest play_message = new RTSPRequestPlayback(seek, scale)
+            {
+                RtspUri = _uri,
+                Session = session
+            };
+            play_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+            rtspClient?.SendMessage(play_message);
+        }
+
+        public void Playback(DateTime seekTimeFrom, DateTime seekTimeTo, double scale = -1.0)
+        {
+            if (rtspSocket is null || _uri is null)
+            {
+                throw new InvalidOperationException("Not connected");
+            }
+
+            if(seekTimeFrom > seekTimeTo) { throw new ArgumentException("Wrong Seek time, seekTimeFrom is after seekTimeTo"); }
+
+            // Send PLAY
+            RtspRequest play_message = new RTSPRequestPlayback(seekTimeFrom, seekTimeTo, scale)
+            {
+                RtspUri = _uri,
+                Session = session
+            };
+            play_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+            rtspClient?.SendMessage(play_message);
+        }
 
         public void Stop()
         {
@@ -737,15 +782,19 @@ namespace RtspClientExample
                 }
                 else
                 {
-                    // Send PLAY
-                    RtspRequest play_message = new RtspRequestPlay
-                    {
-                        RtspUri = _uri,
-                        Session = session
-                    };
+                    RtspRequest play_message = PlaybackSeekTime.HasValue ?
+                        new RTSPRequestPlayback(PlaybackSeekTime.Value, PlaybackScale) :
+                        new RtspRequestPlay();
 
-                    // Need for old sony camera SNC-CS20
-                    play_message.Headers.Add("range", "npt=0.000-");
+                    // Send PLAY
+                    play_message.RtspUri = _uri;
+                    play_message.Session = session;
+
+                    if (play_message is RtspRequestPlay)
+                    {
+                        // Need for old sony camera SNC-CS20
+                        play_message.Headers.Add("range", "npt=0.000-");
+                    }
 
                     play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                     rtspClient?.SendMessage(play_message);
