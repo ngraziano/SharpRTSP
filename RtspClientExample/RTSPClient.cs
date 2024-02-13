@@ -370,7 +370,8 @@ namespace RtspClientExample
                 }
             }
 
-
+            // release the memory to be used by the next data message
+            e.Data.Dispose();
         }
 
         // RTP packet (or RTCP packet) has been received.
@@ -426,6 +427,7 @@ namespace RtspClientExample
                     ReceivedAAC?.Invoke(this, new(audio_codec, audio_frames, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration));
                 }
             }
+            e.Data.Dispose();
         }
 
 
@@ -532,6 +534,7 @@ namespace RtspClientExample
 
                 packetIndex += ((rtcp_length + 1) * 4);
             }
+            e.Data.Dispose();
 
         }
 
@@ -696,14 +699,12 @@ namespace RtspClientExample
                                     if (dataMessage.Channel == videoDataChannel)
                                     {
                                         VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                        // release the memory to be used by the next data message
-                                        dataMessage.Dispose();
+                                        
                                     }
                                     else if (dataMessage.Channel == videoRtcpChannel)
                                     {
                                         RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                        // release the memory to be used by the next data message
-                                        dataMessage.Dispose();
+                                     
                                     }
 
                                 }
@@ -721,14 +722,10 @@ namespace RtspClientExample
                                     if (dataMessage.Channel == audioDataChannel)
                                     {
                                         AudioRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                        // release the memory to be used by the next data message
-                                        dataMessage.Dispose();
                                     }
                                     else if (dataMessage.Channel == audioRtcpChannel)
                                     {
                                         RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                        // release the memory to be used by the next data message
-                                        dataMessage.Dispose();
                                     }
                                 }
                             };

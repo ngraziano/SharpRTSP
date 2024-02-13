@@ -1,5 +1,6 @@
 ﻿using Rtsp.Messages;
 using System;
+using System.Buffers;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -126,12 +127,21 @@ namespace Rtsp
         {
             try
             {
+                // to be compatible with netstandard2.0 we can't use the memory directly for the receive call 
+                byte[] buffer = new byte[65536];
                 // loop until we get an exception eg the socket closed
                 while (true)
                 {
-                    var data = await client.ReceiveAsync();
-                    handler(new RtspDataEventArgs(new RtspData() { 
-                        Data = data.Buffer,
+#if NET7_0_OR_GREATER
+                    var size = await client.Client.ReceiveAsync(buffer).ConfigureAwait(false);
+#else
+                    var size = client.Client.Receive(buffer);
+#endif
+                    var bufferOwner = MemoryPool<byte>.Shared.Rent(size);
+                    buffer.AsSpan()[..size].CopyTo(bufferOwner.Memory.Span);
+
+                    handler(new RtspDataEventArgs(new RtspData(bufferOwner, size)
+                    {
                         Channel = port,
                     }));
                 }
@@ -157,7 +167,7 @@ namespace Rtsp
         /// </summary>
         public void WriteToControlPort(byte[] data, string hostname, int port)
         {
-            dataSocket.Send(data, data.Length, hostname, port);
+            controlSocket.Send(data, data.Length, hostname, port);
         }
     }
 }
