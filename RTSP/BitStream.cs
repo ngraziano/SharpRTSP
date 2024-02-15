@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 // (c) 2018 Roger Hardiman, RJH Technical Consultancy Ltd
 // Simple class to Read and Write bits in a bit stream.
@@ -15,17 +16,13 @@ using System.Collections.Generic;
 
 namespace Rtsp
 {
-
     // Very simple bitstream
     public class BitStream
     {
-
-        private List<byte> data = new List<byte>(); // List only stores 0 or 1 (one 'bit' per List item)
-
-        // Constructor
-        public BitStream()
-        {
-        }
+        /// <summary>
+        /// List only stores 0 or 1 (one 'bit' per List item)
+        /// </summary>
+        private readonly List<byte> data = [];
 
         public void AddValue(int value, int num_bits)
         {
@@ -36,47 +33,41 @@ namespace Rtsp
             }
         }
 
-        public void AddHexString(String hex_string)
+        public void AddHexString(string hexString)
         {
-            char[] hex_chars = hex_string.ToUpper().ToCharArray();
-            foreach (char c in hex_chars)
+            foreach (char c in hexString)
             {
-                if ((c.Equals('0'))) this.AddValue(0, 4);
-                else if ((c.Equals('1'))) this.AddValue(1, 4);
-                else if ((c.Equals('2'))) this.AddValue(2, 4);
-                else if ((c.Equals('3'))) this.AddValue(3, 4);
-                else if ((c.Equals('4'))) this.AddValue(4, 4);
-                else if ((c.Equals('5'))) this.AddValue(5, 4);
-                else if ((c.Equals('6'))) this.AddValue(6, 4);
-                else if ((c.Equals('7'))) this.AddValue(7, 4);
-                else if ((c.Equals('8'))) this.AddValue(8, 4);
-                else if ((c.Equals('9'))) this.AddValue(9, 4);
-                else if ((c.Equals('A'))) this.AddValue(10, 4);
-                else if ((c.Equals('B'))) this.AddValue(11, 4);
-                else if ((c.Equals('C'))) this.AddValue(12, 4);
-                else if ((c.Equals('D'))) this.AddValue(13, 4);
-                else if ((c.Equals('E'))) this.AddValue(14, 4);
-                else if ((c.Equals('F'))) this.AddValue(15, 4);
+                var value = c switch
+                {
+                    >= 'a' and <= 'f' => c - 'a' + 10,
+                    >= 'A' and <= 'F' => c - 'A' + 10,
+                    >= '0' and <= '9' => c - '0',
+                    _ => throw new ArgumentException("Invalid hex character", nameof(hexString)),
+                };
+                AddValue(value, 4);
             }
         }
 
         public int Read(int num_bits)
         {
             // Read and remove items from the front of the list of bits
-            if (data.Count < num_bits) return 0;
-            int result = 0;
-            for (int i = 0; i < num_bits; i++)
+            if (data.Count < num_bits)
             {
-                result = result << 1;
-                result = result + data[0];
-                data.RemoveAt(0);
+                throw new InvalidOperationException("Not enough bits to read");
             }
+
+            int result = data
+                .Take(num_bits)
+                .Aggregate(0, (agg, value) => (agg << 1) + value);
+            data.RemoveRange(0, num_bits);
+
             return result;
         }
 
         public byte[] ToArray()
         {
-            int num_bytes = (int)Math.Ceiling((double)data.Count / 8.0);
+            // number of byte rounded up
+            int num_bytes = (data.Count + 7) / 8;
             byte[] array = new byte[num_bytes];
             int ptr = 0;
             int shift = 7;
