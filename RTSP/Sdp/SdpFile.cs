@@ -7,13 +7,13 @@ namespace Rtsp.Sdp
 {
     public class SdpFile
     {
-        private static KeyValuePair<string, string> GetKeyValue(TextReader sdpStream)
+        private static KeyValuePair<char, string> GetKeyValue(TextReader sdpStream)
         {
             string? line = sdpStream.ReadLine();
 
             // end of file ?
             if (string.IsNullOrEmpty(line))
-                return new(string.Empty, string.Empty);
+                return new('\0', string.Empty);
 
             string[] parts = line.Split('=', 2);
             if (parts.Length != 2)
@@ -21,7 +21,7 @@ namespace Rtsp.Sdp
             if (parts[0].Length != 1)
                 throw new InvalidDataException();
 
-            return new(parts[0], parts[1]);
+            return new(parts[0][0], parts[1]);
         }
 
         /// <summary>
@@ -34,10 +34,10 @@ namespace Rtsp.Sdp
         public static SdpFile Read(TextReader sdpStream, bool strictParsing = false)
         {
             SdpFile returnValue = new();
-            KeyValuePair<string, string> value = GetKeyValue(sdpStream);
+            var value = GetKeyValue(sdpStream);
 
             // Version mandatory
-            if (value.Key == "v")
+            if (value.Key == 'v')
             {
                 returnValue.Version = int.Parse(value.Value, CultureInfo.InvariantCulture);
                 value = GetKeyValue(sdpStream);
@@ -48,7 +48,7 @@ namespace Rtsp.Sdp
             }
 
             // Origin mandatory
-            if (value.Key == "o")
+            if (value.Key == 'o')
             {
                 returnValue.Origin = Origin.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
@@ -60,7 +60,7 @@ namespace Rtsp.Sdp
 
             // Session mandatory.
 
-            if (value.Key == "s")
+            if (value.Key == 's')
             {
                 returnValue.Session = value.Value;
                 value = GetKeyValue(sdpStream);
@@ -74,14 +74,14 @@ namespace Rtsp.Sdp
             }
 
             // Session Information optional
-            if (value.Key == "i")
+            if (value.Key == 'i')
             {
                 returnValue.SessionInformation = value.Value;
                 value = GetKeyValue(sdpStream);
             }
 
             // Uri optional
-            if (value.Key == "u")
+            if (value.Key == 'u')
             {
                 try
                 {
@@ -97,40 +97,40 @@ namespace Rtsp.Sdp
             }
 
             // Email optional
-            if (value.Key == "e")
+            if (value.Key == 'e')
             {
                 returnValue.Email = value.Value;
                 value = GetKeyValue(sdpStream);
             }
 
             // Phone optional
-            if (value.Key == "p")
+            if (value.Key == 'p')
             {
                 returnValue.Phone = value.Value;
                 value = GetKeyValue(sdpStream);
             }
 
             // Connection optional
-            if (value.Key == "c")
+            if (value.Key == 'c')
             {
                 returnValue.Connection = Connection.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             // bandwidth optional
-            if (value.Key == "b")
+            if (value.Key == 'b')
             {
                 returnValue.Bandwidth = Bandwidth.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             // Timing mandatory
-            while (value.Key == "t")
+            while (value.Key == 't')
             {
                 string timing = value.Value;
                 string repeat = string.Empty;
                 value = GetKeyValue(sdpStream);
-                if (value.Key == "r")
+                if (value.Key == 'r')
                 {
                     repeat = value.Value;
                     value = GetKeyValue(sdpStream);
@@ -139,21 +139,21 @@ namespace Rtsp.Sdp
             }
 
             // timezone optional
-            if (value.Key == "z")
+            if (value.Key == 'z')
             {
                 returnValue.TimeZone = SdpTimeZone.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             // encryption key optional
-            if (value.Key == "k")
+            if (value.Key == 'k')
             {
                 returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             //Attribute optional multiple
-            while (value.Key == "a")
+            while (value.Key == 'a')
             {
                 returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
                 value = GetKeyValue(sdpStream);
@@ -161,7 +161,7 @@ namespace Rtsp.Sdp
 
             // Hack for MuxLab HDMI Encoder (TX-500762) Firmware 1.0.6
             // Skip over all other Key/Value pairs until the 'm=' key
-            while (value.Key != "m" && value.Key != string.Empty)
+            while (value.Key != 'm' && value.Key != '\0')
             {
                 if (strictParsing)
                     throw new InvalidDataException("Unexpected key/value pair");
@@ -170,7 +170,7 @@ namespace Rtsp.Sdp
 
                 // For old sony SNC-CS20 we need to collect all attributes
                 //Attribute optional multiple
-                while (value.Key == "a")
+                while (value.Key == 'a')
                 {
                     returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
                     value = GetKeyValue(sdpStream);
@@ -178,7 +178,7 @@ namespace Rtsp.Sdp
             }
 
             // Media
-            while (value.Key == "m")
+            while (value.Key == 'm')
             {
                 Media newMedia = ReadMedia(sdpStream, ref value);
                 returnValue.Medias.Add(newMedia);
@@ -187,40 +187,40 @@ namespace Rtsp.Sdp
             return returnValue;
         }
 
-        private static Media ReadMedia(TextReader sdpStream, ref KeyValuePair<string, string> value)
+        private static Media ReadMedia(TextReader sdpStream, ref KeyValuePair<char, string> value)
         {
             Media returnValue = new(value.Value);
             value = GetKeyValue(sdpStream);
 
             // Media title
-            if (value.Key == "i")
+            if (value.Key == 'i')
             {
                 value = GetKeyValue(sdpStream);
             }
 
             // Connexion optional
-            if (value.Key == "c")
+            if (value.Key == 'c')
             {
                 returnValue.Connection = Connection.Parse(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             // bandwidth optional multiple value possible
-            while (value.Key == "b")
+            while (value.Key == 'b')
             {
                 returnValue.Bandwidths.Add(Bandwidth.Parse(value.Value));
                 value = GetKeyValue(sdpStream);
             }
 
             // enkription key optional
-            if (value.Key == "k")
+            if (value.Key == 'k')
             {
                 returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
                 value = GetKeyValue(sdpStream);
             }
 
             //Attribut optional multiple
-            while (value.Key == "a")
+            while (value.Key == 'a')
             {
                 returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
                 value = GetKeyValue(sdpStream);
