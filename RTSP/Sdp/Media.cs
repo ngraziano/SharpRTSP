@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 
 namespace Rtsp.Sdp
 {
@@ -8,7 +8,7 @@ namespace Rtsp.Sdp
         public Media(string mediaString)
         {
             // Example is   'video 0 RTP/AVP 26;
-            var parts = mediaString.Split(new char[] { ' ' }, 4);
+            var parts = mediaString.Split(' ', 4);
 
             if (parts.Length >= 1)
             {
@@ -25,7 +25,7 @@ namespace Rtsp.Sdp
 
             if (parts.Length >= 4)
             {
-                if (int.TryParse(parts[3], out int pt))
+                if (int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out int pt))
                 {
                     PayloadType = pt;
                 }
@@ -41,7 +41,7 @@ namespace Rtsp.Sdp
 
         public Connection? Connection { get; set; }
 
-        public List<Bandwidth> Bandwidths { get; } = new List<Bandwidth>();
+        public IList<Bandwidth> Bandwidths { get; } = new List<Bandwidth>();
 
         public EncriptionKey? EncriptionKey { get; set; }
 

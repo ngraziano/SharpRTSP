@@ -288,11 +288,11 @@ mode                =    <"> *Method <"> | Method
         public override string ToString()
         {
             var transportString = new StringBuilder();
-            transportString.Append(Transport.ToString());
-            transportString.Append('/');
-            transportString.Append(Profile.ToString());
-            transportString.Append('/');
-            transportString.Append(LowerTransport.ToString());
+            transportString.Append(Transport)
+                .Append('/')
+                .Append(Profile)
+                .Append('/')
+                .Append(LowerTransport);
             if (LowerTransport == LowerTransportType.TCP)
             {
                 transportString.Append(";unicast");
@@ -304,18 +304,15 @@ mode                =    <"> *Method <"> | Method
             }
             if (Destination is not null)
             {
-                transportString.Append(";destination=");
-                transportString.Append(Destination);
+                transportString.Append(";destination=").Append(Destination);
             }
             if (Source is not null)
             {
-                transportString.Append(";source=");
-                transportString.Append(Source);
+                transportString.Append(";source=").Append(Source);
             }
             if (Interleaved is not null)
             {
-                transportString.Append(";interleaved=");
-                transportString.Append(Interleaved.ToString());
+                transportString.Append(";interleaved=").Append(Interleaved);
             }
             if (IsAppend)
             {
@@ -323,38 +320,31 @@ mode                =    <"> *Method <"> | Method
             }
             if (TTL > 0)
             {
-                transportString.Append(";ttl=");
-                transportString.Append(TTL);
+                transportString.Append(";ttl=").Append(TTL);
             }
             if (Layers > 0)
             {
-                transportString.Append(";layers=");
-                transportString.Append(Layers);
+                transportString.Append(";layers=").Append(Layers);
             }
             if (Port is not null)
             {
-                transportString.Append(";port=");
-                transportString.Append(Port.ToString());
+                transportString.Append(";port=").Append(Port);
             }
             if (ClientPort is not null)
             {
-                transportString.Append(";client_port=");
-                transportString.Append(ClientPort.ToString());
+                transportString.Append(";client_port=").Append(ClientPort);
             }
             if (ServerPort is not null)
             {
-                transportString.Append(";server_port=");
-                transportString.Append(ServerPort.ToString());
+                transportString.Append(";server_port=").Append(ServerPort);
             }
             if (SSrc is not null)
             {
-                transportString.Append(";ssrc=");
-                transportString.Append(SSrc);
+                transportString.Append(";ssrc=").Append(SSrc);
             }
-            if (Mode != null && Mode != "PLAY")
+            if (Mode != null && !string.Equals(Mode, "PLAY", StringComparison.Ordinal))
             {
-                transportString.Append(";mode=");
-                transportString.Append(Mode);
+                transportString.Append(";mode=").Append(Mode);
             }
             return transportString.ToString();
         }

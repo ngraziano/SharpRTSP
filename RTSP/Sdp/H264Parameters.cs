@@ -10,7 +10,7 @@ namespace Rtsp.Sdp
     {
         private readonly Dictionary<string, string> parameters = [];
 
-        public List<byte[]> SpropParameterSets
+        public IList<byte[]> SpropParameterSets
         {
             get
             {
@@ -73,7 +73,7 @@ namespace Rtsp.Sdp
 
         public bool Remove(string key) => parameters.Remove(key);
 
-        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value) => parameters.TryGetValue(key, out value);
+        public bool TryGetValue(string key, out string value) => parameters.TryGetValue(key, out value!);
 
         IEnumerator IEnumerable.GetEnumerator() => ((IDictionary<string, string>)parameters).GetEnumerator();
     }

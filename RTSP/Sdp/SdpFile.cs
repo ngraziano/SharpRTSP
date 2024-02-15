@@ -31,7 +31,10 @@ namespace Rtsp.Sdp
         /// <param name="sdpStream">The SDP stream.</param>
         /// <param name="strictParsing">if set to <c>false</c> accept some error seen with camera.</param>
         /// <returns>Parsed SDP file</returns>
+// Hard to make shorter
+#pragma warning disable MA0051 // Method is too long
         public static SdpFile Read(TextReader sdpStream, bool strictParsing = false)
+#pragma warning restore MA0051 // Method is too long
         {
             SdpFile returnValue = new();
             var value = GetKeyValue(sdpStream);

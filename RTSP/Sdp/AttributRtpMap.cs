@@ -1,4 +1,6 @@
-﻿namespace Rtsp.Sdp
+﻿using System.Globalization;
+
+namespace Rtsp.Sdp
 {
     public class AttributRtpMap : Attribut
     {
@@ -20,12 +22,9 @@
             {
                 if (string.IsNullOrEmpty(EncodingParameters))
                 {
-                    return string.Format("{0} {1}/{2}", PayloadNumber, EncodingName, ClockRate);
+                    return string.Format(CultureInfo.InvariantCulture, "{0} {1}/{2}", PayloadNumber, EncodingName, ClockRate);
                 }
-                else
-                {
-                    return string.Format("{0} {1}/{2}/{3}", PayloadNumber, EncodingName, ClockRate, EncodingParameters);
-                }
+                return string.Format(CultureInfo.InvariantCulture, "{0} {1}/{2}/{3}", PayloadNumber, EncodingName, ClockRate, EncodingParameters);
             }
             protected set
             {
@@ -40,14 +39,11 @@
 
         protected override void ParseValue(string value)
         {
-            var parts = value.Split(new char[] { ' ', '/' });
+            var parts = value.Split([' ', '/']);
 
-            if (parts.Length >= 1)
+            if (parts.Length >= 1 && int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int tmp_payloadNumber))
             {
-                if (int.TryParse(parts[0], out int tmp_payloadNumber))
-                {
-                    PayloadNumber = tmp_payloadNumber;
-                }
+                PayloadNumber = tmp_payloadNumber;
             }
             if (parts.Length >= 2)
             {

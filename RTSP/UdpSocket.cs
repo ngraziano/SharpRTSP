@@ -81,8 +81,10 @@ namespace Rtsp
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            _dataReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(dataSocket, OnDataReceived, DataPort), TaskCreationOptions.LongRunning);
-            _controlReadTask = Task.Factory.StartNew(async () => await DoWorkerJobAsync(controlSocket, OnControlReceived, ControlPort), TaskCreationOptions.LongRunning);
+            _dataReadTask = Task.Factory.StartNew(async () => 
+                await DoWorkerJobAsync(dataSocket, OnDataReceived, DataPort).ConfigureAwait(false), TaskCreationOptions.LongRunning);
+            _controlReadTask = Task.Factory.StartNew(async () => 
+                await DoWorkerJobAsync(controlSocket, OnControlReceived, ControlPort).ConfigureAwait(false), TaskCreationOptions.LongRunning);
         }
 
         /// <summary>
@@ -135,7 +137,8 @@ namespace Rtsp
 #if NET7_0_OR_GREATER
                     var size = await client.Client.ReceiveAsync(buffer).ConfigureAwait(false);
 #else
-                    var size = client.Client.Receive(buffer);
+                    // Task to prevent warning and keep the same code than .NET 8
+                    var size = await Task.FromResult(client.Client.Receive(buffer)).ConfigureAwait(false);
 #endif
                     var bufferOwner = MemoryPool<byte>.Shared.Rent(size);
                     buffer.AsSpan()[..size].CopyTo(bufferOwner.Memory.Span);

@@ -16,7 +16,7 @@ namespace Rtsp.Rtp
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
             // TODO check the RFC to handle the different modes
 

@@ -106,7 +106,7 @@ namespace Rtsp.Rtp
             ChannelConfiguration = bs.Read(4);
         }
 
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
 
             // RTP Payload for MPEG4-GENERIC can consist of multple blocks.

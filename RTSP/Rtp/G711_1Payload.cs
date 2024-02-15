@@ -18,7 +18,7 @@ namespace Rtsp.Rtp
         }
 
         /* Untested - used with G711.1 and PCMA-WB and PCMU-WB Codec Names */
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
             // Look at the Header. This tells us the G711 mode being used
 
@@ -41,7 +41,7 @@ namespace Rtsp.Rtp
             if (sizeOfOneFrame == 0)
             {
                 // ERROR
-                return new();
+                return [];
             }
 
             // Return just the basic u-Law or A-Law audio (the Layer 0 audio)

@@ -41,7 +41,7 @@ namespace Rtsp.Rtp
 
         }
 
-        public List<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
             ProcessRTPFrame(packet.Payload);
 

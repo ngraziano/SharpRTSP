@@ -71,12 +71,12 @@
 
             string[] values = stringValue.Split('-');
 
-            _ = int.TryParse(values[0], out int tempValue);
+            _ = int.TryParse(values[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int tempValue);
             PortCouple result = new(tempValue);
 
             tempValue = 0;
             if (values.Length > 1)
-                _ = int.TryParse(values[1], out tempValue);
+                _ = int.TryParse(values[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out tempValue);
 
             result.Second = tempValue;
 

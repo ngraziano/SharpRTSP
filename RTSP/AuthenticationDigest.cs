@@ -1,5 +1,6 @@
 ﻿using Rtsp.Messages;
 using System;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +22,7 @@ namespace Rtsp
 
             if (!string.IsNullOrEmpty(qop))
             {
-                int commaIndex = qop.IndexOf(",", StringComparison.OrdinalIgnoreCase);
+                int commaIndex = qop!.IndexOf(",", StringComparison.OrdinalIgnoreCase);
                 _qop = commaIndex > -1 ? qop[..commaIndex] : qop;
             }
             uint cnonce = (uint)Guid.NewGuid().GetHashCode();
@@ -41,16 +42,16 @@ namespace Rtsp
             string ha2 = CalculateMD5Hash(md5, ha2Argument);
 
             StringBuilder sb = new();
-            sb.AppendFormat("Digest username=\"{0}\", realm=\"{1}\", nonce=\"{2}\", uri=\"{3}\"", Credentials.UserName, _realm, _nonce, uri);
+            sb.AppendFormat(CultureInfo.InvariantCulture, "Digest username=\"{0}\", realm=\"{1}\", nonce=\"{2}\", uri=\"{3}\"", Credentials.UserName, _realm, _nonce, uri);
             if (!hasQop)
             {
                 string response = CalculateMD5Hash(md5, $"{ha1}:{_nonce}:{ha2}");
-                sb.AppendFormat(", response=\"{0}\"", response);
+                sb.AppendFormat(CultureInfo.InvariantCulture, ", response=\"{0}\"", response);
             }
             else
             {
                 string response = CalculateMD5Hash(md5, $"{ha1}:{_nonce}:{nonceCounter:X8}:{_cnonce}:{_qop}:{ha2}");
-                sb.AppendFormat(", response=\"{0}\", cnonce=\"{1}\", nc=\"{2:X8}\", qop=\"{3}\"", response, _cnonce, nonceCounter, _qop);
+                sb.AppendFormat(CultureInfo.InvariantCulture, ", response=\"{0}\", cnonce=\"{1}\", nc=\"{2:X8}\", qop=\"{3}\"", response, _cnonce, nonceCounter, _qop);
             }
             return sb.ToString();
         }

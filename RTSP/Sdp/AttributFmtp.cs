@@ -9,7 +9,7 @@ namespace Rtsp.Sdp
     {
         public const string NAME = "fmtp";
 
-        private readonly Dictionary<string, string> parameters = new();
+        private readonly Dictionary<string, string> parameters = new(StringComparer.Ordinal);
 
         public AttributFmtp() : base(NAME)
         {
@@ -35,7 +35,7 @@ namespace Rtsp.Sdp
         // Extract the Payload Number and the Format Parameters
         protected override void ParseValue(string value)
         {
-            var parts = value.Split([' '], 2);
+            var parts = value.Split(' ', 2);
 
             if (int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int payloadNumber))
             {

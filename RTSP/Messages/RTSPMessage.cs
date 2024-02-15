@@ -60,7 +60,6 @@
         /// </summary>
         public RtspMessage()
         {
-            Data = Array.Empty<byte>();
             Creation = DateTime.Now;
         }
 
@@ -79,7 +78,7 @@
         public string Command
         {
             get => commandArray is null ? string.Empty : string.Join(" ", commandArray);
-            set => commandArray = value is null ? new string[] { string.Empty } : value.Split([' '], 3);
+            set => commandArray = value is null ? [string.Empty] : value.Split(' ', 3);
         }
 
         /// <summary>
@@ -92,7 +91,7 @@
         /// Gets the headers of the message.
         /// </summary>
         /// <value>The headers.</value>
-        public Dictionary<string, string?> Headers { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        public IDictionary<string, string?> Headers { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Adds one header from a string.
@@ -107,7 +106,7 @@
             }
 
             //spliter
-            string[] elements = line.Split([':'], 2);
+            string[] elements = line.Split(':', 2);
             if (elements.Length == 2)
             {
                 Headers[elements[0].Trim()] = elements[1].TrimStart();
@@ -206,23 +205,21 @@
             // </pex>
             Contract.EndContractBlock();
 
-            Encoding encoder = Encoding.UTF8;
             StringBuilder outputString = new();
 
             AdjustContentLength();
 
             // output header
-            outputString.Append(Command);
-            outputString.Append("\r\n");
-            foreach (var item in Headers)
+            outputString.Append(Command).Append("\r\n");
+            foreach (var (key, value) in Headers)
             {
-                outputString.AppendFormat(CultureInfo.InvariantCulture, "{0}: {1}\r\n", item.Key, item.Value);
+                outputString.Append(key).Append(": ").Append(value).Append("\r\n");
             }
             outputString.Append("\r\n");
-            byte[] buffer = encoder.GetBytes(outputString.ToString());
+            byte[] buffer = Encoding.UTF8.GetBytes(outputString.ToString());
             lock (stream)
             {
-                stream.Write(buffer, 0, buffer.Length);
+                stream.Write(buffer);
 
                 // Output data
                 if (!Data.IsEmpty)
@@ -238,31 +235,7 @@
         public byte[] Prepare()
         {
             MemoryStream ms = new();
-            Encoding encoder = Encoding.UTF8;
-            StringBuilder outputString = new();
-
-            AdjustContentLength();
-
-            // output header
-            outputString.Append(Command);
-            outputString.Append("\r\n");
-            foreach (KeyValuePair<string, string?> item in Headers)
-            {
-                outputString.AppendFormat("{0}: {1}\r\n", item.Key, item.Value);
-            }
-            outputString.Append("\r\n");
-            byte[] buffer = encoder.GetBytes(outputString.ToString());
-            lock (ms)
-            {
-                ms.Write(buffer, 0, buffer.Length);
-
-                // Output data
-                if (!Data .IsEmpty)
-                {
-                    ms.Write(Data.Span);
-                }
-            }
-
+            SendTo(ms);
             return ms.ToArray();
         }
 
@@ -274,9 +247,9 @@
             var stringBuilder = new StringBuilder();
 
             stringBuilder.Append("Commande : ").AppendLine(Command);
-            foreach (KeyValuePair<string, string?> item in Headers)
+            foreach (var (key,value) in Headers)
             {
-                stringBuilder.Append("Header : ").Append(item.Key).Append(": ").AppendLine(item.Value);
+                stringBuilder.Append("Header : ").Append(key).Append(": ").AppendLine(value);
             }
 
             if (!Data.IsEmpty)

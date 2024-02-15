@@ -30,7 +30,7 @@ namespace Rtsp.Sdp
             if (parts.Length != 3)
                 throw new FormatException("Value do not contain 3 parts as needed.");
 
-            if (parts[0] != "IN")
+            if (!string.Equals(parts[0], "IN", StringComparison.Ordinal))
                 throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Net type {0} not suported", parts[0]));
 
             return parts[1] switch

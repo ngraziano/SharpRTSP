@@ -8,7 +8,7 @@ namespace Rtsp.Sdp
 {
     public class Attribut
     {
-        private static readonly Dictionary<string, Type> attributMap = new()
+        private static readonly Dictionary<string, Type> attributMap = new(StringComparer.Ordinal)
         {
             {AttributRtpMap.NAME,typeof(AttributRtpMap)},
             {AttributFmtp.NAME,typeof(AttributFmtp)},
@@ -46,7 +46,7 @@ namespace Rtsp.Sdp
             {
                 var defaultContructor = childType.GetConstructor(Type.EmptyTypes);
                 Debug.Assert(defaultContructor is not null, "The child type must have an empty constructor");
-                returnValue = (defaultContructor.Invoke(Type.EmptyTypes) as Attribut)!;
+                returnValue = (defaultContructor!.Invoke(Type.EmptyTypes) as Attribut)!;
             }
             else
             {

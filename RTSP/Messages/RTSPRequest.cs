@@ -116,7 +116,7 @@ namespace Rtsp.Messages
         {
             get
             {
-                if (commandArray.Length < 2 || commandArray[1] == "*")
+                if (commandArray.Length < 2 || string.Equals(commandArray[1], "*", StringComparison.InvariantCulture))
                 {
                     return null;
                 }
