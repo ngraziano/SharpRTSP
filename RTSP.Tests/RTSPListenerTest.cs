@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Rtsp.Tests
 {
@@ -15,18 +16,45 @@ namespace Rtsp.Tests
     {
         IRtspTransport _mockTransport;
         bool _connected = true;
+        readonly object _lock = new();
         List<RtspChunk> _receivedMessage;
         List<RtspChunk> _receivedData;
 
-        void MessageReceived(object sender, RtspChunkEventArgs e)
+
+        private void MessageReceived(object sender, RtspChunkEventArgs e)
         {
-            _receivedMessage.Add(e.Message);
+            lock (_lock)
+            {
+                _receivedMessage.Add(e.Message);
+            }
         }
 
-        void DataReceived(object sender, RtspChunkEventArgs e)
+        private void DataReceived(object sender, RtspChunkEventArgs e)
         {
-            _receivedData.Add(e.Message);
+            lock (_lock)
+            {
+                _receivedData.Add(e.Message);
+            }
         }
+
+        private async Task WaitNMessageOrTimeout(int nbMessage, int timeout)
+        {
+            const int interval = 10;
+            int time = 0;
+            while (time < timeout)
+            {
+                lock (_lock)
+                {
+                    if (_receivedMessage.Count + _receivedData.Count >= nbMessage)
+                    {
+                        return;
+                    }
+                }
+                await Task.Delay(interval);
+                time += interval;
+            }
+        }
+
 
         [SetUp]
         public void Init()
@@ -43,7 +71,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveOptionsMessage()
+        public async Task ReceiveOptionsMessage()
         {
             const string message =
                 """
@@ -63,7 +91,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-            System.Threading.Thread.Sleep(100);
+            await WaitNMessageOrTimeout(1, 100);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -96,7 +124,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceivePlayMessage()
+        public async Task ReceivePlayMessage()
         {
             string message = string.Empty;
             message += "PLAY rtsp://audio.example.com/audio RTSP/1.0\r\n";
@@ -112,7 +140,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-            System.Threading.Thread.Sleep(100);
+            await WaitNMessageOrTimeout(1, 100);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -140,7 +168,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveResponseMessage()
+        public async Task ReceiveResponseMessage()
         {
             string message = string.Empty;
             message += "RTSP/1.0 551 Option not supported\n";
@@ -157,7 +185,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-            System.Threading.Thread.Sleep(100);
+            await WaitNMessageOrTimeout(1, 100);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -185,7 +213,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveData()
+        public async Task ReceiveData()
         {
             var rnd = new Random();
             byte[] data = new byte[0x0234];
@@ -208,7 +236,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-            System.Threading.Thread.Sleep(500);
+            await WaitNMessageOrTimeout(1, 500);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -231,7 +259,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveDataInTwoPart()
+        public async Task ReceiveDataInTwoPart()
         {
             var rnd = new Random();
             byte[] data = new byte[0x0234];
@@ -258,14 +286,13 @@ namespace Rtsp.Tests
             testedListener.Start();
             // first message in two part
             pipeServer.Write(buffer.AsSpan()[0..100]);
-            System.Threading.Thread.Sleep(20);
+            await Task.Delay(20);
             pipeServer.Write(buffer.AsSpan()[100..]);
             // second message
             pipeServer.Write(buffer);
             // add some data not finished
             pipeServer.Write(buffer.AsSpan()[100..]);
-            System.Threading.Thread.Sleep(500);
-
+            await WaitNMessageOrTimeout(1, 500);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -298,7 +325,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveNoMessage()
+        public async Task ReceiveNoMessage()
         {
             string message = string.Empty;
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(message));
@@ -311,7 +338,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-            System.Threading.Thread.Sleep(100);
+            await WaitNMessageOrTimeout(1, 100);
             testedListener.Stop();
 
             // Check the transport was closed.
@@ -324,7 +351,7 @@ namespace Rtsp.Tests
         }
 
         [Test]
-        public void ReceiveMessageInterrupt()
+        public async Task ReceiveMessageInterrupt()
         {
             string message = string.Empty;
             message += "PLAY rtsp://audio.example.com/audio RTSP/1.";
@@ -338,9 +365,7 @@ namespace Rtsp.Tests
 
             // Run
             testedListener.Start();
-
-            System.Threading.Thread.Sleep(100);
-
+            await WaitNMessageOrTimeout(1, 100);
             // No exception should be generate.
             stream.Close();
 
