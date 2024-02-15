@@ -17,7 +17,7 @@ namespace Rtsp.Messages
         {
             if (!Headers.TryGetValue(RtspHeaderNames.Transport, out string? transportString) || transportString is null)
             {
-                return new RtspTransport[] { new() };
+                return [new()];
             }
 
             return transportString.Split(',').Select(RtspTransport.Parse).ToArray();
@@ -30,7 +30,7 @@ namespace Rtsp.Messages
             {
                 actualTransport = value + ",";
             }
-            Headers[RtspHeaderNames.Transport] = actualTransport + newTransport.ToString();
+            Headers[RtspHeaderNames.Transport] = actualTransport + newTransport;
         }
     }
 }

@@ -15,7 +15,6 @@
         /// </summary>
         private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
 
-        // TODO Move in factory
         /// <summary>
         /// Create the good type of Rtsp Message from the header.
         /// </summary>
@@ -26,7 +25,7 @@
             // We can't determine the message 
             if (string.IsNullOrEmpty(aRequestLine))
                 return new RtspMessage();
-            string[] requestParts = aRequestLine.Split([' '], 3);
+            string[] requestParts = aRequestLine.Split(' ', 3);
             RtspMessage returnValue;
             if (requestParts.Length == 3)
             {
@@ -65,7 +64,7 @@
             Creation = DateTime.Now;
         }
 
-        protected internal string[] commandArray = new string[] { string.Empty };
+        protected internal string[] commandArray = [string.Empty];
 
         /// <summary>
         /// Gets or sets the creation time.

@@ -907,7 +907,7 @@ namespace RtspClientExample
                                 RtspUri = video_uri
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
+                            setup_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
 
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
@@ -1067,7 +1067,7 @@ namespace RtspClientExample
                     };
 
 
-            keepAliveMessage.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
+            keepAliveMessage.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
             rtspClient?.SendMessage(keepAliveMessage);
         }
 
