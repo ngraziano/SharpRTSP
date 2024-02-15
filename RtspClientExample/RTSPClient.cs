@@ -396,37 +396,31 @@ namespace RtspClientExample
                 return;
             }
 
-            var audio_frames = audioPayloadProcessor.ProcessRTPPacket(rtpPacket);
+            var audioFrames = audioPayloadProcessor.ProcessPacket(rtpPacket);
 
-
-            if (audioPayloadProcessor is G711Payload)
+            if (audioFrames.Any())
             {
-                // G711 PCMA or G711 PCMU
-                if (audio_frames.Count != 0)
+                if (audioPayloadProcessor is G711Payload)
                 {
+                    // G711 PCMA or G711 PCMU
                     // Write the audio frames to the file
-                    ReceivedG711?.Invoke(this, new(audio_codec, audio_frames));
+                    ReceivedG711?.Invoke(this, new(audio_codec, audioFrames.Data));
+                }
+                else if (audioPayloadProcessor is AMRPayload)
+                {
+                    // AMR
+                    // Write the audio frames to the file
+                    ReceivedAMR?.Invoke(this, new(audio_codec, audioFrames.Data));
+
+                }
+                else if (audioPayloadProcessor is AACPayload aacPayload)
+                {
+                    // AAC
+                    // Write the audio frames to the file
+                    ReceivedAAC?.Invoke(this, new(audio_codec, audioFrames.Data, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration));
                 }
             }
-            else if (audioPayloadProcessor is AMRPayload)
-            {
-                // AMR
-                if (audio_frames.Count != 0)
-                {
-                    // Write the audio frames to the file
-                    ReceivedAMR?.Invoke(this, new(audio_codec, audio_frames));
-                }
-
-            }
-            else if (audioPayloadProcessor is AACPayload aacPayload)
-            {
-                // AAC
-                if (audio_frames.Count != 0)
-                {
-                    // Write the audio frames to the file
-                    ReceivedAAC?.Invoke(this, new(audio_codec, audio_frames, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration));
-                }
-            }
+            audioFrames.Dispose();
             e.Data.Dispose();
         }
 
@@ -699,12 +693,12 @@ namespace RtspClientExample
                                     if (dataMessage.Channel == videoDataChannel)
                                     {
                                         VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                        
+
                                     }
                                     else if (dataMessage.Channel == videoRtcpChannel)
                                     {
                                         RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                     
+
                                     }
 
                                 }

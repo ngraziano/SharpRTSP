@@ -48,18 +48,18 @@ namespace RTSP.Tests.Rtp
         {
             JPEGPayload jpegPayloadParser = new();
 
-            var r0 = jpegPayloadParser.ProcessRTPPacket(ReadPacket("jpeg_0"));
-            var r1 = jpegPayloadParser.ProcessRTPPacket(ReadPacket("jpeg_1"));
-            var r2 = jpegPayloadParser.ProcessRTPPacket(ReadPacket("jpeg_2"));
+            var r0 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_0"));
+            var r1 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_1"));
+            var r2 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_2"));
 
             Assert.Multiple(() =>
             {
-                Assert.That(r0, Is.Empty);
-                Assert.That(r1, Is.Empty);
-                Assert.That(r2, Has.Count.EqualTo(1));
+                Assert.That(r0.Data, Is.Empty);
+                Assert.That(r1.Data, Is.Empty);
+                Assert.That(r2.Data, Is.Not.Empty);
             });
 
-            var jpeg = r2[0];
+            var jpeg = r2.Data.First();
             var expected = ReadBytes("img_jpg_0.jpg");
 
             Assert.That(jpeg.ToArray(), Is.EqualTo(expected));
