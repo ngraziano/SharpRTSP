@@ -292,7 +292,7 @@ namespace Rtsp.Tests
             pipeServer.Write(buffer);
             // add some data not finished
             pipeServer.Write(buffer.AsSpan()[100..]);
-            await WaitNMessageOrTimeout(1, 500);
+            await WaitNMessageOrTimeout(2, 500);
             testedListener.Stop();
 
             // Check the transport was closed.
