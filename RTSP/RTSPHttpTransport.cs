@@ -34,8 +34,8 @@ namespace Rtsp
             Reconnect();
         }
 
-        public string RemoteAddress => $"{_uri}";
-        public bool Connected => _streamDataClient != null && _streamDataClient.Connected;
+        public string RemoteAddress => _uri.ToString();
+        public bool Connected => _streamDataClient?.Connected == true;
 
         public uint NextCommandIndex() => ++_commandCounter;
 
@@ -47,7 +47,7 @@ namespace Rtsp
 
         public Stream GetStream()
         {
-            if (_streamDataClient == null || !_streamDataClient.Connected)
+            if (_streamDataClient?.Connected != true)
                 throw new InvalidOperationException("Client is not connected");
 
             return _dataNetworkStream;
@@ -108,8 +108,11 @@ namespace Rtsp
 
         public void Write(byte[] buffer, int offset, int count)
         {
-            using (_commandsClient = NetworkClientFactory.CreateTcpClient())
+            if (_commandsClient?.Connected != true)
             {
+                _commandsClient?.Dispose();
+                _commandsClient = NetworkClientFactory.CreateTcpClient();
+
                 int httpPort = _uri.Port != -1 ? _uri.Port : 80;
 
                 _commandsClient.Connect(_uri.Host, httpPort);
@@ -127,6 +130,12 @@ namespace Rtsp
                 ];
 
                 _commandsClient.Send(sendList, SocketFlags.None);
+            }
+            else
+            {
+                string base64CodedCommandString = Convert.ToBase64String(buffer, offset, count);
+                byte[] base64CommandBytes = Encoding.ASCII.GetBytes(base64CodedCommandString);
+                _commandsClient.Send(base64CommandBytes, SocketFlags.None);
             }
         }
 
@@ -154,15 +163,10 @@ namespace Rtsp
             sb.AppendLine($"POST {_uri.PathAndQuery} HTTP/1.0");
             sb.AppendLine($"x-sessioncookie: {_sessionCookie}");
             sb.AppendLine("Content-Type: application/x-rtsp-tunnelled");
-            sb.AppendLine($"Content-Length: {commandBytes.Length}");
+            sb.AppendLine("Content-Length: 32767");
             if (!string.IsNullOrEmpty(authorizationHeader)) { sb.AppendLine(authorizationHeader); }
             sb.AppendLine();
             return sb.ToString();
-
-            //return $"POST {_uri.PathAndQuery} HTTP/1.0\r\n" +
-            //       $"x-sessioncookie: {_sessionCookie}\r\n" +
-            //       "Content-Type: application/x-rtsp-tunnelled\r\n" +
-            //       $"Content-Length: {commandBytes.Length}\r\n\r\n";
         }
 
         private string GetAuthorizationHeader(uint counter, string method, byte[] requestBytes)
