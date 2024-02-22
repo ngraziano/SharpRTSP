@@ -28,6 +28,9 @@ namespace RtspClientExample
             //string url = "rtsp://192.168.0.89/media/video1";
 
             // string url = "http://192.168.3.72/profile1/media.smp";
+
+            string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
+
             string username = "admin";
             string password = "Admin123!";
             // Axis Tests
@@ -56,7 +59,7 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/test";
 
             // Happytime RTSP Server
-            string url = "rtsp://127.0.0.1/screenlive";
+            //string url = "rtsp://127.0.0.1/screenlive";
 
 
 
@@ -283,10 +286,20 @@ namespace RtspClientExample
                 }
             };
 
+            client.SetupMessageCompleted += (_, _) => 
+            {
+                DateTime startTime = new DateTime(2024, 2, 22, 5, 10, 20);
+                client.Play(startTime, startTime.AddMinutes(10), 1.0);
+            };
+
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
             client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+
+            //client.Pause();
+            //DateTime startTime = DateTime.Now.AddHours(-1);
+            //client.Play(startTime, startTime.AddMinutes(1), 1.0);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
