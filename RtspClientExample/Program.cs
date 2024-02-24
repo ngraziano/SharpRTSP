@@ -29,6 +29,7 @@ namespace RtspClientExample
 
             // string url = "http://192.168.3.72/profile1/media.smp";
 
+            bool usePlayback = false;
             string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
@@ -189,11 +190,11 @@ namespace RtspClientExample
 
                 foreach (var data in args.Data)
                 {
-                    string filename = Path.Combine("rtsp_capture_" + now ,  indexImg++ + ".jpg");
+                    string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
                     using var fs = new FileStream(filename, FileMode.Create);
                     fs.Write(data.Span);
                 }
-                
+
             };
 
             client.ReceivedG711 += (_, args) =>
@@ -286,10 +287,18 @@ namespace RtspClientExample
                 }
             };
 
-            client.SetupMessageCompleted += (_, _) => 
+            client.SetupMessageCompleted += (_, _) =>
             {
-                DateTime startTime = new DateTime(2024, 2, 22, 5, 10, 20);
-                client.Play(startTime, startTime.AddMinutes(10), 1.0);
+                if (usePlayback)
+                {
+                    // for demonstration play one hour in past
+                    DateTime startTime = DateTime.Now.AddHours(-1);
+                    client.Play(startTime, startTime.AddMinutes(10), 1.0);
+                }
+                else
+                {
+                    client.Play();
+                }
             };
 
             // Connect to RTSP Server
