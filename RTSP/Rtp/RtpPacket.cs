@@ -33,6 +33,6 @@ namespace Rtsp.Rtp
         public int PayloadSize => rawData.Length - HeaderSize - ExtensionSize - PaddingSize;
 
         public ReadOnlySpan<byte> Payload => rawData[(HeaderSize + ExtensionSize)..^PaddingSize];
-        public ReadOnlySpan<byte> Extension => rawData[HeaderSize..ExtensionSize];
+        public ReadOnlySpan<byte> Extension => rawData[HeaderSize..(HeaderSize + ExtensionSize)];
     }
 }
