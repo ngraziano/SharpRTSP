@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Rtsp;
 using Rtsp.Messages;
+using Rtsp.Onvif;
 using Rtsp.Rtp;
 using Rtsp.Sdp;
 using System;
@@ -65,6 +66,13 @@ namespace RtspClientExample
 
         // setup messages still to send
         readonly Queue<RtspRequestSetup> setupMessages = new();
+
+
+        /// <summary>
+        /// Called when the Setup command are completed, so we can start the right Play message (with or without playback informations)
+        /// </summary>
+        public event EventHandler? SetupMessageCompleted;
+
 
         // Constructor
         public RTSPClient(ILoggerFactory loggerFactory)
@@ -212,15 +220,57 @@ namespace RtspClientExample
             }
 
             // Send PLAY
-            RtspRequest play_message = new RtspRequestPlay
+            var play_message = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session
             };
             play_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+
+            //// Need for old sony camera SNC-CS20
+            play_message.Headers.Add("range", "npt=0.000-");
+
             rtspClient?.SendMessage(play_message);
         }
 
+        /// <summary>
+        /// Generate a Play request from required time
+        /// </summary>
+        /// <param name="seekTime">The playback time to start from</param>
+        /// <param name="speed">Speed information (1.0 means normal speed, -1.0 backward speed), other values >1.0 and <-1.0 allow a different speed</param>
+        public void Play(DateTime seekTime, double speed = 1.0)
+        {
+            if (rtspSocket is null || _uri is null) { throw new InvalidOperationException("Not connected"); }
+            var playMessage = new RtspRequestPlay
+            {
+                RtspUri = _uri,
+                Session = session,
+            };
+            playMessage.AddPlayback(seekTime, speed);
+            rtspClient?.SendMessage(playMessage);
+        }
+
+        /// <summary>
+        /// Generate a Play request with a time range
+        /// </summary>
+        /// <param name="seekTimeFrom">Starting time for playback</param>
+        /// <param name="seekTimeTo">Ending time for playback</param>
+        /// <param name="speed">Speed information (1.0 means normal speed, -1.0 backward speed), other values >1.0 and <-1.0 allow a different speed</param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void Play(DateTime seekTimeFrom, DateTime seekTimeTo, double speed = 1.0)
+        {
+            if (rtspSocket is null || _uri is null) { throw new InvalidOperationException("Not connected"); }
+            if (seekTimeFrom > seekTimeTo) { throw new ArgumentOutOfRangeException(nameof(seekTimeFrom), "Starting seek cannot be major than ending seek."); }
+
+            var playMessage = new RtspRequestPlay
+            {
+                RtspUri = _uri,
+                Session = session,
+            };
+
+            playMessage.AddPlayback(seekTimeFrom, seekTimeTo, speed);
+            rtspClient?.SendMessage(playMessage);
+        }
 
         public void Stop()
         {
@@ -739,18 +789,21 @@ namespace RtspClientExample
                 }
                 else
                 {
-                    // Send PLAY
-                    RtspRequest play_message = new RtspRequestPlay
-                    {
-                        RtspUri = _uri,
-                        Session = session
-                    };
+                    // use the event for setup completed, so the main program can call the Play command with or without the playback request.
+                    SetupMessageCompleted?.Invoke(this, EventArgs.Empty);
 
-                    // Need for old sony camera SNC-CS20
-                    play_message.Headers.Add("range", "npt=0.000-");
-
-                    play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
-                    rtspClient?.SendMessage(play_message);
+                    //// Send PLAY
+                    //RtspRequest play_message = new RtspRequestPlay
+                    //{
+                    //    RtspUri = _uri,
+                    //    Session = session
+                    //};
+                    //
+                    //// Need for old sony camera SNC-CS20
+                    //play_message.Headers.Add("range", "npt=0.000-");
+                    //
+                    //play_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
+                    //rtspClient?.SendMessage(play_message);
                 }
             }
 
