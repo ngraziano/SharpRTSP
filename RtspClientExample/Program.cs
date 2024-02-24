@@ -28,9 +28,12 @@ namespace RtspClientExample
             //string url = "rtsp://192.168.0.89/media/video1";
 
             // string url = "http://192.168.3.72/profile1/media.smp";
-            string username = "user";
-            // string password = "Admin123!";
-            string password = "123456";
+
+            bool usePlayback = false;
+            string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
+
+            string username = "admin";
+            string password = "Admin123!";
             // Axis Tests
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264";
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
@@ -57,8 +60,7 @@ namespace RtspClientExample
             //String url = "rtsp://127.0.0.1:8554/test";
 
             // Happytime RTSP Server
-            string url = "rtsp://127.0.0.1/screenlive";
-            // string url = "http://127.0.0.1:8044/screenlive";
+            //string url = "rtsp://127.0.0.1/screenlive";
 
 
 
@@ -188,11 +190,11 @@ namespace RtspClientExample
 
                 foreach (var data in args.Data)
                 {
-                    string filename = Path.Combine("rtsp_capture_" + now ,  indexImg++ + ".jpg");
+                    string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
                     using var fs = new FileStream(filename, FileMode.Create);
                     fs.Write(data.Span);
                 }
-                
+
             };
 
             client.ReceivedG711 += (_, args) =>
@@ -256,7 +258,7 @@ namespace RtspClientExample
                         //                        int sample_freq = 4; // 4 = 44100 Hz
                         //                        int channel_config = 2; // 2 = Stereo
 
-                        Rtsp.BitStream bs = new();
+                        Rtsp.BitStream bs = new Rtsp.BitStream();
                         bs.AddValue(0xFFF, 12); // (a) Start of data
                         bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
                         bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
@@ -285,10 +287,28 @@ namespace RtspClientExample
                 }
             };
 
+            client.SetupMessageCompleted += (_, _) =>
+            {
+                if (usePlayback)
+                {
+                    // for demonstration play one hour in past
+                    DateTime startTime = DateTime.UtcNow.AddHours(-1);
+                    client.Play(startTime, startTime.AddMinutes(10), 1.0);
+                }
+                else
+                {
+                    client.Play();
+                }
+            };
+
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.UDP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+
+            //client.Pause();
+            //DateTime startTime = DateTime.Now.AddHours(-1);
+            //client.Play(startTime, startTime.AddMinutes(1), 1.0);
 
             // Wait for user to terminate programme
             // Check for null which is returned when running under some IDEs
