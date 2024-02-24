@@ -292,7 +292,7 @@ namespace RtspClientExample
                 if (usePlayback)
                 {
                     // for demonstration play one hour in past
-                    DateTime startTime = DateTime.Now.AddHours(-1);
+                    DateTime startTime = DateTime.UtcNow.AddHours(-1);
                     client.Play(startTime, startTime.AddMinutes(10), 1.0);
                 }
                 else

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Rtsp;
 using Rtsp.Messages;
+using Rtsp.Onvif;
 using Rtsp.Rtp;
 using Rtsp.Sdp;
 using System;
@@ -219,7 +220,7 @@ namespace RtspClientExample
             }
 
             // Send PLAY
-            RtspRequest play_message = new RtspRequestPlay
+            var play_message = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session
@@ -240,7 +241,7 @@ namespace RtspClientExample
         public void Play(DateTime seekTime, double speed = 1.0)
         {
             if (rtspSocket is null || _uri is null) { throw new InvalidOperationException("Not connected"); }
-            RtspRequest playMessage = new RtspRequestPlay
+            var playMessage = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session,
@@ -260,7 +261,8 @@ namespace RtspClientExample
         {
             if (rtspSocket is null || _uri is null) { throw new InvalidOperationException("Not connected"); }
             if (seekTimeFrom > seekTimeTo) { throw new ArgumentOutOfRangeException(nameof(seekTimeFrom), "Starting seek cannot be major than ending seek."); }
-            RtspRequest playMessage = new RtspRequestPlay
+
+            var playMessage = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session,
