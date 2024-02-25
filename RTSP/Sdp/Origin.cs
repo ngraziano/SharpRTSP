@@ -30,7 +30,7 @@ namespace Rtsp.Sdp
                 SessionVersion = parts[2],
                 NetType = parts[3],
                 AddressType = parts[4],
-                UnicastAddress = parts[5]
+                UnicastAddress = parts[5],
             };
         }
 
@@ -82,15 +82,14 @@ namespace Rtsp.Sdp
         public override string ToString()
         {
             return string.Join(" ",
-                new string[]
-                {
+                [
                     Username,
                     SessionId,
                     SessionVersion.ToString(CultureInfo.InvariantCulture),
                     NetType,
                     AddressType,
                     UnicastAddress,
-                }
+                ]
                 );
         }
     }

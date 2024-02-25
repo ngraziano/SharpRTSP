@@ -5,20 +5,13 @@ namespace Rtsp.Sdp
 {
     public abstract class Connection
     {
-        protected Connection()
-        {
-            //Default value from spec
-            NumberOfAddress = 1;
-        }
-
         public string Host { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the number of address specifed in connection.
         /// </summary>
-        /// <value>The number of address.</value>
-        //TODO handle it a different way (list of adress ?)
-        public int NumberOfAddress { get; set; }
+        /// <value>The number of the address.</value>
+        public int NumberOfAddress { get; set; } = 1;
 
         public static Connection Parse(string value)
         {

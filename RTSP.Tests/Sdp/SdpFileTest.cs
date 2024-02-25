@@ -101,9 +101,17 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Session, Is.EqualTo("profile1"));
                 Assert.That(readenSDP.Url, Is.Null);
                 Assert.That(readenSDP.Email, Is.EqualTo("admin@"));
-
                 Assert.That(readenSDP.Attributs, Has.Count.EqualTo(2));
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(2));
+            });
+
+            Media firstMedia = readenSDP.Medias[0];
+            Assert.That(firstMedia.Bandwidths, Has.Count.EqualTo(1));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstMedia.Bandwidths[0].Type, Is.EqualTo("AS"));
+                Assert.That(firstMedia.Bandwidths[0].Value, Is.EqualTo(5000));
             });
         }
 

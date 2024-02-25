@@ -138,7 +138,7 @@ namespace Rtsp.Sdp
                     repeat = value.Value;
                     value = GetKeyValue(sdpStream);
                 }
-                returnValue.Timings.Add(new Timing(timing, repeat));
+                returnValue.Timings.Add(Timing.Parse(timing, repeat));
             }
 
             // timezone optional
@@ -151,7 +151,7 @@ namespace Rtsp.Sdp
             // encryption key optional
             if (value.Key == 'k')
             {
-                returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
+                // Obsolete in RFC 8866 ignored
                 value = GetKeyValue(sdpStream);
             }
 
@@ -201,10 +201,10 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // Connexion optional
-            if (value.Key == 'c')
+            // Connexion optional and multiple in media
+            while (value.Key == 'c')
             {
-                returnValue.Connection = Connection.Parse(value.Value);
+                returnValue.Connections.Add(Connection.Parse(value.Value));
                 value = GetKeyValue(sdpStream);
             }
 
@@ -215,10 +215,10 @@ namespace Rtsp.Sdp
                 value = GetKeyValue(sdpStream);
             }
 
-            // enkription key optional
+            // encryption key optional
             if (value.Key == 'k')
             {
-                returnValue.EncriptionKey = EncriptionKey.ParseInvariant(value.Value);
+                // Obsolete in RFC 8866 ignored
                 value = GetKeyValue(sdpStream);
             }
 
@@ -253,8 +253,6 @@ namespace Rtsp.Sdp
         public IList<Timing> Timings { get; } = new List<Timing>();
 
         public SdpTimeZone? TimeZone { get; set; }
-
-        public EncriptionKey? EncriptionKey { get; set; }
 
         public IList<Attribut> Attributs { get; } = new List<Attribut>();
 

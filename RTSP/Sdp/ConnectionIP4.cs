@@ -16,7 +16,7 @@
 
             var result = new ConnectionIP4
             {
-                Host = parts[0]
+                Host = parts[0],
             };
 
             if (parts.Length > 1)

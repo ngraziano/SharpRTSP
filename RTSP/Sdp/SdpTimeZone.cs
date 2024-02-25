@@ -5,18 +5,19 @@ namespace Rtsp.Sdp
 {
     public class SdpTimeZone
     {
+        public required string RawValue { get; init; }
+
         public static SdpTimeZone ParseInvariant(string value)
         {
             if (value == null)
                 throw new ArgumentNullException("value");
             Contract.EndContractBlock();
 
-            SdpTimeZone returnValue = new SdpTimeZone();
+            return new()
+            {
+                RawValue = value,
+            };
 
-            throw new NotImplementedException();
-
-
-            return returnValue;
         }
     }
 }
