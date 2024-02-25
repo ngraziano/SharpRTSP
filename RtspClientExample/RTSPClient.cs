@@ -330,11 +330,6 @@ namespace RtspClientExample
                 if (videoPayloadProcessor is H264Payload)
                 {
                     // H264 RTP Packet
-                    // If rtp_marker is '1' then this is the final transmission for this packet.
-                    // If rtp_marker is '0' we need to accumulate data with the same timestamp
-                    // ToDo - Check Timestamp
-                    // Add the RTP packet to the tempoary_rtp list until we have a complete 'Frame'
-
                     // If we did not have a SPS and PPS in the SDP then search for the SPS and PPS
                     // in the NALs and fire the Received_SPS_PPS event.
                     // We assume the SPS and PPS are in the same Frame.
@@ -370,10 +365,6 @@ namespace RtspClientExample
                 if (videoPayloadProcessor is H265Payload)
                 {
                     // H265 RTP Packet
-                    // If rtp_marker is '1' then this is the final transmission for this packet.
-                    // If rtp_marker is '0' we need to accumulate data with the same timestamp
-                    // Add the RTP packet to the tempoary_rtp list until we have a complete 'Frame'
-
                     // If we did not have a VPS, SPS and PPS in the SDP then search for the VPS SPS and PPS
                     // in the NALs and fire the Received_VPS_SPS_PPS event.
                     // We assume the VPS, SPS and PPS are in the same Frame.
@@ -616,7 +607,7 @@ namespace RtspClientExample
 
                     string www_authenticate = value ?? string.Empty;
                     _authentication = Authentication.Create(_credentials, www_authenticate);
-                    _logger.LogDebug($"WWW Authorize parsed for {_authentication}");
+                    _logger.LogDebug("WWW Authorize parsed for {authentication}",_authentication);
                 }
 
                 RtspMessage? resend_message = message.OriginalRequest?.Clone() as RtspMessage;
@@ -1023,7 +1014,6 @@ namespace RtspClientExample
                         }
                         break;
                     }
-
                 }
             }
 
