@@ -333,15 +333,14 @@ namespace RtspClientExample
                     // If we did not have a SPS and PPS in the SDP then search for the SPS and PPS
                     // in the NALs and fire the Received_SPS_PPS event.
                     // We assume the SPS and PPS are in the same Frame.
-                    if (h264_sps_pps_fired == false)
+                    if (!h264_sps_pps_fired)
                     {
-
                         // Check this frame for SPS and PPS
                         byte[]? sps = null;
                         byte[]? pps = null;
                         foreach (var nalUnit in nal_units.Data)
                         {
-                            var nal_unit = nalUnit.Span;
+                            var nal_unit = nalUnit.Span[4..];
                             if (nal_unit.Length > 0)
                             {
                                 int nal_ref_idc = (nal_unit[0] >> 5) & 0x03;
@@ -368,7 +367,7 @@ namespace RtspClientExample
                     // If we did not have a VPS, SPS and PPS in the SDP then search for the VPS SPS and PPS
                     // in the NALs and fire the Received_VPS_SPS_PPS event.
                     // We assume the VPS, SPS and PPS are in the same Frame.
-                    if (h265_vps_sps_pps_fired == false)
+                    if (!h265_vps_sps_pps_fired)
                     {
 
                         // Check this frame for VPS, SPS and PPS
@@ -377,7 +376,7 @@ namespace RtspClientExample
                         byte[]? pps = null;
                         foreach (var nalUnit in nal_units.Data)
                         {
-                            var nal_unit = nalUnit.Span;
+                            var nal_unit = nalUnit.Span[4..];
                             if (nal_unit.Length > 0)
                             {
                                 int nal_unit_type = (nal_unit[0] >> 1) & 0x3F;
@@ -407,7 +406,6 @@ namespace RtspClientExample
                 if (videoPayloadProcessor is MP2TransportPayload)
                 {
                     ReceivedMp2t?.Invoke(this, new(nal_units.Data));
-
                 }
             }
 
