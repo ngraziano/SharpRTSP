@@ -10,14 +10,13 @@ namespace Rtsp.Sdp
         public static SdpTimeZone ParseInvariant(string value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
             Contract.EndContractBlock();
 
             return new()
             {
                 RawValue = value,
             };
-
         }
     }
 }

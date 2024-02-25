@@ -91,14 +91,7 @@
         /// </returns>
         public override string ToString()
         {
-            if (IsSecondPortPresent)
-            {
-                return FormattableString.Invariant($"{First}-{Second}");
-            }
-            else
-            {
-                return First.ToString(CultureInfo.InvariantCulture);
-            }
+            return IsSecondPortPresent ? FormattableString.Invariant($"{First}-{Second}") : First.ToString(CultureInfo.InvariantCulture);
         }
     }
 }

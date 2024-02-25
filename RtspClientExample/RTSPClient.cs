@@ -1021,6 +1021,7 @@ namespace RtspClientExample
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
                         }
+                        break;
                     }
 
                 }

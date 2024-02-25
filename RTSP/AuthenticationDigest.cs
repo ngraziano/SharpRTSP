@@ -22,7 +22,7 @@ namespace Rtsp
 
             if (!string.IsNullOrEmpty(qop))
             {
-                int commaIndex = qop!.IndexOf(",", StringComparison.OrdinalIgnoreCase);
+                int commaIndex = qop!.IndexOf(',', StringComparison.OrdinalIgnoreCase);
                 _qop = commaIndex > -1 ? qop[..commaIndex] : qop;
             }
             uint cnonce = (uint)Guid.NewGuid().GetHashCode();

@@ -108,7 +108,6 @@ namespace Rtsp.Rtp
 
         public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
         {
-
             // RTP Payload for MPEG4-GENERIC can consist of multple blocks.
             // Each block has 3 parts
             // Part 1 - Acesss Unit Header Length + Header

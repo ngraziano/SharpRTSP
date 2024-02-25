@@ -64,7 +64,6 @@ namespace Rtsp.Rtp
         /// <param name="payload">An RTP packer</param>
         private void ProcessRTPFrame(ReadOnlySpan<byte> payload)
         {
-
             // Examine the first two bytes of the RTP data, the Payload Header
             // F (Forbidden Bit),
             // Type of NAL Unit (or VCL NAL Unit if Type is < 32),
@@ -114,7 +113,6 @@ namespace Rtsp.Rtp
                 var nalSpan = PrepareNewNal(payload.Length);
                 payload.CopyTo(nalSpan);
             }
-
         }
 
         private void AggragateFragmentationPayload(ReadOnlySpan<byte> payload, int payloadHeader)

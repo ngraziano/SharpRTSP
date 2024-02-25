@@ -544,8 +544,6 @@
         /// <param name="frame">The frame.</param>
         public void SendData(int channel, ReadOnlySpan<byte> frame)
         {
-            if (frame == null)
-                throw new ArgumentNullException(nameof(frame));
             if (frame.Length > 0xFFFF)
                 throw new ArgumentException("frame too large", nameof(frame));
             Contract.EndContractBlock();

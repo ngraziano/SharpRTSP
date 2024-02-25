@@ -33,7 +33,7 @@ namespace Rtsp.Messages
         /// <returns>The typed request.</returns>
         internal static RequestType ParseRequest(string aStringRequest)
         {
-            if (!Enum.TryParse(aStringRequest, true, out RequestType returnValue))
+            if (!Enum.TryParse(aStringRequest, ignoreCase: true, out RequestType returnValue))
                 returnValue = RequestType.UNKNOWN;
             return returnValue;
         }
@@ -146,7 +146,7 @@ namespace Rtsp.Messages
             var returnValue = new RtspResponse
             {
                 ReturnCode = 200,
-                CSeq = CSeq
+                CSeq = CSeq,
             };
             if (Headers.TryGetValue(RtspHeaderNames.Session, out string? value))
             {

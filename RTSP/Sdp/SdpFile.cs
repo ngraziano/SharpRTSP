@@ -250,12 +250,12 @@ namespace Rtsp.Sdp
 
         public Bandwidth? Bandwidth { get; set; }
 
-        public IList<Timing> Timings { get; } = new List<Timing>();
+        public IList<Timing> Timings { get; } = [];
 
         public SdpTimeZone? TimeZone { get; set; }
 
-        public IList<Attribut> Attributs { get; } = new List<Attribut>();
+        public IList<Attribut> Attributs { get; } = [];
 
-        public IList<Media> Medias { get; } = new List<Media>();
+        public IList<Media> Medias { get; } = [];
     }
 }

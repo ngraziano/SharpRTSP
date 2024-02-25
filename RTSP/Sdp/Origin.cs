@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Globalization;
 
 namespace Rtsp.Sdp
 {
     /// <summary>
-    /// Object ot represent orgin in an Session Description Protocol 
+    /// Object ot represent orgin in an Session Description Protocol
     /// </summary>
     public class Origin
     {
@@ -12,7 +11,7 @@ namespace Rtsp.Sdp
         /// Parses the specified origin string.
         /// </summary>
         /// <param name="originString">The string to convert to origin object.</param>
-        /// <returns></returns>
+        /// <returns>The parsed origin object</returns>
         public static Origin Parse(string originString)
         {
             if (originString == null)
@@ -85,7 +84,7 @@ namespace Rtsp.Sdp
                 [
                     Username,
                     SessionId,
-                    SessionVersion.ToString(CultureInfo.InvariantCulture),
+                    SessionVersion,
                     NetType,
                     AddressType,
                     UnicastAddress,

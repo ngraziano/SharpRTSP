@@ -5,7 +5,6 @@ namespace Rtsp.Sdp
 {
     public class Bandwidth
     {
-
         public required string Type { get; init; }
         public required int Value { get; init; }
 

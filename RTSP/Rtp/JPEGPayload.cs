@@ -296,7 +296,6 @@ namespace Rtsp.Rtp
             if (factor < 1) { factor = 1; }
             else if (factor > 99) { factor = 99; }
 
-
             int q = factor < 50 ? 5000 / factor : 200 - factor * 2;
             for (int i = 0; i < 128; ++i)
             {
@@ -341,8 +340,6 @@ namespace Rtsp.Rtp
             buffer[offset++] = 0x01;
             buffer[offset++] = 0x00;
             buffer[offset++] = 0x00;
-
-
 
             if (dri > 0)
             {
@@ -434,7 +431,5 @@ namespace Rtsp.Rtp
             offset += symbols.Length;
             return offset;
         }
-
-
     }
 }

@@ -31,7 +31,6 @@ namespace Rtsp.Sdp
                 StartTime = start,
                 StopTime = stop,
             };
-
         }
     }
 }
