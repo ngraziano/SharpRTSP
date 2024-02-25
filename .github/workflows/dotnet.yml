@@ -1,4 +1,4 @@
-name: .NET
+name: Build and Test
 
 on:
   push:
@@ -12,9 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.x
     - name: Restore dependencies
