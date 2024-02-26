@@ -28,6 +28,13 @@ namespace Rtsp
             uint cnonce = (uint)Guid.NewGuid().GetHashCode();
             _cnonce = cnonce.ToString("X8");
         }
+
+        public override string GetServerResponse()
+        {
+            //TODO implement correctly
+            return $"Digest realm=\"{_realm}\", nonce=\"{_nonce}\"";
+        }
+
         public override string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes)
         {
             MD5 md5 = MD5.Create();
@@ -135,5 +142,7 @@ namespace Rtsp
 
             return output.ToString();
         }
+
+
     }
 }

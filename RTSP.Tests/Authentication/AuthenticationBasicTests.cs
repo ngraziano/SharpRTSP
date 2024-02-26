@@ -11,7 +11,7 @@ namespace RTSP.Tests.Authentication
         public void GetResponseTest()
         {
             const string wanted = "Basic dXNlcm5hbWVAZXhhbXBsZS5jb206UGFzc3dvcmRAIVhZWg==";
-            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "Password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "Password@!XYZ"), "Test Realm");
 
             var header = testObject.GetResponse(0, "rtsp://test/uri", "GET_PARAMETER", null);
 
@@ -23,7 +23,7 @@ namespace RTSP.Tests.Authentication
         {
             var message = new RtspMessage();
             message.Headers.Add("Authorization", "Basic dXNlcm5hbWVAZXhhbXBsZS5jb206UGFzc3dvcmRAIVhZWg==");
-            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "Password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "Password@!XYZ"), "Test Realm");
 
             var result = testObject.IsValid(message);
 
@@ -35,7 +35,7 @@ namespace RTSP.Tests.Authentication
         {
             var message = new RtspMessage();
             message.Headers.Add("Authorization", "Basic dXNlcm5hbWVAZXhhbXBsZS5jb206UGFzc3dvcmRAIVhZWg==");
-            var testObject = new AuthenticationBasic(new NetworkCredential("USERNAME@example.com", "Password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("USERNAME@example.com", "Password@!XYZ"), "Test Realm");
 
             var result = testObject.IsValid(message);
 
@@ -47,7 +47,7 @@ namespace RTSP.Tests.Authentication
         {
             var message = new RtspMessage();
             message.Headers.Add("Authorization", "Basic dXNlcm5hbWVAZXhhbXBsZS5jb206UGFzc3dvcmRAIVhZWg==");
-            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"), "Test Realm");
 
             var result = testObject.IsValid(message);
 
@@ -59,7 +59,7 @@ namespace RTSP.Tests.Authentication
         {
             var message = new RtspMessage();
             message.Headers.Add("Authorization", "Basic dXNlcm5hbWVAZXhhbXBsZS5jb20=");
-            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"), "Test Realm");
 
             var result = testObject.IsValid(message);
 
@@ -71,7 +71,7 @@ namespace RTSP.Tests.Authentication
         {
             var message = new RtspMessage();
             message.Headers.Add("Authorization", "Basic invalid$$$$");
-            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"));
+            var testObject = new AuthenticationBasic(new NetworkCredential("username@example.com", "password@!XYZ"), "Test Realm");
 
             var result = testObject.IsValid(message);
 

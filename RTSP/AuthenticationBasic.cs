@@ -7,16 +7,27 @@ namespace Rtsp
 {
     public class AuthenticationBasic : Authentication
     {
-        const string AUTHENTICATION_PREFIX = "Basic ";
+        public const string AUTHENTICATION_PREFIX = "Basic ";
 
-        public AuthenticationBasic(NetworkCredential credentials) : base(credentials)
-        { }
+        private readonly string _realm;
+        
+
+        public AuthenticationBasic(NetworkCredential credentials, string realm) : base(credentials)
+        { 
+            _realm = realm ?? throw new ArgumentNullException(nameof(realm));
+        }
 
         public override string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes)
         {
             string usernamePasswordHash = $"{Credentials.UserName}:{Credentials.Password}";
             return AUTHENTICATION_PREFIX + Convert.ToBase64String(Encoding.UTF8.GetBytes(usernamePasswordHash));
         }
+
+        public override string GetServerResponse()
+        {
+            return $"{AUTHENTICATION_PREFIX}realm=\"{_realm}\"";
+        }
+
         public override bool IsValid(RtspMessage receivedMessage)
         {
             string? authorization = receivedMessage.Headers["Authorization"];

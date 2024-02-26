@@ -15,6 +15,7 @@ namespace Rtsp
             Credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         }
 
+        public abstract string GetServerResponse();
         public abstract string GetResponse(uint nonceCounter, string uri, string method, byte[] entityBodyBytes);
         public abstract bool IsValid(RtspMessage received_message);
 
@@ -24,7 +25,20 @@ namespace Rtsp
                                  throw new ArgumentNullException(nameof(authenticateHeader));
 
             if (authenticateHeader.StartsWith("Basic", StringComparison.OrdinalIgnoreCase))
-                return new AuthenticationBasic(credential);
+            {
+                int spaceIndex = authenticateHeader.IndexOf(' ', StringComparison.Ordinal);
+
+                if (spaceIndex != -1)
+                {
+                    string parameters = authenticateHeader[++spaceIndex..];
+
+                    Dictionary<string, string> parameterNameToValueMap = ParseParameters(parameters);
+                    if (!parameterNameToValueMap.TryGetValue("REALM", out var realm) || realm is null)
+                        throw new ArgumentException("\"realm\" parameter is not found in header", nameof(authenticateHeader));
+                    return new AuthenticationBasic(credential, realm);
+                }
+
+            }
 
             if (authenticateHeader.StartsWith("Digest", StringComparison.OrdinalIgnoreCase))
             {
@@ -115,9 +129,7 @@ namespace Rtsp
                 }
 
                 int parameterValueLength = parameterValueEndPos - parameterValueStartPos;
-                string parameterValue = parameters.Substring(parameterValueStartPos, parameterValueLength);
-
-                parameterNameToValueMap[parameterName] = parameterValue;
+                parameterNameToValueMap[parameterName] = parameters.Substring(parameterValueStartPos, parameterValueLength);
             }
 
             return parameterNameToValueMap;

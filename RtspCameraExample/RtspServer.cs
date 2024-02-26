@@ -186,7 +186,7 @@ namespace RtspCameraExample
                     {
                         // Send a 401 Authentication Failed reply, then close the RTSP Socket
                         RtspResponse authorization_response = message.CreateResponse();
-                        authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, [])); // 'Basic' or 'Digest'
+                        authorization_response.AddHeader("WWW-Authenticate: " + auth.GetServerResponse()); // 'Basic' or 'Digest'
                         authorization_response.ReturnCode = 401;
                         listener.SendMessage(authorization_response);
 
@@ -203,7 +203,7 @@ namespace RtspCameraExample
                     // Send a 401 Authentication Failed with extra info in WWW-Authenticate
                     // to tell the Client if we are using Basic or Digest Authentication
                     RtspResponse authorization_response = message.CreateResponse();
-                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetResponse(++_nonceCounter, message.RtspUri!.OriginalString, message.Method, []));
+                    authorization_response.AddHeader("WWW-Authenticate: " + auth.GetServerResponse());
                     authorization_response.ReturnCode = 401;
                     listener.SendMessage(authorization_response);
                     return;
