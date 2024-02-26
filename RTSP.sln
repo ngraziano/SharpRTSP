@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Éléments de solution", "�
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RtspCameraMJPEGExample", "RtspCameraMJPEGExample\RtspCameraMJPEGExample.csproj", "{1DD23907-E6D7-4CFE-9F59-49CF21A71F76}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA8B426A-92A8-4944-B061-EC642EB0A4DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DD23907-E6D7-4CFE-9F59-49CF21A71F76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DD23907-E6D7-4CFE-9F59-49CF21A71F76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DD23907-E6D7-4CFE-9F59-49CF21A71F76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DD23907-E6D7-4CFE-9F59-49CF21A71F76}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
