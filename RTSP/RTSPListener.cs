@@ -557,7 +557,9 @@
                 Reconnect();
             }
 
-            byte[] data = new byte[4 + frame.Length]; // add 4 bytes for the header
+            // add 4 bytes for the header
+            var packetLength = 4 + frame.Length;
+            var data = ArrayPool<byte>.Shared.Rent(packetLength);
             data[0] = 36; // '$' character
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
@@ -565,8 +567,9 @@
             frame.CopyTo(data.AsSpan(4));
             lock (_stream)
             {
-                _stream.Write(data, 0, data.Length);
+                _stream.Write(data, 0, packetLength);
             }
+            ArrayPool<byte>.Shared.Return(data);
         }
         /// <summary>
         /// Send data (Synchronous)
