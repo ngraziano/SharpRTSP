@@ -101,7 +101,7 @@ mode                =    <"> *Method <"> | Method
         /// Gets or sets a value indicating whether this instance is multicast.
         /// </summary>
         /// <value>
-        /// 	<c>true</c> if this instance is multicast; otherwise, <c>false</c>.
+        /// 	<see langword="true"/> if this instance is multicast; otherwise, <see langword="false"/>.
         /// </value>
         public bool IsMulticast { get; set; }
         /// <summary>
@@ -122,7 +122,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// Gets or sets a value indicating whether this instance is append.
         /// </summary>
-        /// <value><c>true</c> if this instance is append; otherwise, <c>false</c>.</value>
+        /// <value><see langword="true"/> if this instance is append; otherwise, <see langword="false"/>.</value>
         public bool IsAppend { get; set; }
         /// <summary>
         /// Gets or sets the TTL.
@@ -248,7 +248,6 @@ mode                =    <"> *Method <"> | Method
                         returnValue.Mode = subPart[1];
                         break;
                     default:
-                        // TODO log invalid part
                         break;
                 }
             }
