@@ -287,10 +287,13 @@ namespace RtspCameraExample
                 UDPSocket? udp_pair = null;
                 if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP && !transport.IsMulticast)
                 {
+                    Debug.Assert(transport.ClientPort != null, "If transport.ClientPort is null here the program did not handle well connection problem");
 
                     // RTP over UDP mode
                     // Create a pair of UDP sockets - One is for the Data (eg Video/Audio), one is for the RTCP
                     udp_pair = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
+                    udp_pair.SetDataDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.First);
+                    udp_pair.SetControlDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.Second);
                     udp_pair.DataReceived += (local_sender, local_e) =>
                     {
                         // RTCP data received
@@ -710,7 +713,7 @@ namespace RtspCameraExample
                             {
                                 // Send to the IP address of the Client
                                 // Send to the UDP Port the Client gave us in the SETUP command
-                                connection.video.udp_pair!.WriteToDataPort(rtcpSenderReport.ToArray(), connection.ClientHostname, connection.video.client_transport.ClientPort.Second);
+                                connection.video.udp_pair!.WriteToControlPort(rtcpSenderReport);
                             }
                             catch (Exception e)
                             {
@@ -770,7 +773,7 @@ namespace RtspCameraExample
                                 // send the whole NAL. ** We could fragment the RTP packet into smaller chuncks that fit within the MTU
                                 // Send to the IP address of the Client
                                 // Send to the UDP Port the Client gave us in the SETUP command
-                                connection.video.udp_pair.WriteToDataPort(rtp_packet.ToArray(), connection.ClientHostname, connection.video.client_transport.ClientPort.First);
+                                connection.video.udp_pair.WriteToDataPort(rtp_packet.Span);
                             }
                             catch (Exception e)
                             {

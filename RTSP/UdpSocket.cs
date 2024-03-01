@@ -1,6 +1,7 @@
 ﻿using Rtsp.Messages;
 using System;
 using System.Buffers;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace Rtsp
 
         private Task? _dataReadTask;
         private Task? _controlReadTask;
+        private IPEndPoint _dataEndPoint;
+        private IPEndPoint _controlEndPoint;
 
         public int DataPort { get; protected set; }
         public int ControlPort { get; protected set; }
@@ -157,20 +160,40 @@ namespace Rtsp
             }
         }
 
+        public void SetDataDestination(string hostname, int port)
+        {
+            var adresses = Dns.GetHostAddresses(hostname);
+            if (adresses.Length == 0)
+            {
+                throw new ArgumentException("No IP address found for the hostname",nameof(hostname));
+            }
+            _dataEndPoint = new IPEndPoint(adresses[0], port);
+        }
+
+        public void SetControlDestination(string hostname, int port)
+        {
+            var adresses = Dns.GetHostAddresses(hostname);
+            if (adresses.Length == 0)
+            {
+                throw new ArgumentException("No IP address found for the hostname", nameof(hostname));
+            }
+            _controlEndPoint = new IPEndPoint(adresses[0], port);
+        }
+
         /// <summary>
         /// Write to the RTP Data Port
         /// </summary>
-        public void WriteToDataPort(byte[] data, string hostname, int port)
+        public void WriteToDataPort(ReadOnlySpan<byte> data)
         {
-            dataSocket.Send(data, data.Length, hostname, port);
+            dataSocket.Send(data, _dataEndPoint);
         }
 
         /// <summary>
         /// Write to the RTP Control Port
         /// </summary>
-        public void WriteToControlPort(byte[] data, string hostname, int port)
+        public void WriteToControlPort(ReadOnlySpan<byte> data)
         {
-            controlSocket.Send(data, data.Length, hostname, port);
+            controlSocket.Send(data, _controlEndPoint);
         }
     }
 }
