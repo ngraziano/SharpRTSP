@@ -9,7 +9,6 @@ namespace Rtsp.Rtp
 
     // (c) 2018 Roger Hardiman, RJH Technical Consultancy Ltd
 
-
     /*
     RFC 3640
     3.3.6.  High Bit-rate AAC
@@ -115,7 +114,7 @@ namespace Rtsp.Rtp
             // Part 3 - Access Unit Audio Data
 
             // The rest of the RTP packet is the AMR data
-            List<ReadOnlyMemory<byte>> audio_data = new();
+            List<ReadOnlyMemory<byte>> audio_data = [];
 
             int position = 0;
             var rtp_payload = packet.Payload;
@@ -145,8 +144,45 @@ namespace Rtsp.Rtp
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
         {
-            //TODO implement
-            return new RawMediaFrame(ProcessRTPPacket(packet), []);
+            // RTP Payload for MPEG4-GENERIC can consist of multple blocks.
+            // Each block has 3 parts
+            // Part 1 - Acesss Unit Header Length + Header
+            // Part 2 - Access Unit Auxiliary Data Length + Data (not used in AAC High Bitrate)
+            // Part 3 - Access Unit Audio Data
+
+            // The rest of the RTP packet is the AMR data
+            List<ReadOnlyMemory<byte>> audioData = [];
+            List<IMemoryOwner<byte>> owners = [];
+
+            int position = 0;
+            var rtpPayload = packet.Payload;
+
+            // 2 bytes for AU Header Length, 2 bytes of AU Header payload
+            while (position + 4 <= packet.PayloadSize)
+            {
+                // Get Size of the AU Header
+                int au_headers_length_bits = (rtpPayload[position] << 8) + (rtpPayload[position + 1] << 0); // 16 bits
+                int au_headers_length = (int)Math.Ceiling(au_headers_length_bits / 8.0);
+                position += 2;
+
+                // Examine the AU Header. Get the size of the AAC data
+                int aac_frame_size = (rtpPayload[position] << 8) + (rtpPayload[position + 1] << 0) >> 3; // 13 bits
+                int aac_index_delta = rtpPayload[position + 1] & 0x03; // 3 bits
+                position += au_headers_length;
+
+                // extract the AAC block
+                if (position + aac_frame_size > rtpPayload.Length) break; // not enough data to copy
+
+                var owner = _memoryPool.Rent(aac_frame_size);
+                var data = owner.Memory[..aac_frame_size];
+                rtpPayload[position..(position + aac_frame_size)].CopyTo(data.Span);
+                owners.Add(owner);
+                audioData.Add(data);
+
+                position += aac_frame_size;
+            }
+
+            return new(audioData, owners);
         }
     }
 }
