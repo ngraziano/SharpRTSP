@@ -7,15 +7,17 @@ using System.Threading.Tasks;
 
 namespace Rtsp
 {
-    public class UDPSocket
+    public class UDPSocket : IRtpTransport
     {
         protected readonly UdpClient dataSocket;
         protected readonly UdpClient controlSocket;
 
         private Task? _dataReadTask;
         private Task? _controlReadTask;
-        private IPEndPoint _dataEndPoint;
-        private IPEndPoint _controlEndPoint;
+        private IPEndPoint? _dataEndPoint;
+        private IPEndPoint? _controlEndPoint;
+
+        private bool disposedValue;
 
         public int DataPort { get; protected set; }
         public int ControlPort { get; protected set; }
@@ -84,9 +86,9 @@ namespace Rtsp
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            _dataReadTask = Task.Factory.StartNew(async () => 
+            _dataReadTask = Task.Factory.StartNew(async () =>
                 await DoWorkerJobAsync(dataSocket, OnDataReceived, DataPort).ConfigureAwait(false), TaskCreationOptions.LongRunning);
-            _controlReadTask = Task.Factory.StartNew(async () => 
+            _controlReadTask = Task.Factory.StartNew(async () =>
                 await DoWorkerJobAsync(controlSocket, OnControlReceived, ControlPort).ConfigureAwait(false), TaskCreationOptions.LongRunning);
         }
 
@@ -165,7 +167,7 @@ namespace Rtsp
             var adresses = Dns.GetHostAddresses(hostname);
             if (adresses.Length == 0)
             {
-                throw new ArgumentException("No IP address found for the hostname",nameof(hostname));
+                throw new ArgumentException("No IP address found for the hostname", nameof(hostname));
             }
             _dataEndPoint = new IPEndPoint(adresses[0], port);
         }
@@ -183,6 +185,7 @@ namespace Rtsp
         /// <summary>
         /// Write to the RTP Data Port
         /// </summary>
+        /// <param name="data">Buffer to send</param>
         public void WriteToDataPort(ReadOnlySpan<byte> data)
         {
             dataSocket.Send(data, _dataEndPoint);
@@ -191,9 +194,29 @@ namespace Rtsp
         /// <summary>
         /// Write to the RTP Control Port
         /// </summary>
+        /// <param name="data">Buffer to send</param>
         public void WriteToControlPort(ReadOnlySpan<byte> data)
         {
             controlSocket.Send(data, _controlEndPoint);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Stop();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Ne changez pas ce code. Placez le code de nettoyage dans la méthode 'Dispose(bool disposing)'
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
