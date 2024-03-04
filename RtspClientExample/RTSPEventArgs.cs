@@ -33,48 +33,56 @@ namespace RtspClientExample
 
     public class SimpleDataEventArgs : EventArgs
     {
-        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data)
+        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
         {
             Data = data;
+            TimeStamp = timeStamp;
         }
 
+        public ulong TimeStamp { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class G711EventArgs : EventArgs
     {
-        public G711EventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data)
+        public G711EventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
         {
             Format = format;
             Data = data;
+            TimeStamp = timeStamp;
         }
 
+        public ulong TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class AMREventArgs : EventArgs
     {
-        public AMREventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data)
+        public AMREventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
         {
             Format = format;
             Data = data;
+            TimeStamp = timeStamp;
         }
 
+        public ulong TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class AACEventArgs : EventArgs
     {
-        public AACEventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, int objectType, int frequencyIndex, int channelConfiguration)
+        public AACEventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, int objectType, int frequencyIndex, int channelConfiguration, ulong timeStamp)
         {
             Format = format;
             Data = data;
             ObjectType = objectType;
             FrequencyIndex = frequencyIndex;
             ChannelConfiguration = channelConfiguration;
+            TimeStamp = timeStamp;
         }
+        public ulong TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
         public int ObjectType { get; }

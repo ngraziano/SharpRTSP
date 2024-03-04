@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using Rtsp.Onvif;
+using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -114,11 +116,11 @@ namespace Rtsp.Rtp
         private int _currentDri;
         private int _currentQ;
         private int _currentType;
-        private int _currentFrameWidth;
-        private int _currentFrameHeight;
+        private ushort _currentFrameWidth;
+        private ushort _currentFrameHeight;
 
-        private int _extensionFrameWidth;
-        private int _extensionFrameHeight;
+        private ushort _extensionFrameWidth;
+        private ushort _extensionFrameHeight;
 
         private bool _hasExternalQuantizationTable;
 
@@ -127,27 +129,40 @@ namespace Rtsp.Rtp
         private byte[] _quantizationTables = [];
         private int _quantizationTablesLength;
 
+        private ulong? _timestamp = null;
+
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timeStamp)
         {
             if (packet.HasExtension)
             {
-                ProcessExtension(packet.Extension);
+                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
+                if (headerLength == 3)
+                {
+                    // just continue
+                }
+                else
+                {
+                    // read other extension...
+                    RtpPacketOnvifExtensions.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                }
             }
             ProcessJPEGRTPFrame(packet.Payload);
 
             if (!packet.IsMarker)
             {
                 // we don't have a frame yet. Keep accumulating RTP packets
+                timeStamp = 0;
                 return [];
             }
             // End Marker is set. The frame is complete
             var data = _frameStream.ToArray();
             _frameStream.SetLength(0);
+            timeStamp = _timestamp;
             return [data];
         }
 
@@ -155,7 +170,16 @@ namespace Rtsp.Rtp
         {
             if (packet.HasExtension)
             {
-                ProcessExtension(packet.Extension);
+                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
+                if (headerLength == 3)
+                {
+                    // just continue
+                }
+                else
+                {
+                    // read other extension...
+                    RtpPacketOnvifExtensions.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                }
             }
             ProcessJPEGRTPFrame(packet.Payload);
 
@@ -169,7 +193,7 @@ namespace Rtsp.Rtp
             var memoryOwner = _memoryPool.Rent(length);
             _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
             _frameStream.SetLength(0);
-            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner]);
+            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner], _timestamp ?? 0UL);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)
@@ -182,8 +206,8 @@ namespace Rtsp.Rtp
 
             int type = payload[offset++];
             int q = payload[offset++];
-            int width = payload[offset++] * 8;
-            int height = payload[offset++] * 8;
+            ushort width = (ushort)(payload[offset++] * 8);
+            ushort height = (ushort)(payload[offset++] * 8);
             int dri = 0;
 
             if (width == 0 && height == 0 && _extensionFrameWidth > 0 && _extensionFrameHeight > 0)
@@ -252,28 +276,6 @@ namespace Rtsp.Rtp
             _frameStream.Write(payload[offset..]);
 
             return true;
-        }
-
-        private void ProcessExtension(ReadOnlySpan<byte> extension)
-        {
-            int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
-            if (extensionType == MARKER_SOI)
-            {
-                int headerPosition = 4;
-                int extensionSize = extension.Length;
-                while (headerPosition < (extensionSize - 4))
-                {
-                    int blockType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
-                    int blockSize = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 2)..]);
-
-                    if (blockType == MARKER_SOF0)
-                    {
-                        _extensionFrameHeight = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 5)..]);
-                        _extensionFrameWidth = BinaryPrimitives.ReadUInt16BigEndian(extension[(headerPosition + 7)..]);
-                    }
-                    headerPosition += (blockSize + 2);
-                }
-            }
         }
 
         private void ReInitializeJpegHeader()

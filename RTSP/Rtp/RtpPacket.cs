@@ -19,8 +19,8 @@ namespace Rtsp.Rtp
         public bool IsMarker => (rawData[1] & 0x80) > 0;
         public int PayloadType => rawData[1] & 0x7F;
         public int SequenceNumber => (rawData[2] << 8) + rawData[3];
-        public long Timestamp => (rawData[4] << 24) + (rawData[5] << 16) + (rawData[6] << 8) + rawData[7];
-        public long Ssrc => (rawData[8] << 24) + (rawData[9] << 16) + (rawData[10] << 8) + rawData[11];
+        public ulong Timestamp => (ulong)(rawData[4] << 24) + (ulong)(rawData[5] << 16) + (ulong)(rawData[6] << 8) + (ulong)rawData[7];
+        public ulong Ssrc => (ulong)(rawData[8] << 24) + (ulong)(rawData[9] << 16) + (ulong)(rawData[10] << 8) + (ulong)rawData[11];
 
         public int? ExtensionHeaderId => HasExtension ? (rawData[HeaderSize] << 8) + rawData[HeaderSize + 1] : null;
 

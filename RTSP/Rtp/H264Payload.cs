@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Rtsp.Onvif;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -26,14 +27,23 @@ namespace Rtsp.Rtp
         private readonly MemoryStream fragmentedNal = new();
         private readonly MemoryPool<byte> _memoryPool;
 
+        private ulong _timestamp;
+
         public H264Payload(ILogger<H264Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timestamp)
         {
+            if (packet.Extension.Length > 0)
+            {
+                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+                //(uint integerPart, uint fractionalPart) = RTPPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
+                //_timestamp = ((ulong)integerPart << 32) & 0xFFFFFFFF00000000 | fractionalPart;
+            }
+
             ProcessH264RTPFrame(packet.Payload);
 
             if (packet.IsMarker)
@@ -46,9 +56,11 @@ namespace Rtsp.Rtp
                 var nalToReturn = nalUnits.ToList();
                 nalUnits.Clear();
                 owners.Clear();
+                timestamp = _timestamp;
                 return nalToReturn;
             }
             // we don't have a frame yet. Keep accumulating RTP packets
+            timestamp = 0;
             return [];
         }
 
@@ -193,6 +205,13 @@ namespace Rtsp.Rtp
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
         {
+            if (packet.Extension.Length > 0)
+            {
+                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+                //(uint integerPart, uint fractionalPart) = RTPPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
+                //_timestamp = ((ulong)integerPart << 32) & 0xFFFFFFFF00000000 | fractionalPart;
+            }
+
             ProcessH264RTPFrame(packet.Payload);
 
             if (!packet.IsMarker)
@@ -209,7 +228,8 @@ namespace Rtsp.Rtp
             // clone list of nalUnits and owners
             var result = new RawMediaFrame(
                 new List<ReadOnlyMemory<byte>>(nalUnits),
-                new List<IMemoryOwner<byte>>(owners));
+                new List<IMemoryOwner<byte>>(owners),
+                _timestamp);
             nalUnits.Clear();
             owners.Clear();
             return result;
