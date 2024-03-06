@@ -21,7 +21,7 @@ namespace RtspCameraExample
     // Re-uses some code from the Multiplexer example of SharpRTSP
     //
     // Creates a server to listen for RTSP Commands (eg OPTIONS, DESCRIBE, SETUP, PLAY)
-    // Accepts SPS/PPS/NAL H264 video data and sends out to RTSP clients
+    // Accept JPEG images from a camera and send them to the RTSP Clients
 
     public class RtspServer : IDisposable
     {
@@ -32,8 +32,6 @@ namespace RtspCameraExample
         private readonly ILogger _logger;
         private CancellationTokenSource? _Stopping;
         private Thread? _ListenTread;
-        private uint _nonceCounter = 0;
-
         const int jpegPayloadType = 26;
 
         private readonly List<RTSPConnection> rtspConnectionList = []; // list of RTSP Listeners
@@ -110,15 +108,12 @@ namespace RtspCameraExample
                     // Add the RtspListener to the RTSPConnections List
                     lock (rtspConnectionList)
                     {
-                        RTSPConnection new_connection = new()
+                        rtspConnectionList.Add(new()
                         {
                             Listener = newListener,
-                            ClientHostname = newListener.RemoteAdress.Split(':')[0],
                             ssrc = global_ssrc,
-                        };
-                        rtspConnectionList.Add(new_connection);
+                        });
                     }
-
                     newListener.Start();
                 }
             }
@@ -229,7 +224,7 @@ namespace RtspCameraExample
             }
 
             // Handle DESCRIBE message
-            if (message is RtspRequestDescribe describeMEssage)
+            if (message is RtspRequestDescribe describeMessage)
             {
                 Console.WriteLine("Request for " + message.RtspUri);
 
@@ -459,13 +454,11 @@ namespace RtspCameraExample
                 lock (rtspConnectionList)
                 {
                     // Search for the Session in the Sessions List.
-                    foreach (RTSPConnection connection in rtspConnectionList.ToArray()) // Convert to ToArray so we can delete from the rtp_list
+                    // Convert to ToArray so we can delete from the rtp_list
+                    foreach (RTSPConnection connection in rtspConnectionList.Where(c => message.Session == c.session_id).ToArray())
                     {
-                        if (message.Session == connection.session_id)
-                        {
-                            //  Close the transport
-                            RemoveSession(connection);
-                        }
+                        //  Close the transport
+                        RemoveSession(connection);
                     }
                 }
             }
@@ -547,15 +540,11 @@ namespace RtspCameraExample
             }
 
             byte type = 1;
+            // 255 : always send quantization tables 
             byte q = 255;
 
             var data = jpegImage[begin..];
-
-
-
-
             uint rtp_timestamp = timestamp_ms * 90; // 90kHz clock
-
 
             // Build a list of 1 or more RTP packets
             // The last packet will have the M bit set to '1'
@@ -563,7 +552,6 @@ namespace RtspCameraExample
             List<IMemoryOwner<byte>> memoryOwners = [];
 
             bool endOfFrame = false;
-
 
             // -8 for UDP header, -20 for IP header, -16 normal RTP header len. ** LESS RTP EXTENSIONS !!!
             int packetMTU = 1400; // 65535; 
@@ -756,7 +744,6 @@ namespace RtspCameraExample
         // An RTPStream can be a Video Stream, Audio Stream or a MetaData Stream
         public class RTPStream
         {
-            public int trackID;
             public bool must_send_rtcp_packet = false; // when true will send out a RTCP packet to match Wall Clock Time to RTP Payload timestamps
                                                        // 16 bit RTP packet sequence number used with this client connection
             public ushort sequenceNumber = 1;
@@ -775,10 +762,7 @@ namespace RtspCameraExample
             public DateTime TimeSinceLastRtspKeepalive { get; private set; } = DateTime.UtcNow;
             public uint ssrc = 0x12345678;           // SSRC value used with this client connection
                                                      // Client Hostname/IP Address
-            public required string ClientHostname { get; init; }
-
             public string session_id = "";             // RTSP Session ID used with this client connection
-
             public RTPStream video = new();
 
             public void UpdateKeepAlive()

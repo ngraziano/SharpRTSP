@@ -25,6 +25,7 @@ namespace RtspCameraExample
     public class RtspServer : IDisposable
     {
         const uint global_ssrc = 0x4321FADE; // 8 hex digits
+        const int rtspTimeOut = 60; // 60 seconds
 
         private readonly TcpListener _RTSPServerListener;
         private readonly ILoggerFactory _loggerFactory;
@@ -113,7 +114,6 @@ namespace RtspCameraExample
                         RTSPConnection new_connection = new()
                         {
                             Listener = newListener,
-                            ClientHostname = newListener.RemoteAdress.Split(':')[0],
                             ssrc = global_ssrc,
                         };
                         rtspConnectionList.Add(new_connection);
@@ -171,7 +171,7 @@ namespace RtspCameraExample
                 return;
             }
 
-            Console.WriteLine("RTSP message received " + message);
+            _logger.LogDebug("RTSP message received {message}", message);
 
             // Check if the RTSP Message has valid authentication (validating against username,password,realm and nonce)
             if (auth != null)
@@ -212,10 +212,10 @@ namespace RtspCameraExample
             // Update the RTSP Keepalive Timeout
             lock (rtspConnectionList)
             {
-                foreach (var connection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
+                foreach (var oneConnection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
                 {
                     // found the connection
-                    connection.UpdateKeepAlive();
+                    oneConnection.UpdateKeepAlive();
                     break;
                 }
             }
@@ -229,9 +229,9 @@ namespace RtspCameraExample
             }
 
             // Handle DESCRIBE message
-            if (message is RtspRequestDescribe describeMEssage)
+            if (message is RtspRequestDescribe describeMessage)
             {
-                Console.WriteLine("Request for " + message.RtspUri);
+                _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
 
                 // TODO. Check the requsted_url is valid. In this example we accept any RTSP URL
 
@@ -274,7 +274,8 @@ namespace RtspCameraExample
                 sdp.Append("c=IN IP4 0.0.0.0\n");
                 sdp.Append("a=control:trackID=0\n");
                 sdp.Append($"a=rtpmap:{video_payload_type} H264/90000\n");
-                sdp.Append($"a=fmtp:{video_payload_type} profile-level-id=").Append(profile_level_id_str).Append("; sprop-parameter-sets=").Append(sps_str).Append(',').Append(pps_str).Append(";\n");
+                sdp.Append($"a=fmtp:{video_payload_type} profile-level-id=").Append(profile_level_id_str)
+                    .Append("; sprop-parameter-sets=").Append(sps_str).Append(',').Append(pps_str).Append(";\n");
 
                 // AUDIO
                 sdp.Append("m=audio 0 RTP/AVP 0\n"); // <---- 0 means G711 ULAW
@@ -338,8 +339,9 @@ namespace RtspCameraExample
                     udp_pair.ControlReceived += (local_sender, local_e) =>
                     {
                         // RTCP data received
-                        Console.WriteLine($"RTCP data received {local_sender} {local_e.Data.Data.Length}");
-                        // TODO - Find the Connection and update the keepalive
+                        _logger.LogDebug("RTCP data received {local_sender} {local_e.Data.Data.Length}", local_sender, local_e.Data.Data.Length);
+                        var connection = ConnectionByRtpTransport(local_sender as IRtpTransport);
+                        connection?.UpdateKeepAlive();
                     };
                     udp_pair.Start(); // start listening for data on the UDP ports
 
@@ -379,15 +381,15 @@ namespace RtspCameraExample
                     string copy_of_session_id = "";
                     lock (rtspConnectionList)
                     {
-                        foreach (var connection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
+                        foreach (var setupConnection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
                         {
                             // Check the Track ID to determine if this is a SETUP for the Video Stream
                             // or a SETUP for an Audio Stream.
                             // In the SDP the H264 video track is TrackID 0
                             // and the Audio Track is TrackID 1
                             RTPStream stream;
-                            if (setupMessage.RtspUri!.AbsolutePath.EndsWith("trackID=0")) stream = connection.video;
-                            else if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=1")) stream = connection.audio;
+                            if (setupMessage.RtspUri!.AbsolutePath.EndsWith("trackID=0")) stream = setupConnection.video;
+                            else if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=1")) stream = setupConnection.audio;
                             else continue;// error case - track unknown
                                           // found the connection
                                           // Add the transports to the stream
@@ -395,14 +397,14 @@ namespace RtspCameraExample
                             // When there is Video and Audio there are two SETUP commands.
                             // For the first SETUP command we will generate the connection.session_id and return a SessionID in the Reply.
                             // For the 2nd command the client will send is the SessionID.
-                            if (string.IsNullOrEmpty(connection.session_id))
+                            if (string.IsNullOrEmpty(setupConnection.session_id))
                             {
-                                connection.session_id = session_handle.ToString();
+                                setupConnection.session_id = session_handle.ToString();
                                 session_handle++;
                             }
                             // ELSE, could check the Session passed in matches the Session we generated on last SETUP command
                             // Copy the Session ID, as we use it in the reply
-                            copy_of_session_id = connection.session_id;
+                            copy_of_session_id = setupConnection.session_id;
                             break;
                         }
                     }
@@ -410,6 +412,7 @@ namespace RtspCameraExample
                     RtspResponse setup_response = setupMessage.CreateResponse();
                     setup_response.Headers[RtspHeaderNames.Transport] = transport_reply.ToString();
                     setup_response.Session = copy_of_session_id;
+                    setup_response.Timeout = rtspTimeOut;
                     listener.SendMessage(setup_response);
                 }
                 else
@@ -421,71 +424,47 @@ namespace RtspCameraExample
                 }
             }
 
+
+            // handle message needing session from here
+            var connection = ConnectionBySessionId(message.Session);
+            if (connection is null)
+            {
+                // Session ID was not found in the list of Sessions. Send a 454 error
+                RtspResponse notFound = message.CreateResponse();
+                notFound.ReturnCode = 454; // Session Not Found
+                listener.SendMessage(notFound);
+                return;
+            }
+
             // Handle PLAY message (Sent with a Session ID)
             if (message is RtspRequestPlay)
             {
-                lock (rtspConnectionList)
-                {
-                    // Search for the Session in the Sessions List. Change the state to "PLAY"
-                    bool session_found = false;
-                    foreach (RTSPConnection connection in rtspConnectionList)
-                    {
-                        if (message.Session == connection.session_id)
-                        {
-                            // found the session
-                            session_found = true;
+                // Search for the Session in the Sessions List. Change the state to "PLAY"
+                const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
+                string rtp_info = "url=" + message.RtspUri + ";seq=" + connection.video.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                                                                                                        // Add audio too
+                rtp_info += ",url=" + message.RtspUri + ";seq=" + connection.audio.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
 
-                            const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
-                            string rtp_info = "url=" + message.RtspUri + ";seq=" + connection.video.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
-                                                                                                                    // Add audio too
-                            rtp_info += ",url=" + message.RtspUri + ";seq=" + connection.audio.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
 
-                            //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
+                // Send the reply
+                RtspResponse play_response = message.CreateResponse();
+                play_response.AddHeader("Range: " + range);
+                play_response.AddHeader("RTP-Info: " + rtp_info);
+                listener.SendMessage(play_response);
 
-                            // Send the reply
-                            RtspResponse play_response = message.CreateResponse();
-                            play_response.AddHeader("Range: " + range);
-                            play_response.AddHeader("RTP-Info: " + rtp_info);
-                            listener.SendMessage(play_response);
+                connection.video.must_send_rtcp_packet = true;
+                connection.audio.must_send_rtcp_packet = true;
 
-                            connection.video.must_send_rtcp_packet = true;
-                            connection.audio.must_send_rtcp_packet = true;
+                // Allow video and audio to go to this client
+                connection.play = true;
 
-                            // Allow video and audio to go to this client
-                            connection.play = true;
-
-                            break;
-                        }
-                    }
-
-                    if (!session_found)
-                    {
-                        // Session ID was not found in the list of Sessions. Send a 454 error
-                        RtspResponse play_failed_response = message.CreateResponse();
-                        play_failed_response.ReturnCode = 454; // Session Not Found
-                        listener.SendMessage(play_failed_response);
-                    }
-                }
             }
 
             // Handle PAUSE message (Sent with a Session ID)
             if (message is RtspRequestPause)
             {
-                lock (rtspConnectionList)
-                {
-                    // Search for the Session in the Sessions List. Change the state of "PLAY" 
-                    foreach (RTSPConnection connection in rtspConnectionList)
-                    {
-                        if (message.Session == connection.session_id)
-                        {
-                            // found the session
-                            connection.play = false;
-                            break;
-                        }
-                    }
-                }
-
-                // ToDo - only send back the OK response if the Session in the RTSP message was found
+                connection.play = false;
                 RtspResponse pause_response = message.CreateResponse();
                 listener.SendMessage(pause_response);
             }
@@ -503,20 +482,33 @@ namespace RtspCameraExample
             {
                 lock (rtspConnectionList)
                 {
-                    // Search for the Session in the Sessions List.
-                    foreach (RTSPConnection connection in rtspConnectionList.Where(c => c.session_id == message.Session).ToArray()) // Convert to ToArray so we can delete from the rtp_list
-                    {
-                        RemoveSession(connection);
-                        listener.Dispose();
-                    }
+                    RemoveSession(connection);
+                    listener.Dispose();
                 }
+            }
+        }
+
+        private RTSPConnection? ConnectionByRtpTransport(IRtpTransport? rtpTransport)
+        {
+            if (rtpTransport is null) return null;
+            lock (rtspConnectionList)
+            {
+                return rtspConnectionList.Find(c => c.video.rtpChannel == rtpTransport || c.audio.rtpChannel == rtpTransport);
+            }
+        }
+
+        private RTSPConnection? ConnectionBySessionId(string? sessionId)
+        {
+            if (sessionId is null) return null;
+            lock (rtspConnectionList)
+            {
+                return rtspConnectionList.Find(c => c.session_id == sessionId);
             }
         }
 
         public void CheckTimeouts(out int current_rtsp_count, out int current_rtsp_play_count)
         {
             DateTime now = DateTime.UtcNow;
-            int timeout_in_seconds = 70;  // must have a RTSP message every 70 seconds or we will close the connection
 
             lock (rtspConnectionList)
             {
@@ -525,11 +517,7 @@ namespace RtspCameraExample
                 // Convert to Array to allow us to delete from rtsp_list
                 foreach (RTSPConnection connection in rtspConnectionList.ToArray())
                 {
-                    // RTSP Timeout (clients receiving RTP video over the RTSP session
-                    // do not need to send a keepalive (so we check for Socket write errors)
-                    bool sending_rtp_via_tcp = connection.video.rtpChannel is RtpTcpTransport;
-
-                    if (!sending_rtp_via_tcp && (now - connection.TimeSinceLastRtspKeepalive).TotalSeconds > timeout_in_seconds)
+                    if ((now - connection.TimeSinceLastRtspKeepalive).TotalSeconds > rtspTimeOut)
                     {
                         _logger.LogDebug("Removing session {sessionId} due to TIMEOUT", connection.session_id);
                         RemoveSession(connection);
@@ -552,10 +540,7 @@ namespace RtspCameraExample
         // Feed in Raw NALs - no 32 bit headers, no 00 00 00 01 headers
         public void FeedInRawNAL(uint timestamp_ms, List<byte[]> nal_array)
         {
-            DateTime now = DateTime.UtcNow;
             CheckTimeouts(out int current_rtsp_count, out int current_rtsp_play_count);
-
-            // Console.WriteLine(current_rtsp_count + " RTSP clients connected. " + current_rtsp_play_count + " RTSP clients in PLAY mode");
 
             if (current_rtsp_play_count == 0) return;
 
@@ -576,40 +561,15 @@ namespace RtspCameraExample
                     if (!connection.play) continue;
 
                     if (connection.video.rtpChannel is null) continue;
-
-                    Console.WriteLine("Sending video session " + connection.session_id + " " + TransportLogName(connection.video.rtpChannel) + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence=" + connection.video.sequenceNumber);
-                    bool write_error = false;
+                    _logger.LogDebug("Sending video session {sessionId} {TransportLogName} Timestamp(ms)={timestamp_ms}. RTP timestamp={rtp_timestamp}. Sequence={sequenceNumber}", 
+                        connection.session_id, TransportLogName(connection.video.rtpChannel), timestamp_ms, rtp_timestamp, connection.video.sequenceNumber);
 
                     if (connection.video.must_send_rtcp_packet)
                     {
-
-                        // build and send RTCP Sender Report (SR) packet
-                        using var rtcp_owner = MemoryPool<byte>.Shared.Rent(28);
-                        var rtcpSenderReport = rtcp_owner.Memory[..28].Span;
-                        const bool hasPadding = false;
-                        const int reportCount = 0; // an empty report
-                        int length = (rtcpSenderReport.Length / 4) - 1; // num 32 bit words minus 1
-                        RTCPUtils.WriteRTCPHeader(rtcpSenderReport, RTCPUtils.RTCP_VERSION, hasPadding, reportCount,
-                            RTCPUtils.RTCP_PACKET_TYPE_SENDER_REPORT, length, connection.ssrc);
-                        RTCPUtils.WriteSenderReport(rtcpSenderReport, now, rtp_timestamp, connection.video.rtp_packet_count, connection.video.octet_count);
-
-                        try
+                        if(!SendRTCP(rtp_timestamp, connection, connection.video))
                         {
-                            Debug.Assert(connection.video.rtpChannel != null, "If connection.video.udp_pair is null here the program did not handle well connection problem");
-                            // Send to the IP address of the Client
-                            // Send to the UDP Port the Client gave us in the SETUP command
-                            connection.video.rtpChannel.WriteToControlPort(rtcpSenderReport);
+                            RemoveSession(connection);
                         }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("UDP Write Exception " + e);
-                            Console.WriteLine("Error writing RTCP to listener " + connection.Listener.RemoteAdress);
-                            write_error = true;
-                            return;
-                        }
-
-                        // Clear the flag. A timer may set this to True again at some point to send regular Sender Reports
-                        //HACK  connection.must_send_rtcp_packet = false; // A Timer may set this to true again later in case it is used as a Keepalive (eg IndigoVision)
                     }
 
                     // There could be more than 1 RTP packet (if the data is fragmented)
@@ -634,24 +594,12 @@ namespace RtspCameraExample
                         {
                             Console.WriteLine("UDP Write Exception " + e);
                             Console.WriteLine("Error writing to listener " + connection.Listener.RemoteAdress);
-                            write_error = true;
+                            Console.WriteLine("Removing session " + connection.session_id + " due to write error");
+                            RemoveSession(connection);
                             break; // exit out of foreach loop
                         }
-
-
                     }
-                    if (write_error)
-                    {
-                        Console.WriteLine("Removing session " + connection.session_id + " due to write error");
-                        RemoveSession(connection);
-                    }
-
-                    connection.video.rtp_packet_count += (uint)rtp_packets.Count;
-
-                    for (int x = 0; x < nal_array.Count; x++)
-                    {
-                        connection.video.octet_count += (uint)nal_array[x].Length; // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
-                    }
+                    connection.video.octet_count += (uint)nal_array.Sum(nal => nal.Length); // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
                 }
             }
 
@@ -659,6 +607,34 @@ namespace RtspCameraExample
             {
                 owner.Dispose();
             }
+        }
+
+        private bool SendRTCP(uint rtp_timestamp, RTSPConnection connection, RTPStream stream)
+        {
+            using var rtcp_owner = MemoryPool<byte>.Shared.Rent(28);
+            var rtcpSenderReport = rtcp_owner.Memory[..28].Span;
+            const bool hasPadding = false;
+            const int reportCount = 0; // an empty report
+            int length = (rtcpSenderReport.Length / 4) - 1; // num 32 bit words minus 1
+            RTCPUtils.WriteRTCPHeader(rtcpSenderReport, RTCPUtils.RTCP_VERSION, hasPadding, reportCount,
+                RTCPUtils.RTCP_PACKET_TYPE_SENDER_REPORT, length, connection.ssrc);
+            RTCPUtils.WriteSenderReport(rtcpSenderReport, DateTime.UtcNow, rtp_timestamp, stream.rtp_packet_count, stream.octet_count);
+
+            try
+            {
+                Debug.Assert(stream.rtpChannel != null, "If stream.rtpChannel is null here the program did not handle well connection problem");
+                // Send to the IP address of the Client
+                // Send to the UDP Port the Client gave us in the SETUP command
+                stream.rtpChannel.WriteToControlPort(rtcpSenderReport);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error writing RTCP to listener {remoteAdress}", connection.Listener.RemoteAdress);
+                return false;
+            }
+            return true;
+            // Clear the flag. A timer may set this to True again at some point to send regular Sender Reports
+            //HACK  connection.must_send_rtcp_packet = false; // A Timer may set this to true again later in case it is used as a Keepalive (eg IndigoVision)
 
         }
 
@@ -861,28 +837,11 @@ namespace RtspCameraExample
 
                     if (connection.audio.must_send_rtcp_packet)
                     {
-                        // build and send RTCP Sender Report (SR) packet
-                        using var rtcp_owner = MemoryPool<byte>.Shared.Rent(28);
-                        var rtcpSenderReport = rtcp_owner.Memory[..28].Span;
-                        const bool hasPadding = false;
-                        const int reportCount = 0; // an empty report
-                        int length = (rtcpSenderReport.Length / 4) - 1; // num 32 bit words minus 1
-                        RTCPUtils.WriteRTCPHeader(rtcpSenderReport, RTCPUtils.RTCP_VERSION, hasPadding, reportCount,
-                            RTCPUtils.RTCP_PACKET_TYPE_SENDER_REPORT, length, connection.ssrc);
-                        RTCPUtils.WriteSenderReport(rtcpSenderReport, now, rtp_timestamp, connection.audio.rtp_packet_count, connection.audio.octet_count);
 
-                        try
+                        if (!SendRTCP(rtp_timestamp, connection, connection.audio))
                         {
-                            connection.audio.rtpChannel.WriteToControlPort(rtcpSenderReport);
+                            RemoveSession(connection);
                         }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("UDP Write Exception " + e);
-                            Console.WriteLine("Error writing RTCP to listener " + connection.Listener.RemoteAdress);
-                        }
-
-                        // Clear the flag. A timer may set this to True again at some point to send regular Sender Reports
-                        //HACK  connection.must_send_rtcp_packet = false; // A Timer may set this to true again later in case it is used as a Keepalive (eg IndigoVision)
                     }
 
                     // There could be more than 1 RTP packet (if the data is fragmented)
@@ -922,7 +881,7 @@ namespace RtspCameraExample
         {
             return transport switch
             {
-                RtpTcpTransport  => "TCP",
+                RtpTcpTransport => "TCP",
                 MulticastUDPSocket => "Multicast",
                 UDPSocket => "UDP",
                 _ => "",
@@ -953,8 +912,6 @@ namespace RtspCameraExample
             public DateTime TimeSinceLastRtspKeepalive { get; private set; } = DateTime.UtcNow;
             public uint ssrc = 0x12345678;           // SSRC value used with this client connection
                                                      // Client Hostname/IP Address
-            public required string ClientHostname { get; init; }
-
             public string session_id = "";             // RTSP Session ID used with this client connection
 
             public RTPStream video = new();

@@ -14,7 +14,6 @@ namespace RtspCameraExample
     /// </summary>
     public class CJOCh264encoder : IDisposable
     {
-
         /**
          * Allowed sample formats
          */
@@ -31,10 +30,6 @@ namespace RtspCameraExample
         private const int MACROBLOCK_Y_WIDTH = 16;
         private const int MACROBLOCK_Y_HEIGHT = 16;
 
-        /*!Set time base in Hz */
-        private const int TIME_SCALE_IN_HZ = 27000000;
-
-        /*! Frame  */
         private class Frame
         {
             public SampleFormat sampleformat; //!< Sample format
@@ -47,7 +42,6 @@ namespace RtspCameraExample
             public int nYmbheight; //!< Y (luminance) macroblock height in pixels
             public int nCmbwidth; //!< Y (Crominance) macroblock width in pixels
             public int nCmbheight; //!< Y (Crominance) macroblock height in pixels
-
         }
 
         /*! The frame var*/
@@ -61,9 +55,6 @@ namespace RtspCameraExample
         private bool disposedValue;
         private readonly MemoryStream baseStream = new();
         private readonly CJOCh264bitstream stream;
-
-
-
 
         //! Creates SPS NAL and add it to the output
         /*!
@@ -232,9 +223,6 @@ namespace RtspCameraExample
         //Creates & saves a macroblock (coded INTRA 16x16)
         private void CreateMacroblock(int nYpos, int nXpos, Span<byte> frameBuffer)
         {
-
-
-
             CreateMacroblockHeader();
 
             stream.DoByteAlign();
@@ -269,7 +257,6 @@ namespace RtspCameraExample
             }
         }
 
-
         public CJOCh264encoder()
         {
             m_lNumFramesAdded = 0;
@@ -292,8 +279,6 @@ namespace RtspCameraExample
         //Initilizes the h264 coder (mini-coder)
         public void IniCoder(int nImW, int nImH, uint nImFps, SampleFormat sampleFormat, uint nSARw = 1, uint nSARh = 1)
         {
-
-
             m_lNumFramesAdded = 0;
 
             if (sampleFormat != SampleFormat.SAMPLE_FORMAT_YUV420p)
@@ -327,8 +312,6 @@ namespace RtspCameraExample
             }
             m_nFps = nImFps;
 
-
-
             //Create h264 SPS & PPS
             CreateSps(frame.nYwidth, frame.nYheight, frame.nYmbwidth, frame.nYmbheight, nImFps, nSARw, nSARh);
             stream.Flush(); // Flush data to the List<byte>
@@ -341,10 +324,7 @@ namespace RtspCameraExample
             baseStream.SetLength(0);
         }
 
-
-
         //! It codes the frame that is in frame memory a it saves the coded data to disc
-
         //Codifies & save the video frame (it only uses 16x16 intra PCM -> NO COMPRESSION!)
         public void CodeAndSaveFrame(Span<byte> frameBuffer)
         {

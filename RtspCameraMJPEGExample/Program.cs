@@ -94,9 +94,7 @@ namespace RtspCameraExample
                     {
                         Console.WriteLine("Error: " + ex.Message);
                     }
-
-
-                    await Task.Delay(1000 / 30, token);
+                    await Task.Delay(1000 / 5, token);
                 }
                 stopwatch.Stop();
             }

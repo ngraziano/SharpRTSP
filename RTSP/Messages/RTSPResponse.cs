@@ -166,8 +166,7 @@ namespace Rtsp.Messages
                     if (value != DEFAULT_TIMEOUT)
                     {
                         Headers[RtspHeaderNames.Session] =
-                            sessionString.Split(';').First()
-                            + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
+                            sessionString.Split(';')[0] + ";timeout=" + value.ToString(CultureInfo.InvariantCulture);
                     }
                     else
                     {

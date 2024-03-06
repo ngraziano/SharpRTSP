@@ -4,8 +4,6 @@ using System.Linq;
 
 namespace RtspCameraExample
 {
-
-
     // Simple H264 Encoder
     // Written by Jordi Cenzano (www.jordicenzano.name)
     //
@@ -17,8 +15,6 @@ namespace RtspCameraExample
     // or cross compiled C libraries.
     //
     // SimpleH264Encoder can use any image Width or Height
-
-
     public class SimpleH264Encoder
     {
         private readonly CJOCh264encoder h264encoder = new();
@@ -51,31 +47,6 @@ namespace RtspCameraExample
             byte[] nal = new byte[nal_with_header.Length - 4];
             Array.Copy(nal_with_header, 4, nal, 0, nal.Length);
             return nal;
-        }
-
-
-        public void ChangeAnnexBto32BitSize(byte[] data)
-        {
-
-            if (data.Length < 4) return;
-
-            // change data from 0x00 0x00 0x00 0x01 format to 32 bit size
-            int len = data.Length - 4;// subtract Annex B header size
-
-            if (BitConverter.IsLittleEndian)
-            {
-                data[0] = (byte)((len >> 24) & 0xFF);
-                data[1] = (byte)((len >> 16) & 0xFF);
-                data[2] = (byte)((len >> 8) & 0xFF);
-                data[3] = (byte)((len << 0) & 0xFF);
-            }
-            else
-            {
-                data[0] = (byte)((len >> 0) & 0xFF);
-                data[1] = (byte)((len >> 8) & 0xFF);
-                data[2] = (byte)((len >> 16) & 0xFF);
-                data[3] = (byte)((len >> 24) & 0xFF);
-            }
         }
     }
 }
