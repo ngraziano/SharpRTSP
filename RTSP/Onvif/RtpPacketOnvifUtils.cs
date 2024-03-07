@@ -2,7 +2,7 @@
 using System.Buffers.Binary;
 
 namespace Rtsp.Onvif;
-public static class RtpPacketOnvifExtensions
+public static class RtpPacketOnvifUtils
 {
     private const ushort MARKER_TS_EXT = 0xABAC;
     private const ushort MARKER_SOF0 = 0xffc0;          // start-of-frame, baseline scan
@@ -16,7 +16,7 @@ public static class RtpPacketOnvifExtensions
     /// <param name="headerPosition">Starting point for the header check</param>
     /// <param name="frameWidth"></param>
     /// <param name="frameHeight"></param>
-    public static void ProcessJpegFrameExtension(this ReadOnlySpan<byte> extension, int headerPosition, out ushort frameWidth, out ushort frameHeight)
+    public static void ProcessJpegFrameExtension(ReadOnlySpan<byte> extension, int headerPosition, out ushort frameWidth, out ushort frameHeight)
     {
         frameWidth = 0;
         frameHeight = 0;
@@ -48,7 +48,7 @@ public static class RtpPacketOnvifExtensions
     /// <param name="headerPosition">returns position after read</param>
     /// <param name="headerLength">If equal to 3, this is the only extension available. If > then 3, then we must call also the <see cref="ProcessJpegFrameExtension(ReadOnlySpan{byte}, int, out ushort, out ushort)"/> extension method.</param>
     /// <returns>Timestamp, as number of milliseconds from 19000101T000000</returns>
-    public static ulong ProcessRTPTimestampExtension(this ReadOnlySpan<byte> extension, out int headerPosition, out ushort headerLength)
+    public static ulong ProcessRTPTimestampExtension(ReadOnlySpan<byte> extension, out int headerPosition, out ushort headerLength)
     {
         int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
         if (extensionType == MARKER_TS_EXT)

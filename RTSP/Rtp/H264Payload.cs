@@ -39,9 +39,7 @@ namespace Rtsp.Rtp
         {
             if (packet.Extension.Length > 0)
             {
-                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
-                //(uint integerPart, uint fractionalPart) = RTPPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
-                //_timestamp = ((ulong)integerPart << 32) & 0xFFFFFFFF00000000 | fractionalPart;
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
             }
 
             ProcessH264RTPFrame(packet.Payload);
@@ -207,9 +205,7 @@ namespace Rtsp.Rtp
         {
             if (packet.Extension.Length > 0)
             {
-                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
-                //(uint integerPart, uint fractionalPart) = RTPPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
-                //_timestamp = ((ulong)integerPart << 32) & 0xFFFFFFFF00000000 | fractionalPart;
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
             }
 
             ProcessH264RTPFrame(packet.Payload);

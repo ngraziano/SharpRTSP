@@ -140,7 +140,7 @@ namespace Rtsp.Rtp
         {
             if (packet.HasExtension)
             {
-                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
                 if (headerLength == 3)
                 {
                     // just continue
@@ -148,7 +148,7 @@ namespace Rtsp.Rtp
                 else
                 {
                     // read other extension...
-                    RtpPacketOnvifExtensions.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                    RtpPacketOnvifUtils.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
                 }
             }
             ProcessJPEGRTPFrame(packet.Payload);
@@ -170,7 +170,7 @@ namespace Rtsp.Rtp
         {
             if (packet.HasExtension)
             {
-                _timestamp = RtpPacketOnvifExtensions.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
                 if (headerLength == 3)
                 {
                     // just continue
@@ -178,7 +178,7 @@ namespace Rtsp.Rtp
                 else
                 {
                     // read other extension...
-                    RtpPacketOnvifExtensions.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                    RtpPacketOnvifUtils.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
                 }
             }
             ProcessJPEGRTPFrame(packet.Payload);
