@@ -1043,8 +1043,9 @@ namespace RtspClientExample
                 }
                 else
                 {
+                    var baseUriWithTrailingSlash = new Uri($"{_uri!.ToString()}/");
                     // relative path
-                    controlUri = new Uri(_uri!, sdp_control);
+                    controlUri = new Uri(baseUriWithTrailingSlash, sdp_control);
                 }
 
             }
