@@ -10,7 +10,6 @@ namespace Rtsp.Rtp
         private bool disposedValue;
         private readonly IEnumerable<ReadOnlyMemory<byte>> _data;
         private readonly IEnumerable<IMemoryOwner<byte>> _owners;
-        private readonly ulong _timestamp;
 
         public IEnumerable<ReadOnlyMemory<byte>> Data
         {
@@ -21,7 +20,7 @@ namespace Rtsp.Rtp
             }
         }
 
-        public ulong Timestamp => _timestamp;
+        public ulong Timestamp { get; }
 
         public RawMediaFrame() : this([], [], 0UL)
         {
@@ -31,7 +30,7 @@ namespace Rtsp.Rtp
         {
             _data = data;
             _owners = owners;
-            _timestamp = timestamp;
+            Timestamp = timestamp;
         }
 
         public bool Any() => Data.Any();
