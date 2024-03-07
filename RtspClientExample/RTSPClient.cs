@@ -57,6 +57,12 @@ namespace RtspClientExample
         int audio_payload = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
         string audio_codec = "";         // Codec used with Payload Types (eg "PCMA" or "AMR")
 
+        /// <summary>
+        /// If true, the client must send an "onvif-replay" header on every play request.
+        /// </summary>
+        bool _playbackSession = false;
+
+
         // Used with RTSP keepalive
         bool serverSupportsGetParameter = false;
         System.Timers.Timer? keepaliveTimer = null;
@@ -66,7 +72,6 @@ namespace RtspClientExample
 
         // setup messages still to send
         readonly Queue<RtspRequestSetup> setupMessages = new();
-
 
         /// <summary>
         /// Called when the Setup command are completed, so we can start the right Play message (with or without playback informations)
@@ -82,13 +87,15 @@ namespace RtspClientExample
         }
 
 
-        public void Connect(string url, string username, string password, RTP_TRANSPORT rtpTransport, MEDIA_REQUEST mediaRequest = MEDIA_REQUEST.VIDEO_AND_AUDIO)
+        public void Connect(string url, string username, string password, RTP_TRANSPORT rtpTransport, MEDIA_REQUEST mediaRequest = MEDIA_REQUEST.VIDEO_AND_AUDIO, bool playbackSession = false)
         {
 
             RtspUtils.RegisterUri();
 
             _logger.LogDebug("Connecting to {url} ", url);
             _uri = new(url);
+
+            _playbackSession = playbackSession;
 
             // Use URI to extract username and password
             // and to make a new URL without the username and password
@@ -220,17 +227,21 @@ namespace RtspClientExample
             }
 
             // Send PLAY
-            var play_message = new RtspRequestPlay
+            var playMessage = new RtspRequestPlay
             {
                 RtspUri = _uri,
                 Session = session
             };
-            play_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+            playMessage.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
 
             //// Need for old sony camera SNC-CS20
-            play_message.Headers.Add("range", "npt=0.000-");
-
-            rtspClient?.SendMessage(play_message);
+            playMessage.Headers.Add("range", "npt=0.000-");
+            if (_playbackSession)
+            {
+                playMessage.AddRequireOnvifRequest();
+                playMessage.AddRateControlOnvifRequest(false);
+            }
+            rtspClient?.SendMessage(playMessage);
         }
 
         /// <summary>
@@ -247,6 +258,11 @@ namespace RtspClientExample
                 Session = session,
             };
             playMessage.AddPlayback(seekTime, speed);
+            if (_playbackSession)
+            {
+                playMessage.AddRequireOnvifRequest();
+                playMessage.AddRateControlOnvifRequest(false);
+            }
             rtspClient?.SendMessage(playMessage);
         }
 
@@ -269,6 +285,11 @@ namespace RtspClientExample
             };
 
             playMessage.AddPlayback(seekTimeFrom, seekTimeTo, speed);
+            if (_playbackSession)
+            {
+                playMessage.AddRequireOnvifRequest();
+                playMessage.AddRateControlOnvifRequest(false);
+            }
             rtspClient?.SendMessage(playMessage);
         }
 
@@ -322,7 +343,7 @@ namespace RtspClientExample
                 return;
             }
 
-            using var nal_units = videoPayloadProcessor.ProcessPacket(rtpPacket); // this will cache the Packets until there is a Frame
+            using RawMediaFrame nal_units = videoPayloadProcessor.ProcessPacket(rtpPacket); // this will cache the Packets until there is a Frame
 
 
             if (nal_units.Any())
@@ -358,7 +379,7 @@ namespace RtspClientExample
                         }
                     }
                     // we have a frame of NAL Units. Write them to the file
-                    ReceivedNALs?.Invoke(this, new(nal_units.Data));
+                    ReceivedNALs?.Invoke(this, new(nal_units.Data, nal_units.Timestamp));
                 }
 
                 if (videoPayloadProcessor is H265Payload)
@@ -395,17 +416,17 @@ namespace RtspClientExample
 
                     }
                     // we have a frame of NAL Units. Write them to the file
-                    ReceivedNALs?.Invoke(this, new(nal_units.Data));
+                    ReceivedNALs?.Invoke(this, new(nal_units.Data, nal_units.Timestamp));
                 }
 
                 if (videoPayloadProcessor is JPEGPayload)
                 {
-                    ReceivedJpeg?.Invoke(this, new(nal_units.Data));
+                    ReceivedJpeg?.Invoke(this, new(nal_units.Data, nal_units.Timestamp));
                 }
 
                 if (videoPayloadProcessor is MP2TransportPayload)
                 {
-                    ReceivedMp2t?.Invoke(this, new(nal_units.Data));
+                    ReceivedMp2t?.Invoke(this, new(nal_units.Data, nal_units.Timestamp));
                 }
             }
 
@@ -443,20 +464,20 @@ namespace RtspClientExample
                 {
                     // G711 PCMA or G711 PCMU
                     // Write the audio frames to the file
-                    ReceivedG711?.Invoke(this, new(audio_codec, audioFrames.Data));
+                    ReceivedG711?.Invoke(this, new(audio_codec, audioFrames.Data, audioFrames.Timestamp));
                 }
                 else if (audioPayloadProcessor is AMRPayload)
                 {
                     // AMR
                     // Write the audio frames to the file
-                    ReceivedAMR?.Invoke(this, new(audio_codec, audioFrames.Data));
+                    ReceivedAMR?.Invoke(this, new(audio_codec, audioFrames.Data, audioFrames.Timestamp));
 
                 }
                 else if (audioPayloadProcessor is AACPayload aacPayload)
                 {
                     // AAC
                     // Write the audio frames to the file
-                    ReceivedAAC?.Invoke(this, new(audio_codec, audioFrames.Data, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration));
+                    ReceivedAAC?.Invoke(this, new(audio_codec, audioFrames.Data, aacPayload.ObjectType, aacPayload.FrequencyIndex, aacPayload.ChannelConfiguration, audioFrames.Timestamp));
                 }
             }
             audioFrames.Dispose();
@@ -605,7 +626,7 @@ namespace RtspClientExample
 
                     string www_authenticate = value ?? string.Empty;
                     _authentication = Authentication.Create(_credentials, www_authenticate);
-                    _logger.LogDebug("WWW Authorize parsed for {authentication}",_authentication);
+                    _logger.LogDebug("WWW Authorize parsed for {authentication}", _authentication);
                 }
 
                 RtspMessage? resend_message = message.OriginalRequest?.Clone() as RtspMessage;
@@ -944,7 +965,7 @@ namespace RtspClientExample
                             };
                             setup_message.AddTransport(transport);
                             setup_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
-
+                            if (_playbackSession) { setup_message.AddRequireOnvifRequest(); }
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
                         }
@@ -1006,7 +1027,11 @@ namespace RtspClientExample
                             };
                             setup_message.AddTransport(transport);
                             setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
-
+                            if (_playbackSession)
+                            {
+                                setup_message.AddRequireOnvifRequest();
+                                setup_message.AddRateControlOnvifRequest(false);
+                            }
                             // Add SETUP message to list of mesages to send
                             setupMessages.Enqueue(setup_message);
                         }

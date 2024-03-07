@@ -16,9 +16,11 @@ namespace Rtsp.Rtp
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timeStamp)
         {
             // TODO check the RFC to handle the different modes
+
+            timeStamp = packet.Timestamp;
 
             // Octet-Aligned Mode (RFC 4867 Section 4.4.1)
             // First byte is the Payload Header
@@ -49,7 +51,7 @@ namespace Rtsp.Rtp
             // The rest of the RTP packet is the AMR data
             packet.Payload[1..].CopyTo(owner.Memory.Span);
 
-            return new([owner.Memory[..lenght]], [owner]);
+            return new([owner.Memory[..lenght]], [owner], packet.Timestamp);
         }
     }
 }

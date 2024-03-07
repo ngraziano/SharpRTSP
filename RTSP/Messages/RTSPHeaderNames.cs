@@ -16,6 +16,9 @@
         public const string WWWAuthenticate = "WWW-Authenticate";
         public const string Authorization = "Authorization";
 
+        public const string RateControl = "Rate-Control";
+        public const string Require = "Require";
+
         public const string Range = "range";
         public const string Scale = "scale";
     }

@@ -20,14 +20,17 @@ namespace Rtsp.Rtp
             }
         }
 
-        public RawMediaFrame() : this(Array.Empty<ReadOnlyMemory<byte>>(), Array.Empty<IMemoryOwner<byte>>())
+        public ulong Timestamp { get; }
+
+        public RawMediaFrame() : this([], [], 0UL)
         {
         }
 
-        public RawMediaFrame(IEnumerable<ReadOnlyMemory<byte>> data, IEnumerable<IMemoryOwner<byte>> owners)
+        public RawMediaFrame(IEnumerable<ReadOnlyMemory<byte>> data, IEnumerable<IMemoryOwner<byte>> owners, ulong timestamp)
         {
             _data = data;
             _owners = owners;
+            Timestamp = timestamp;
         }
 
         public bool Any() => Data.Any();

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Rtsp.Onvif;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -31,6 +32,8 @@ namespace Rtsp.Rtp
         private readonly MemoryStream fragmentedNal = new();
         private readonly MemoryPool<byte> _memoryPool;
 
+        private ulong _timestamp;
+
         // Constructor
         public H265Payload(bool hasDonl, ILogger<H265Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
@@ -41,8 +44,13 @@ namespace Rtsp.Rtp
 
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timestamp)
         {
+            if (packet.Extension.Length > 0)
+            {
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+            }
+
             ProcessRTPFrame(packet.Payload);
 
             if (packet.IsMarker)
@@ -51,9 +59,11 @@ namespace Rtsp.Rtp
                 var nalToReturn = nals.ToList();
                 nals.Clear();
                 owners.Clear();
+                timestamp = _timestamp;
                 return nalToReturn;
             }
 
+            timestamp = null;
             // we don't have a frame yet. Keep accumulating RTP packets
             return [];
         }
@@ -212,6 +222,11 @@ namespace Rtsp.Rtp
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
         {
+            if (packet.Extension.Length > 0)
+            {
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+            }
+
             ProcessRTPFrame(packet.Payload);
 
             if (!packet.IsMarker)
@@ -224,7 +239,8 @@ namespace Rtsp.Rtp
             // clone list of nalUnits and owners
             var result = new RawMediaFrame(
                 new List<ReadOnlyMemory<byte>>(nals),
-                new List<IMemoryOwner<byte>>(owners));
+                new List<IMemoryOwner<byte>>(owners),
+                _timestamp);
             nals.Clear();
             owners.Clear();
             return result;

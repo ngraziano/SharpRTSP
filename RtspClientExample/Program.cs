@@ -29,7 +29,7 @@ namespace RtspClientExample
 
             // string url = "http://192.168.3.72/profile1/media.smp";
 
-            bool usePlayback = false;
+            bool usePlayback = true;
             string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
@@ -105,7 +105,7 @@ namespace RtspClientExample
                 h265 = true;
                 if (fs_v == null)
                 {
-                    String filename = "rtsp_capture_" + now + ".265";
+                    string filename = "rtsp_capture_" + now + ".265";
                     fs_v = new FileStream(filename, FileMode.Create);
                 }
 
@@ -123,6 +123,10 @@ namespace RtspClientExample
             {
                 if (fs_v != null)
                 {
+                    //https://stackoverflow.com/questions/57590264/capturing-rtp-timestamps
+                    DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+                    dt = dt.Add(TimeSpan.FromMilliseconds(args.TimeStamp));
+                    
                     foreach (var nalUnitMem in args.Data)
                     {
                         var nalUnit = nalUnitMem.Span;
@@ -184,6 +188,10 @@ namespace RtspClientExample
             int indexImg = 0;
             client.ReceivedJpeg += (_, args) =>
             {
+                //https://stackoverflow.com/questions/57590264/capturing-rtp-timestamps
+                DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+                dt = dt.Add(TimeSpan.FromMilliseconds(args.TimeStamp));
+
                 // Ugly to do it each time.
                 // The interface need to change have an event on new file
                 Directory.CreateDirectory("rtsp_capture_" + now);
@@ -304,7 +312,7 @@ namespace RtspClientExample
             // Connect to RTSP Server
             Console.WriteLine("Connecting");
 
-            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO);
+            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO, usePlayback);
 
             //client.Pause();
             //DateTime startTime = DateTime.Now.AddHours(-1);
