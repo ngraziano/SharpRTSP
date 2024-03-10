@@ -48,7 +48,7 @@ namespace Rtsp.Rtp
         {
             if (packet.Extension.Length > 0)
             {
-                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
             }
 
             ProcessRTPFrame(packet.Payload);
@@ -224,7 +224,7 @@ namespace Rtsp.Rtp
         {
             if (packet.Extension.Length > 0)
             {
-                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _, out _);
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _);
             }
 
             ProcessRTPFrame(packet.Payload);

@@ -13,13 +13,12 @@ public static class RtpPacketOnvifUtils
     /// Provide the Jpeg frame extension method, for frame size > 2048x2048
     /// </summary>
     /// <param name="extension">The header to check</param>
-    /// <param name="headerPosition">Starting point for the header check</param>
-    /// <param name="frameWidth"></param>
-    /// <param name="frameHeight"></param>
-    public static void ProcessJpegFrameExtension(ReadOnlySpan<byte> extension, int headerPosition, out ushort frameWidth, out ushort frameHeight)
+    /// <returns>Frame width and height</returns>
+    public static (ushort,ushort) ProcessJpegFrameExtension(ReadOnlySpan<byte> extension)
     {
-        frameWidth = 0;
-        frameHeight = 0;
+        var headerPosition = 0;
+        ushort frameWidth = 0;
+        ushort frameHeight = 0;
         int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
         if (extensionType == MARKER_SOI)
         {
@@ -39,53 +38,56 @@ public static class RtpPacketOnvifUtils
                 headerPosition += (blockSize + 2);
             }
         }
+        return (frameWidth, frameHeight);
     }
 
     /// <summary>
     /// Extract timestamp from jpeg extension.
     /// </summary>
     /// <param name="extension">The extension header</param>
-    /// <param name="headerPosition">returns position after read</param>
-    /// <param name="headerLength">If equal to 3, this is the only extension available. If > then 3, then we must call also the <see cref="ProcessJpegFrameExtension(ReadOnlySpan{byte}, int, out ushort, out ushort)"/> extension method.</param>
+    /// <param name="headerPosition">returns position after read. Used when JPEG extension is appended to this extension</param>
     /// <returns>Timestamp, as number of milliseconds from 19000101T000000</returns>
-    public static ulong ProcessRTPTimestampExtension(ReadOnlySpan<byte> extension, out int headerPosition, out ushort headerLength)
+    public static ulong ProcessRTPTimestampExtension(ReadOnlySpan<byte> extension, out int headerPosition)
     {
-        int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
-        if (extensionType == MARKER_TS_EXT)
+        headerPosition = 0;
+        // RTP extension has a minmum length of 4 32bit words (more if JPEG extension is appended).
+        if (extension.Length < 4 * 4)
         {
-            headerPosition = sizeof(ushort);
-            headerLength = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
-            // in this case, we have to read the information also if header length in not 3.
-            // returning back from this method, must check the headerLength, so we can know if another extension is present.
-            //if (headerLength == 3)
-            {
-                headerPosition += sizeof(ushort);
-
-                uint seconds = BinaryPrimitives.ReadUInt32BigEndian(extension[headerPosition..]);
-                uint fractions = BinaryPrimitives.ReadUInt32BigEndian(extension[(headerPosition + sizeof(uint))..]);
-
-                headerPosition += sizeof(uint) + sizeof(uint);
-
-                //uint data = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
-                // C        [1 bit]     -> all
-                // E        [1 bit]     -> all
-                // D        [1 bit]     -> all
-                // T        [1 bit]     -> only not jpeg
-                // MBZ      [4/5 bits]  -> [4 if not jpeg, 5 in jpeg] reserved
-                // CSeq     [8 bits]    -> 1 byte
-                // padding  [8 bits]    -> just padding values.
-
-                headerPosition += sizeof(uint);
-                ulong msec = fractions * 1000 / uint.MaxValue;
-                DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                DateTime ret = dt.AddSeconds(seconds).AddMilliseconds(msec);
-
-                return (ulong)ret.Subtract(dt).TotalMilliseconds;
-            }
+            return 0;
         }
 
-        headerLength = 0;
-        headerPosition = 0;
-        return 0;
+        int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
+        if (extensionType != MARKER_TS_EXT)
+        {
+            return 0;
+        }
+
+        headerPosition += sizeof(ushort);
+        // var headerLength = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
+        //if (headerLength == 3)
+        {
+            headerPosition += sizeof(ushort);
+
+            uint seconds = BinaryPrimitives.ReadUInt32BigEndian(extension[headerPosition..]);
+            uint fractions = BinaryPrimitives.ReadUInt32BigEndian(extension[(headerPosition + sizeof(uint))..]);
+
+            headerPosition += sizeof(uint) + sizeof(uint);
+
+            //uint data = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
+            // C        [1 bit]     -> all
+            // E        [1 bit]     -> all
+            // D        [1 bit]     -> all
+            // T        [1 bit]     -> only not jpeg
+            // MBZ      [4/5 bits]  -> [4 if not jpeg, 5 in jpeg] reserved
+            // CSeq     [8 bits]    -> 1 byte
+            // padding  [8 bits]    -> just padding values.
+
+            headerPosition += sizeof(uint);
+            ulong msec = fractions * 1000 / uint.MaxValue;
+            DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            DateTime ret = dt.AddSeconds(seconds).AddMilliseconds(msec);
+
+            return (ulong)ret.Subtract(dt).TotalMilliseconds;
+        }
     }
 }

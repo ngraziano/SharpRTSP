@@ -140,15 +140,13 @@ namespace Rtsp.Rtp
         {
             if (packet.HasExtension)
             {
-                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
-                if (headerLength == 3)
+                var extension = packet.Extension;
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(extension, out int headerPosition);
+                extension = extension[headerPosition..];
+                // if there is more data maybe it is JPEG extension
+                if (extension.Length > 0)
                 {
-                    // just continue
-                }
-                else
-                {
-                    // read other extension...
-                    RtpPacketOnvifUtils.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                    (_extensionFrameWidth, _extensionFrameHeight) = RtpPacketOnvifUtils.ProcessJpegFrameExtension(extension);
                 }
             }
             ProcessJPEGRTPFrame(packet.Payload);
@@ -170,15 +168,13 @@ namespace Rtsp.Rtp
         {
             if (packet.HasExtension)
             {
-                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out int headerPosition, out ushort headerLength);
-                if (headerLength == 3)
+                var extension = packet.Extension;
+                _timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(extension, out int headerPosition);
+                extension = extension[headerPosition..];
+                // if there is more data maybe it is JPEG extension
+                if (extension.Length > 0)
                 {
-                    // just continue
-                }
-                else
-                {
-                    // read other extension...
-                    RtpPacketOnvifUtils.ProcessJpegFrameExtension(packet.Extension, headerPosition: headerPosition, out _extensionFrameWidth, out _extensionFrameHeight);
+                    (_extensionFrameWidth, _extensionFrameHeight) = RtpPacketOnvifUtils.ProcessJpegFrameExtension(extension);
                 }
             }
             ProcessJPEGRTPFrame(packet.Payload);
