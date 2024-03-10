@@ -20,7 +20,7 @@ public static class RtpPacketOnvifUtils
     {
         frameWidth = 0;
         frameHeight = 0;
-        int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
+        int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension[headerPosition..]);
         if (extensionType == MARKER_SOI)
         {
             // 2 for type, 2 for length
