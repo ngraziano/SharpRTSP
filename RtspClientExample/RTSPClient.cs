@@ -605,7 +605,7 @@ namespace RtspClientExample
 
                     string www_authenticate = value ?? string.Empty;
                     _authentication = Authentication.Create(_credentials, www_authenticate);
-                    _logger.LogDebug("WWW Authorize parsed for {authentication}",_authentication);
+                    _logger.LogDebug("WWW Authorize parsed for {authentication}", _authentication);
                 }
 
                 RtspMessage? resend_message = message.OriginalRequest?.Clone() as RtspMessage;
@@ -1043,7 +1043,8 @@ namespace RtspClientExample
                 }
                 else
                 {
-                    var baseUriWithTrailingSlash = new Uri($"{_uri!.ToString()}/");
+                    // add trailing / if necessary
+                    var baseUriWithTrailingSlash = _uri!.ToString().EndsWith('/') ? _uri : new Uri($"{_uri}/");
                     // relative path
                     controlUri = new Uri(baseUriWithTrailingSlash, sdp_control);
                 }
