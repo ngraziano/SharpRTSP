@@ -1068,8 +1068,10 @@ namespace RtspClientExample
                 }
                 else
                 {
+                    // add trailing / if necessary
+                    var baseUriWithTrailingSlash = _uri!.ToString().EndsWith('/') ? _uri : new Uri($"{_uri}/");
                     // relative path
-                    controlUri = new Uri(_uri!, sdp_control);
+                    controlUri = new Uri(baseUriWithTrailingSlash, sdp_control);
                 }
 
             }
