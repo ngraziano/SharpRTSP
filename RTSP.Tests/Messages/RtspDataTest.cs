@@ -17,7 +17,7 @@ namespace Rtsp.Messages.Tests
             };
             RtspData cloneObject = testObject.Clone() as RtspData;
 
-            Assert.That(cloneObject,Is.Not.Null);
+            Assert.That(cloneObject, Is.Not.Null);
             Assert.Multiple(() =>
             {
                 Assert.That(cloneObject.Channel, Is.EqualTo(testObject.Channel));

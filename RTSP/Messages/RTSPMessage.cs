@@ -247,7 +247,7 @@
             var stringBuilder = new StringBuilder();
 
             stringBuilder.Append("Commande : ").AppendLine(Command);
-            foreach (var (key,value) in Headers)
+            foreach (var (key, value) in Headers)
             {
                 stringBuilder.Append("Header : ").Append(key).Append(": ").AppendLine(value);
             }

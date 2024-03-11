@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using System.Linq;
 
 namespace Rtsp.Messages
 {
@@ -85,7 +84,7 @@ namespace Rtsp.Messages
             {
                 if (_returnCode == 0 && commandArray.Length >= 2)
                 {
-                    int.TryParse(commandArray[1],NumberStyles.Integer, CultureInfo.InvariantCulture, out _returnCode);
+                    int.TryParse(commandArray[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _returnCode);
                 }
 
                 return _returnCode;

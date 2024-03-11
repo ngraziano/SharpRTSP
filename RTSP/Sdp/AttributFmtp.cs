@@ -19,7 +19,7 @@ namespace Rtsp.Sdp
         {
             get
             {
-                return string.Format(CultureInfo.InvariantCulture,  "{0} {1}", PayloadNumber, FormatParameter);
+                return string.Format(CultureInfo.InvariantCulture, "{0} {1}", PayloadNumber, FormatParameter);
             }
             protected set
             {

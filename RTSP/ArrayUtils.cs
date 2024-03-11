@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Rtsp
+﻿namespace Rtsp
 {
     internal static class ArrayUtils
     {

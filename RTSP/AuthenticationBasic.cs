@@ -10,10 +10,10 @@ namespace Rtsp
         public const string AUTHENTICATION_PREFIX = "Basic ";
 
         private readonly string _realm;
-        
+
 
         public AuthenticationBasic(NetworkCredential credentials, string realm) : base(credentials)
-        { 
+        {
             _realm = realm ?? throw new ArgumentNullException(nameof(realm));
         }
 
@@ -52,8 +52,8 @@ namespace Rtsp
 
             return decoded.Split(':', 2) switch
             {
-                [string username, string password] => string.Equals(username, Credentials.UserName, StringComparison.OrdinalIgnoreCase)
-                                                        && string.Equals(password, Credentials.Password, StringComparison.Ordinal),
+            [string username, string password] => string.Equals(username, Credentials.UserName, StringComparison.OrdinalIgnoreCase)
+                                                    && string.Equals(password, Credentials.Password, StringComparison.Ordinal),
                 _ => false
             };
         }

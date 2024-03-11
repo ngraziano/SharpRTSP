@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Rtsp
 {
@@ -19,7 +17,7 @@ namespace Rtsp
 
         public void WriteToControlPort(ReadOnlySpan<byte> data)
         {
-            rtspListener.SendData(ControlChannel,data);
+            rtspListener.SendData(ControlChannel, data);
         }
 
         public void WriteToDataPort(ReadOnlySpan<byte> data)

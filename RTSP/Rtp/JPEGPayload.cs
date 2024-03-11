@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Rtsp.Onvif;
+﻿using Rtsp.Onvif;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
