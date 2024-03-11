@@ -11,7 +11,6 @@ namespace Rtsp
 
         private readonly string _realm;
 
-
         public AuthenticationBasic(NetworkCredential credentials, string realm) : base(credentials)
         {
             _realm = realm ?? throw new ArgumentNullException(nameof(realm));
@@ -58,6 +57,5 @@ namespace Rtsp
             };
         }
         public override string ToString() => "Authentication Basic";
-
     }
 }

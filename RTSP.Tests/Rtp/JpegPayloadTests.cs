@@ -10,7 +10,6 @@ namespace RTSP.Tests.Rtp
     {
         private readonly Assembly selfAssembly = Assembly.GetExecutingAssembly();
 
-
         private RtpPacket ReadPacket(string resourceName)
         {
             using var rtpFile = selfAssembly.GetManifestResourceStream($"RTSP.Tests.Rtp.Data.{resourceName}.rtp");

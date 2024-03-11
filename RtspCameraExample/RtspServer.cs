@@ -286,8 +286,6 @@ namespace RtspCameraExample
                     }
                     return;
             }
-
-
         }
 
         private void HandleSetup(RtspListener listener, RtspRequestSetup setupMessage)
@@ -518,7 +516,6 @@ namespace RtspCameraExample
                     RemoveSession(connection);
                 }
                 current_rtsp_play_count = rtspConnectionList.Count(c => c.play);
-
             }
         }
 
@@ -829,7 +826,6 @@ namespace RtspCameraExample
 
                     if (connection.audio.must_send_rtcp_packet)
                     {
-
                         if (!SendRTCP(rtp_timestamp, connection, connection.audio))
                         {
                             RemoveSession(connection);

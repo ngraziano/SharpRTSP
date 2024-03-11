@@ -8,13 +8,11 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace RtspCameraExample
 {
     static class Program
     {
-
         static void Main()
         {
             var loggerFactory = LoggerFactory.Create(builder =>
@@ -27,9 +25,7 @@ namespace RtspCameraExample
                     .AddConsole();
             });
             var demo = new Demo(loggerFactory);
-            
         }
-
 
         class Demo
         {
@@ -72,7 +68,6 @@ namespace RtspCameraExample
 
                 Console.WriteLine($"RTSP URL is rtsp://{username}:{password}@hostname:{port}");
 
-
                 /////////////////////////////////////////
                 // Step 2 - Create the H264 Encoder. It will feed NALs into the RTSP server
                 /////////////////////////////////////////
@@ -95,7 +90,6 @@ namespace RtspCameraExample
                 av_source.ReceivedYUVFrame += Video_source_ReceivedYUVFrame; // the event handler is where all the magic happens
                 av_source.ReceivedAudioFrame += Audio_source_ReceivedAudioFrame; // the event handler is where all the magic happens
 
-
                 /////////////////////////////////////////
                 // Wait for user to terminate programme
                 // Everything else happens in Timed Events from av_source
@@ -110,7 +104,6 @@ namespace RtspCameraExample
                 Console.WriteLine("Press ENTER to exit");
                 Console.ReadLine();
 
-
                 /////////////////////////////////////////
                 // Shutdown
                 /////////////////////////////////////////
@@ -118,17 +111,13 @@ namespace RtspCameraExample
                 av_source.ReceivedAudioFrame -= Audio_source_ReceivedAudioFrame;
                 av_source.Disconnect();
                 rtspServer.StopListen();
-
             }
-
 
             private void Video_source_ReceivedYUVFrame(uint timestamp_ms, int width, int height, Span<byte> yuv_data)
             {
-                
                 // Compress the YUV and feed into the RTSP Server
                 byte[] raw_video_nal = h264Encoder.CompressFrame(yuv_data);
                 const bool isKeyframe = true; // the Simple/Tiny H264 Encoders only return I-Frames for every video frame.
-
 
                 // Put the NALs into a List
                 List<byte[]> nal_array = [];

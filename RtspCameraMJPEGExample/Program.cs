@@ -7,7 +7,6 @@
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -17,7 +16,6 @@ namespace RtspCameraExample
 {
     static class Program
     {
-
         static void Main()
         {
             var loggerFactory = LoggerFactory.Create(builder =>
@@ -30,9 +28,7 @@ namespace RtspCameraExample
                     .AddConsole();
             });
             var demo = new Demo(loggerFactory);
-
         }
-
 
         class Demo
         {
@@ -41,8 +37,6 @@ namespace RtspCameraExample
             private readonly int port = 8554;
             private readonly string username = "user";      // or use NUL if there is no username
             private readonly string password = "password";  // or use NUL if there is no password
-
-
             public Demo(ILoggerFactory loggerFactory)
             {
                 rtspServer = new RtspServer(port, username, password, loggerFactory);
@@ -56,12 +50,10 @@ namespace RtspCameraExample
                     throw;
                 }
 
-
                 CancellationTokenSource cts = new();
                 var sendJpeg = Task.Factory.StartNew(() => SendImages(cts.Token), cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
                 Console.WriteLine($"RTSP URL is rtsp://{username}:{password}@hostname:{port}");
-
 
                 string msg = "Connect RTSP client to Port=" + port;
                 if (username is not null && password is not null)
@@ -75,7 +67,6 @@ namespace RtspCameraExample
                 cts.Cancel();
                 rtspServer.StopListen();
                 sendJpeg.Wait();
-
             }
 
             private async Task SendImages(CancellationToken token)
@@ -88,7 +79,6 @@ namespace RtspCameraExample
                     {
                         // Send the frame to all clients
                         rtspServer.FeedInRawJPEG((uint)stopwatch.ElapsedMilliseconds, jpegFile, 1024, 768);
-
                     }
                     catch (Exception ex)
                     {

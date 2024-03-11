@@ -41,7 +41,6 @@ namespace Rtsp.Rtp
 
             _logger = logger as ILogger ?? NullLogger.Instance;
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-
         }
 
         public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timestamp)

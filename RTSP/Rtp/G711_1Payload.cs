@@ -9,7 +9,6 @@ namespace Rtsp.Rtp
 
     public class G711_1Payload : IPayloadProcessor
     {
-
         private readonly MemoryPool<byte> _memoryPool;
 
         public G711_1Payload(MemoryPool<byte>? memoryPool = null)
