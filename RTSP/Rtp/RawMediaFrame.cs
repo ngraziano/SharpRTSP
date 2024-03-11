@@ -20,13 +20,13 @@ namespace Rtsp.Rtp
             }
         }
 
-        public ulong Timestamp { get; }
+        public DateTime Timestamp { get; }
 
-        public RawMediaFrame() : this([], [], 0UL)
+        public RawMediaFrame() : this([], [], DateTime.MinValue)
         {
         }
 
-        public RawMediaFrame(IEnumerable<ReadOnlyMemory<byte>> data, IEnumerable<IMemoryOwner<byte>> owners, ulong timestamp)
+        public RawMediaFrame(IEnumerable<ReadOnlyMemory<byte>> data, IEnumerable<IMemoryOwner<byte>> owners, DateTime timestamp)
         {
             _data = data;
             _owners = owners;

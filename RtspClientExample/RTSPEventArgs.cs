@@ -33,47 +33,47 @@ namespace RtspClientExample
 
     public class SimpleDataEventArgs : EventArgs
     {
-        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
+        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
         {
             Data = data;
             TimeStamp = timeStamp;
         }
 
-        public ulong TimeStamp { get; }
+        public DateTime TimeStamp { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class G711EventArgs : EventArgs
     {
-        public G711EventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
+        public G711EventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
         {
             Format = format;
             Data = data;
             TimeStamp = timeStamp;
         }
 
-        public ulong TimeStamp { get; }
+        public DateTime TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class AMREventArgs : EventArgs
     {
-        public AMREventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, ulong timeStamp)
+        public AMREventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
         {
             Format = format;
             Data = data;
             TimeStamp = timeStamp;
         }
 
-        public ulong TimeStamp { get; }
+        public DateTime TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
     public class AACEventArgs : EventArgs
     {
-        public AACEventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, int objectType, int frequencyIndex, int channelConfiguration, ulong timeStamp)
+        public AACEventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, int objectType, int frequencyIndex, int channelConfiguration, DateTime timeStamp)
         {
             Format = format;
             Data = data;
@@ -82,7 +82,7 @@ namespace RtspClientExample
             ChannelConfiguration = channelConfiguration;
             TimeStamp = timeStamp;
         }
-        public ulong TimeStamp { get; }
+        public DateTime TimeStamp { get; }
         public string Format { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
         public int ObjectType { get; }

@@ -123,10 +123,6 @@ namespace RtspClientExample
             {
                 if (fs_v != null)
                 {
-                    //https://stackoverflow.com/questions/57590264/capturing-rtp-timestamps
-                    DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                    dt = dt.Add(TimeSpan.FromMilliseconds(args.TimeStamp));
-                    
                     foreach (var nalUnitMem in args.Data)
                     {
                         var nalUnit = nalUnitMem.Span;
@@ -188,10 +184,6 @@ namespace RtspClientExample
             int indexImg = 0;
             client.ReceivedJpeg += (_, args) =>
             {
-                //https://stackoverflow.com/questions/57590264/capturing-rtp-timestamps
-                DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                dt = dt.Add(TimeSpan.FromMilliseconds(args.TimeStamp));
-
                 // Ugly to do it each time.
                 // The interface need to change have an event on new file
                 Directory.CreateDirectory("rtsp_capture_" + now);

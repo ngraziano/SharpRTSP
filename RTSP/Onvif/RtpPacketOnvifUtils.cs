@@ -8,13 +8,12 @@ public static class RtpPacketOnvifUtils
     private const ushort MARKER_SOF0 = 0xffc0;          // start-of-frame, baseline scan
     private const ushort MARKER_SOI = 0xffd8;           // start of image
 
-
     /// <summary>
     /// Provide the Jpeg frame extension method, for frame size > 2048x2048
     /// </summary>
     /// <param name="extension">The header to check</param>
     /// <returns>Frame width and height</returns>
-    public static (ushort,ushort) ProcessJpegFrameExtension(ReadOnlySpan<byte> extension)
+    public static (ushort frameWidth, ushort frameHeight) ProcessJpegFrameExtension(ReadOnlySpan<byte> extension)
     {
         var headerPosition = 0;
         ushort frameWidth = 0;
@@ -41,25 +40,27 @@ public static class RtpPacketOnvifUtils
         return (frameWidth, frameHeight);
     }
 
+    private static readonly DateTime dt_1900 = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
     /// <summary>
     /// Extract timestamp from jpeg extension.
     /// </summary>
     /// <param name="extension">The extension header</param>
     /// <param name="headerPosition">returns position after read. Used when JPEG extension is appended to this extension</param>
-    /// <returns>Timestamp, as number of milliseconds from 19000101T000000</returns>
-    public static ulong ProcessRTPTimestampExtension(ReadOnlySpan<byte> extension, out int headerPosition)
+    /// <returns>Timestamp of the frame or <see cref="DateTime.MinValue"/> on error</returns>
+    public static DateTime ProcessRTPTimestampExtension(ReadOnlySpan<byte> extension, out int headerPosition)
     {
         headerPosition = 0;
         // RTP extension has a minmum length of 4 32bit words (more if JPEG extension is appended).
         if (extension.Length < 4 * 4)
         {
-            return 0;
+            return DateTime.MinValue;
         }
 
         int extensionType = BinaryPrimitives.ReadUInt16BigEndian(extension);
         if (extensionType != MARKER_TS_EXT)
         {
-            return 0;
+            return DateTime.MinValue;
         }
 
         headerPosition += sizeof(ushort);
@@ -84,10 +85,8 @@ public static class RtpPacketOnvifUtils
 
             headerPosition += sizeof(uint);
             ulong msec = fractions * 1000 / uint.MaxValue;
-            DateTime dt = new(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-            DateTime ret = dt.AddSeconds(seconds).AddMilliseconds(msec);
 
-            return (ulong)ret.Subtract(dt).TotalMilliseconds;
+            return dt_1900.AddSeconds(seconds).AddMilliseconds(msec);
         }
     }
 }

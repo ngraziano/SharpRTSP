@@ -32,7 +32,7 @@ namespace Rtsp.Rtp
         private readonly MemoryStream fragmentedNal = new();
         private readonly MemoryPool<byte> _memoryPool;
 
-        private ulong _timestamp;
+        private DateTime _timestamp;
 
         // Constructor
         public H265Payload(bool hasDonl, ILogger<H265Payload>? logger, MemoryPool<byte>? memoryPool = null)
@@ -44,7 +44,7 @@ namespace Rtsp.Rtp
 
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timestamp)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timestamp)
         {
             if (packet.Extension.Length > 0)
             {

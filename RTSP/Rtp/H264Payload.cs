@@ -27,7 +27,7 @@ namespace Rtsp.Rtp
         private readonly MemoryStream fragmentedNal = new();
         private readonly MemoryPool<byte> _memoryPool;
 
-        private ulong _timestamp;
+        private DateTime _timestamp;
 
         public H264Payload(ILogger<H264Payload>? logger, MemoryPool<byte>? memoryPool = null)
         {
@@ -35,7 +35,7 @@ namespace Rtsp.Rtp
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timestamp)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timestamp)
         {
             if (packet.Extension.Length > 0)
             {
@@ -58,7 +58,7 @@ namespace Rtsp.Rtp
                 return nalToReturn;
             }
             // we don't have a frame yet. Keep accumulating RTP packets
-            timestamp = 0;
+            timestamp = DateTime.MinValue;
             return [];
         }
 

@@ -129,14 +129,14 @@ namespace Rtsp.Rtp
         private byte[] _quantizationTables = [];
         private int _quantizationTablesLength;
 
-        private ulong? _timestamp = null;
+        private DateTime? _timestamp = null;
 
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timeStamp)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timeStamp)
         {
             if (packet.HasExtension)
             {
@@ -154,7 +154,7 @@ namespace Rtsp.Rtp
             if (!packet.IsMarker)
             {
                 // we don't have a frame yet. Keep accumulating RTP packets
-                timeStamp = 0;
+                timeStamp = DateTime.MinValue;
                 return [];
             }
             // End Marker is set. The frame is complete
@@ -189,7 +189,7 @@ namespace Rtsp.Rtp
             var memoryOwner = _memoryPool.Rent(length);
             _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
             _frameStream.SetLength(0);
-            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner], _timestamp ?? 0UL);
+            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner], _timestamp ?? DateTime.MinValue);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)

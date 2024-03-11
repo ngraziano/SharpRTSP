@@ -13,9 +13,9 @@ namespace Rtsp.Rtp
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timestamp)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timestamp)
         {
-            timestamp = packet.Timestamp;
+            timestamp = DateTime.MinValue;
             return [packet.Payload.ToArray()];
         }
 
@@ -24,7 +24,7 @@ namespace Rtsp.Rtp
             var owner = _memoryPool.Rent(packet.PayloadSize);
             var memory = owner.Memory[..packet.PayloadSize];
             packet.Payload.CopyTo(memory.Span);
-            return new RawMediaFrame([memory], [owner], packet.Timestamp);
+            return new RawMediaFrame([memory], [owner], DateTime.MinValue);
         }
     }
 }

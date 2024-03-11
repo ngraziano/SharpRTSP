@@ -105,7 +105,7 @@ namespace Rtsp.Rtp
             ChannelConfiguration = bs.Read(4);
         }
 
-        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out ulong? timeStamp)
+        public IList<ReadOnlyMemory<byte>> ProcessRTPPacket(RtpPacket packet, out DateTime? timeStamp)
         {
             // RTP Payload for MPEG4-GENERIC can consist of multple blocks.
             // Each block has 3 parts
@@ -118,7 +118,7 @@ namespace Rtsp.Rtp
 
             int position = 0;
             var rtp_payload = packet.Payload;
-            timeStamp = packet.Timestamp;
+            timeStamp = DateTime.MinValue;
 
             // 2 bytes for AU Header Length, 2 bytes of AU Header payload
             while (position + 4 <= packet.PayloadSize)
@@ -183,7 +183,7 @@ namespace Rtsp.Rtp
                 position += aac_frame_size;
             }
 
-            return new(audioData, owners, packet.Timestamp);
+            return new(audioData, owners, DateTime.MinValue);
         }
     }
 }
