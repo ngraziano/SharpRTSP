@@ -79,7 +79,7 @@ namespace Rtsp
             string? responseLine = streamReader.ReadLine();
             if (string.IsNullOrEmpty(responseLine)) { throw new HttpBadResponseException("Empty response"); }
 
-            string[] tokens = responseLine.Split(' ');
+            string[] tokens = responseLine.Split(' ', 3);
             if (tokens.Length != 3) { throw new HttpRequestException("Invalid first response line"); }
 
             HttpStatusCode statusCode = (HttpStatusCode)int.Parse(tokens[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
