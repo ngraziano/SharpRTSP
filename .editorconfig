@@ -6,6 +6,11 @@ dotnet_diagnostic.CA1510.severity = silent
 # Just because I don't like this rule
 dotnet_diagnostic.IDE0290.severity = silent
 
-# For now increase double the default value
+# For now increase, double the default value
 MA0051.maximum_lines_per_method = 120
 MA0051.maximum_statements_per_method = 80
+
+# MA0110: Use the Regex source generator
+# Not supported in netstandard 2.0 and 2.1
+# so can't be used in this project
+dotnet_diagnostic.MA0110.severity = none
