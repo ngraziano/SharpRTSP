@@ -220,210 +220,19 @@ namespace RtspCameraExample
                 }
             }
 
-            // Handle OPTIONS message
-            if (message is RtspRequestOptions)
+            // Handle message without session
+            switch (message)
             {
-                // Create the reponse to OPTIONS
-                RtspResponse options_response = message.CreateResponse();
-                listener.SendMessage(options_response);
-            }
-
-            // Handle DESCRIBE message
-            if (message is RtspRequestDescribe describeMessage)
-            {
-                _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
-
-                // TODO. Check the requsted_url is valid. In this example we accept any RTSP URL
-
-                // if the SPS and PPS are not defined yet, we have to return an error
-                if (raw_sps == null || raw_pps == null)
-                {
-                    RtspResponse describe_response2 = message.CreateResponse();
-                    describe_response2.ReturnCode = 400; // 400 Bad Request
-                    listener.SendMessage(describe_response2);
+                case RtspRequestOptions:
+                    listener.SendMessage(message.CreateResponse());
                     return;
-                }
-
-                // Make the Base64 SPS and PPS
-                // raw_sps has no 0x00 0x00 0x00 0x01 or 32 bit size header
-                // raw_pps has no 0x00 0x00 0x00 0x01 or 32 bit size header
-                string sps_str = Convert.ToBase64String(raw_sps);
-                string pps_str = Convert.ToBase64String(raw_pps);
-
-                // Make the profile-level-id
-                // Eg a string of profile-level-id=42A01E is
-                // a Profile eg Constrained Baseline, Baseline, Extended, Main, High. This defines which features in H264 are used
-                // a Level eg 1,2,3 or 4. This defines a max resoution for the video. 2=up to SD, 3=upto 1080p. Decoders can then reserve sufficient RAM for frame buffers
-                const int profile_idc = 77; // Main Profile
-                const int profile_iop = 0; // bit 7 (msb) is 0 so constrained_flag is false
-                const int level = 42; // Level 4.2
-
-                string profile_level_id_str = profile_idc.ToString("X2") // convert to hex, padded to 2 characters
-                                            + profile_iop.ToString("X2")
-                                            + level.ToString("X2");
-
-                StringBuilder sdp = new();
-
-                // Generate the SDP
-                // The sprop-parameter-sets provide the SPS and PPS for H264 video
-                // The packetization-mode defines the H264 over RTP payloads used but is Optional
-                sdp.Append("v=0\n");
-                sdp.Append("o=user 123 0 IN IP4 0.0.0.0\n");
-                sdp.Append("s=SharpRTSP Test Camera\n");
-                sdp.Append($"m=video 0 RTP/AVP {video_payload_type}\n");
-                sdp.Append("c=IN IP4 0.0.0.0\n");
-                sdp.Append("a=control:trackID=0\n");
-                sdp.Append($"a=rtpmap:{video_payload_type} H264/90000\n");
-                sdp.Append($"a=fmtp:{video_payload_type} profile-level-id=").Append(profile_level_id_str)
-                    .Append("; sprop-parameter-sets=").Append(sps_str).Append(',').Append(pps_str).Append(";\n");
-
-                // AUDIO
-                sdp.Append("m=audio 0 RTP/AVP 0\n"); // <---- 0 means G711 ULAW
-                sdp.Append("a=control:trackID=1\n");
-                sdp.Append("a=rtpmap:0 PCMU/8000\n");
-                // sdp.Append(media header info if we had AAC or other audio codec)
-
-                byte[] sdp_bytes = Encoding.ASCII.GetBytes(sdp.ToString());
-
-                // Create the reponse to DESCRIBE
-                // This must include the Session Description Protocol (SDP)
-                RtspResponse describe_response = message.CreateResponse();
-
-                describe_response.AddHeader("Content-Base: " + message.RtspUri);
-                describe_response.AddHeader("Content-Type: application/sdp");
-                describe_response.Data = sdp_bytes;
-                describe_response.AdjustContentLength();
-                listener.SendMessage(describe_response);
+                case RtspRequestDescribe describeMessage:
+                    HandleDescribe(listener, message);
+                    return;
+                case RtspRequestSetup setupMessage:
+                    HandleSetup(listener, setupMessage);
+                    return;
             }
-
-            // Handle SETUP message
-            if (message is RtspRequestSetup setupMessage)
-            {
-                // Check the RTSP transport
-                // If it is UDP or Multicast, create the sockets
-                // If it is RTP over RTSP we send data via the RTSP Listener
-
-                // FIXME client may send more than one possible transport.
-                // very rare
-                RtspTransport transport = setupMessage.GetTransports()[0];
-
-                // Construct the Transport: reply from the Server to the client
-                RtspTransport? transport_reply = null;
-                IRtpTransport? rtpTransport = null;
-
-                if (transport.LowerTransport == RtspTransport.LowerTransportType.TCP)
-                {
-                    Debug.Assert(transport.Interleaved != null, "If transport.Interleaved is null here the program did not handle well connection problem");
-                    rtpTransport = new RtpTcpTransport(listener)
-                    {
-                        DataChannel = transport.Interleaved.First,
-                        ControlChannel = transport.Interleaved.Second,
-                    };
-                    // RTP over RTSP mode
-                    transport_reply = new()
-                    {
-                        SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
-                        LowerTransport = RtspTransport.LowerTransportType.TCP,
-                        Interleaved = new PortCouple(transport.Interleaved.First, transport.Interleaved.Second)
-                    };
-                }
-                else if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP && !transport.IsMulticast)
-                {
-                    Debug.Assert(transport.ClientPort != null, "If transport.ClientPort is null here the program did not handle well connection problem");
-
-                    // RTP over UDP mode
-                    // Create a pair of UDP sockets - One is for the Data (eg Video/Audio), one is for the RTCP
-                    var udp_pair = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
-                    udp_pair.SetDataDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.First);
-                    udp_pair.SetControlDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.Second);
-                    udp_pair.ControlReceived += (local_sender, local_e) =>
-                    {
-                        // RTCP data received
-                        _logger.LogDebug("RTCP data received {local_sender} {local_e.Data.Data.Length}", local_sender, local_e.Data.Data.Length);
-                        var connection = ConnectionByRtpTransport(local_sender as IRtpTransport);
-                        connection?.UpdateKeepAlive();
-                    };
-                    udp_pair.Start(); // start listening for data on the UDP ports
-
-                    // Pass the Port of the two sockets back in the reply
-                    transport_reply = new()
-                    {
-                        SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
-                        LowerTransport = RtspTransport.LowerTransportType.UDP,
-                        IsMulticast = false,
-                        ServerPort = new PortCouple(udp_pair.DataPort, udp_pair.ControlPort),
-                        ClientPort = transport.ClientPort
-                    };
-
-                    rtpTransport = udp_pair;
-                }
-                else if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP && transport.IsMulticast)
-                {
-                    // RTP over Multicast UDP mode}
-                    // Create a pair of UDP sockets in Multicast Mode
-                    // Pass the Ports of the two sockets back in the reply
-                    transport_reply = new()
-                    {
-                        SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
-                        LowerTransport = RtspTransport.LowerTransportType.UDP,
-                        IsMulticast = true,
-                        Port = new PortCouple(7000, 7001)  // FIX
-                    };
-
-                    // for now until implemented
-                    transport_reply = null;
-                }
-
-                if (transport_reply != null)
-                {
-                    // Update the stream within the session with transport information
-                    // If a Session ID is passed in we should match SessionID with other SessionIDs but we can match on RemoteAddress
-                    string copy_of_session_id = "";
-                    lock (rtspConnectionList)
-                    {
-                        foreach (var setupConnection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
-                        {
-                            // Check the Track ID to determine if this is a SETUP for the Video Stream
-                            // or a SETUP for an Audio Stream.
-                            // In the SDP the H264 video track is TrackID 0
-                            // and the Audio Track is TrackID 1
-                            RTPStream stream;
-                            if (setupMessage.RtspUri!.AbsolutePath.EndsWith("trackID=0")) stream = setupConnection.video;
-                            else if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=1")) stream = setupConnection.audio;
-                            else continue;// error case - track unknown
-                                          // found the connection
-                                          // Add the transports to the stream
-                            stream.rtpChannel = rtpTransport;
-                            // When there is Video and Audio there are two SETUP commands.
-                            // For the first SETUP command we will generate the connection.session_id and return a SessionID in the Reply.
-                            // For the 2nd command the client will send is the SessionID.
-                            if (string.IsNullOrEmpty(setupConnection.session_id))
-                            {
-                                setupConnection.session_id = session_handle.ToString();
-                                session_handle++;
-                            }
-                            // ELSE, could check the Session passed in matches the Session we generated on last SETUP command
-                            // Copy the Session ID, as we use it in the reply
-                            copy_of_session_id = setupConnection.session_id;
-                            break;
-                        }
-                    }
-
-                    RtspResponse setup_response = setupMessage.CreateResponse();
-                    setup_response.Headers[RtspHeaderNames.Transport] = transport_reply.ToString();
-                    setup_response.Session = copy_of_session_id;
-                    setup_response.Timeout = rtspTimeOut;
-                    listener.SendMessage(setup_response);
-                }
-                else
-                {
-                    RtspResponse setup_response = setupMessage.CreateResponse();
-                    // unsuported transport
-                    setup_response.ReturnCode = 461;
-                    listener.SendMessage(setup_response);
-                }
-            }
-
 
             // handle message needing session from here
             var connection = ConnectionBySessionId(message.Session);
@@ -436,56 +245,244 @@ namespace RtspCameraExample
                 return;
             }
 
-            // Handle PLAY message (Sent with a Session ID)
-            if (message is RtspRequestPlay)
+            switch (message)
             {
-                // Search for the Session in the Sessions List. Change the state to "PLAY"
-                const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
-                string rtp_info = "url=" + message.RtspUri + ";seq=" + connection.video.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
-                                                                                                        // Add audio too
-                rtp_info += ",url=" + message.RtspUri + ";seq=" + connection.audio.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                case RtspRequestPlay playMessage:
+                    // Search for the Session in the Sessions List. Change the state to "PLAY"
+                    const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
+                    string rtp_info = "url=" + message.RtspUri + ";seq=" + connection.video.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
+                                                                                                            // Add audio too
+                    rtp_info += ",url=" + message.RtspUri + ";seq=" + connection.audio.sequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
 
-                //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
+                    //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
 
-                // Send the reply
-                RtspResponse play_response = message.CreateResponse();
-                play_response.AddHeader("Range: " + range);
-                play_response.AddHeader("RTP-Info: " + rtp_info);
-                listener.SendMessage(play_response);
+                    // Send the reply
+                    RtspResponse play_response = message.CreateResponse();
+                    play_response.AddHeader("Range: " + range);
+                    play_response.AddHeader("RTP-Info: " + rtp_info);
+                    listener.SendMessage(play_response);
 
-                connection.video.must_send_rtcp_packet = true;
-                connection.audio.must_send_rtcp_packet = true;
+                    connection.video.must_send_rtcp_packet = true;
+                    connection.audio.must_send_rtcp_packet = true;
 
-                // Allow video and audio to go to this client
-                connection.play = true;
-
+                    // Allow video and audio to go to this client
+                    connection.play = true;
+                    return;
+                case RtspRequestPause pauseMessage:
+                    connection.play = false;
+                    RtspResponse pause_response = message.CreateResponse();
+                    listener.SendMessage(pause_response);
+                    return;
+                case RtspRequestGetParameter getParameterMessage:
+                    // Create the reponse to GET_PARAMETER
+                    RtspResponse getparameter_response = message.CreateResponse();
+                    listener.SendMessage(getparameter_response);
+                    return;
+                case RtspRequestTeardown teardownMessage:
+                    lock (rtspConnectionList)
+                    {
+                        RemoveSession(connection);
+                        listener.Dispose();
+                    }
+                    return;
             }
 
-            // Handle PAUSE message (Sent with a Session ID)
-            if (message is RtspRequestPause)
+
+        }
+
+        private void HandleSetup(RtspListener listener, RtspRequestSetup setupMessage)
+        {
+            // Check the RTSP transport
+            // If it is UDP or Multicast, create the sockets
+            // If it is RTP over RTSP we send data via the RTSP Listener
+
+            // FIXME client may send more than one possible transport.
+            // very rare
+            RtspTransport transport = setupMessage.GetTransports()[0];
+
+            // Construct the Transport: reply from the Server to the client
+            RtspTransport? transport_reply = null;
+            IRtpTransport? rtpTransport = null;
+
+            if (transport.LowerTransport == RtspTransport.LowerTransportType.TCP)
             {
-                connection.play = false;
-                RtspResponse pause_response = message.CreateResponse();
-                listener.SendMessage(pause_response);
+                Debug.Assert(transport.Interleaved != null, "If transport.Interleaved is null here the program did not handle well connection problem");
+                rtpTransport = new RtpTcpTransport(listener)
+                {
+                    DataChannel = transport.Interleaved.First,
+                    ControlChannel = transport.Interleaved.Second,
+                };
+                // RTP over RTSP mode
+                transport_reply = new()
+                {
+                    SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
+                    LowerTransport = RtspTransport.LowerTransportType.TCP,
+                    Interleaved = new PortCouple(transport.Interleaved.First, transport.Interleaved.Second)
+                };
+            }
+            else if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP && !transport.IsMulticast)
+            {
+                Debug.Assert(transport.ClientPort != null, "If transport.ClientPort is null here the program did not handle well connection problem");
+
+                // RTP over UDP mode
+                // Create a pair of UDP sockets - One is for the Data (eg Video/Audio), one is for the RTCP
+                var udp_pair = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
+                udp_pair.SetDataDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.First);
+                udp_pair.SetControlDestination(listener.RemoteAdress.Split(":")[0], transport.ClientPort.Second);
+                udp_pair.ControlReceived += (local_sender, local_e) =>
+                {
+                    // RTCP data received
+                    _logger.LogDebug("RTCP data received {local_sender} {local_e.Data.Data.Length}", local_sender, local_e.Data.Data.Length);
+                    var connection = ConnectionByRtpTransport(local_sender as IRtpTransport);
+                    connection?.UpdateKeepAlive();
+                    local_e.Data.Dispose();
+                };
+                udp_pair.Start(); // start listening for data on the UDP ports
+
+                // Pass the Port of the two sockets back in the reply
+                transport_reply = new()
+                {
+                    SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
+                    LowerTransport = RtspTransport.LowerTransportType.UDP,
+                    IsMulticast = false,
+                    ServerPort = new PortCouple(udp_pair.DataPort, udp_pair.ControlPort),
+                    ClientPort = transport.ClientPort
+                };
+
+                rtpTransport = udp_pair;
+            }
+            else if (transport.LowerTransport == RtspTransport.LowerTransportType.UDP && transport.IsMulticast)
+            {
+                // RTP over Multicast UDP mode}
+                // Create a pair of UDP sockets in Multicast Mode
+                // Pass the Ports of the two sockets back in the reply
+                transport_reply = new()
+                {
+                    SSrc = global_ssrc.ToString("X8"), // Convert to Hex, padded to 8 characters
+                    LowerTransport = RtspTransport.LowerTransportType.UDP,
+                    IsMulticast = true,
+                    Port = new PortCouple(7000, 7001)  // FIX
+                };
+
+                // for now until implemented
+                transport_reply = null;
             }
 
-            // Handle GET_PARAMETER message, often used as a Keep Alive
-            if (message is RtspRequestGetParameter)
+            if (transport_reply != null)
             {
-                // Create the reponse to GET_PARAMETER
-                RtspResponse getparameter_response = message.CreateResponse();
-                listener.SendMessage(getparameter_response);
-            }
-
-            // Handle TEARDOWN (sent with a Session ID)
-            if (message is RtspRequestTeardown)
-            {
+                // Update the stream within the session with transport information
+                // If a Session ID is passed in we should match SessionID with other SessionIDs but we can match on RemoteAddress
+                string copy_of_session_id = "";
                 lock (rtspConnectionList)
                 {
-                    RemoveSession(connection);
-                    listener.Dispose();
+                    foreach (var setupConnection in rtspConnectionList.Where(connection => connection.Listener.RemoteAdress == listener.RemoteAdress))
+                    {
+                        // Check the Track ID to determine if this is a SETUP for the Video Stream
+                        // or a SETUP for an Audio Stream.
+                        // In the SDP the H264 video track is TrackID 0
+                        // and the Audio Track is TrackID 1
+                        RTPStream stream;
+                        if (setupMessage.RtspUri!.AbsolutePath.EndsWith("trackID=0")) stream = setupConnection.video;
+                        else if (setupMessage.RtspUri.AbsolutePath.EndsWith("trackID=1")) stream = setupConnection.audio;
+                        else continue;// error case - track unknown
+                                      // found the connection
+                                      // Add the transports to the stream
+                        stream.rtpChannel = rtpTransport;
+                        // When there is Video and Audio there are two SETUP commands.
+                        // For the first SETUP command we will generate the connection.session_id and return a SessionID in the Reply.
+                        // For the 2nd command the client will send is the SessionID.
+                        if (string.IsNullOrEmpty(setupConnection.session_id))
+                        {
+                            setupConnection.session_id = session_handle.ToString();
+                            session_handle++;
+                        }
+                        // ELSE, could check the Session passed in matches the Session we generated on last SETUP command
+                        // Copy the Session ID, as we use it in the reply
+                        copy_of_session_id = setupConnection.session_id;
+                        break;
+                    }
                 }
+
+                RtspResponse setup_response = setupMessage.CreateResponse();
+                setup_response.Headers[RtspHeaderNames.Transport] = transport_reply.ToString();
+                setup_response.Session = copy_of_session_id;
+                setup_response.Timeout = rtspTimeOut;
+                listener.SendMessage(setup_response);
             }
+            else
+            {
+                RtspResponse setup_response = setupMessage.CreateResponse();
+                // unsuported transport
+                setup_response.ReturnCode = 461;
+                listener.SendMessage(setup_response);
+            }
+        }
+
+        private void HandleDescribe(RtspListener listener, RtspRequest message)
+        {
+            _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
+
+            // TODO. Check the requsted_url is valid. In this example we accept any RTSP URL
+
+            // if the SPS and PPS are not defined yet, we have to return an error
+            if (raw_sps == null || raw_pps == null)
+            {
+                RtspResponse describe_response2 = message.CreateResponse();
+                describe_response2.ReturnCode = 400; // 400 Bad Request
+                listener.SendMessage(describe_response2);
+                return;
+            }
+
+            // Make the Base64 SPS and PPS
+            // raw_sps has no 0x00 0x00 0x00 0x01 or 32 bit size header
+            // raw_pps has no 0x00 0x00 0x00 0x01 or 32 bit size header
+            string sps_str = Convert.ToBase64String(raw_sps);
+            string pps_str = Convert.ToBase64String(raw_pps);
+
+            // Make the profile-level-id
+            // Eg a string of profile-level-id=42A01E is
+            // a Profile eg Constrained Baseline, Baseline, Extended, Main, High. This defines which features in H264 are used
+            // a Level eg 1,2,3 or 4. This defines a max resoution for the video. 2=up to SD, 3=upto 1080p. Decoders can then reserve sufficient RAM for frame buffers
+            const int profile_idc = 77; // Main Profile
+            const int profile_iop = 0; // bit 7 (msb) is 0 so constrained_flag is false
+            const int level = 42; // Level 4.2
+
+            string profile_level_id_str = profile_idc.ToString("X2") // convert to hex, padded to 2 characters
+                                        + profile_iop.ToString("X2")
+                                        + level.ToString("X2");
+
+            StringBuilder sdp = new();
+
+            // Generate the SDP
+            // The sprop-parameter-sets provide the SPS and PPS for H264 video
+            // The packetization-mode defines the H264 over RTP payloads used but is Optional
+            sdp.Append("v=0\n");
+            sdp.Append("o=user 123 0 IN IP4 0.0.0.0\n");
+            sdp.Append("s=SharpRTSP Test Camera\n");
+            sdp.Append($"m=video 0 RTP/AVP {video_payload_type}\n");
+            sdp.Append("c=IN IP4 0.0.0.0\n");
+            sdp.Append("a=control:trackID=0\n");
+            sdp.Append($"a=rtpmap:{video_payload_type} H264/90000\n");
+            sdp.Append($"a=fmtp:{video_payload_type} profile-level-id=").Append(profile_level_id_str)
+                .Append("; sprop-parameter-sets=").Append(sps_str).Append(',').Append(pps_str).Append(";\n");
+
+            // AUDIO
+            sdp.Append("m=audio 0 RTP/AVP 0\n"); // <---- 0 means G711 ULAW
+            sdp.Append("a=control:trackID=1\n");
+            sdp.Append("a=rtpmap:0 PCMU/8000\n");
+            // sdp.Append(media header info if we had AAC or other audio codec)
+
+            byte[] sdp_bytes = Encoding.ASCII.GetBytes(sdp.ToString());
+
+            // Create the reponse to DESCRIBE
+            // This must include the Session Description Protocol (SDP)
+            RtspResponse describe_response = message.CreateResponse();
+
+            describe_response.AddHeader("Content-Base: " + message.RtspUri);
+            describe_response.AddHeader("Content-Type: application/sdp");
+            describe_response.Data = sdp_bytes;
+            describe_response.AdjustContentLength();
+            listener.SendMessage(describe_response);
         }
 
         private RTSPConnection? ConnectionByRtpTransport(IRtpTransport? rtpTransport)
@@ -513,20 +510,15 @@ namespace RtspCameraExample
             lock (rtspConnectionList)
             {
                 current_rtsp_count = rtspConnectionList.Count;
-                current_rtsp_play_count = 0;
+                var timeOut = now.AddSeconds(-rtspTimeOut);
                 // Convert to Array to allow us to delete from rtsp_list
-                foreach (RTSPConnection connection in rtspConnectionList.ToArray())
+                foreach (RTSPConnection connection in rtspConnectionList.Where(c => timeOut > c.TimeSinceLastRtspKeepalive).ToArray())
                 {
-                    if ((now - connection.TimeSinceLastRtspKeepalive).TotalSeconds > rtspTimeOut)
-                    {
-                        _logger.LogDebug("Removing session {sessionId} due to TIMEOUT", connection.session_id);
-                        RemoveSession(connection);
-                    }
-                    else if (connection.play)
-                    {
-                        current_rtsp_play_count++;
-                    }
+                    _logger.LogDebug("Removing session {sessionId} due to TIMEOUT", connection.session_id);
+                    RemoveSession(connection);
                 }
+                current_rtsp_play_count = rtspConnectionList.Count(c => c.play);
+
             }
         }
 
@@ -561,12 +553,12 @@ namespace RtspCameraExample
                     if (!connection.play) continue;
 
                     if (connection.video.rtpChannel is null) continue;
-                    _logger.LogDebug("Sending video session {sessionId} {TransportLogName} Timestamp(ms)={timestamp_ms}. RTP timestamp={rtp_timestamp}. Sequence={sequenceNumber}", 
+                    _logger.LogDebug("Sending video session {sessionId} {TransportLogName} Timestamp(ms)={timestamp_ms}. RTP timestamp={rtp_timestamp}. Sequence={sequenceNumber}",
                         connection.session_id, TransportLogName(connection.video.rtpChannel), timestamp_ms, rtp_timestamp, connection.video.sequenceNumber);
 
                     if (connection.video.must_send_rtcp_packet)
                     {
-                        if(!SendRTCP(rtp_timestamp, connection, connection.video))
+                        if (!SendRTCP(rtp_timestamp, connection, connection.video))
                         {
                             RemoveSession(connection);
                         }
