@@ -7,6 +7,7 @@ using Rtsp.Rtp;
 using Rtsp.Sdp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -38,8 +39,10 @@ namespace RtspClientExample
         // this wraps around a the RTSP tcp_socket stream
         RtspListener? rtspClient;
         RTP_TRANSPORT rtpTransport = RTP_TRANSPORT.UDP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
-        UDPSocket? videoUdpPair;        // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
-        UDPSocket? audioUdpPair;        // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
+        // Communication for the RTP (video and audio) 
+        IRtpTransport? videoRtpTransport;
+        IRtpTransport? audioRtpTransport;
+
         Uri? _uri;                      // RTSP URI (username & password will be stripped out
         string session = "";             // RTSP Session
         private Authentication? _authentication;
@@ -159,19 +162,22 @@ namespace RtspClientExample
             this.rtpTransport = rtpTransport;
             if (rtpTransport == RTP_TRANSPORT.UDP)
             {
-                videoUdpPair = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
-                videoUdpPair.DataReceived += VideoRtpDataReceived;
-                videoUdpPair.ControlReceived += RtcpControlDataReceived;
-                videoUdpPair.Start(); // start listening for data on the UDP ports
-
-                audioUdpPair = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
-                audioUdpPair.DataReceived += AudioRtpDataReceived;
-                audioUdpPair.ControlReceived += RtcpControlDataReceived;
-                audioUdpPair.Start(); // start listening for data on the UDP ports
+                videoRtpTransport = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
+                audioRtpTransport = new UDPSocket(50000, 51000); // give a range of 500 pairs (1000 addresses) to try incase some address are in use
             }
             if (rtpTransport == RTP_TRANSPORT.TCP)
             {
-                // Nothing to do. Data will arrive in the RTSP Listener
+                int nextFreeRtpChannel = 0;
+                videoRtpTransport = new RtpTcpTransport(rtspClient)
+                {
+                    DataChannel = nextFreeRtpChannel++,
+                    ControlChannel = nextFreeRtpChannel++,
+                };
+                audioRtpTransport = new RtpTcpTransport(rtspClient)
+                {
+                    DataChannel = nextFreeRtpChannel++,
+                    ControlChannel = nextFreeRtpChannel++,
+                };
             }
             if (rtpTransport == RTP_TRANSPORT.MULTICAST)
             {
@@ -288,10 +294,6 @@ namespace RtspClientExample
 
         public void Stop()
         {
-            if (rtspSocket is null || _uri is null)
-            {
-                throw new InvalidOperationException("Not connected");
-            }
 
             // Send TEARDOWN
             RtspRequest teardown_message = new RtspRequestTeardown
@@ -299,15 +301,15 @@ namespace RtspClientExample
                 RtspUri = _uri,
                 Session = session
             };
-            teardown_message.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+            teardown_message.AddAuthorization(_authentication, _uri!, rtspSocket?.NextCommandIndex() ?? 0);
             rtspClient?.SendMessage(teardown_message);
 
             // Stop the keepalive timer
             keepaliveTimer?.Stop();
 
             // clear up any UDP sockets
-            videoUdpPair?.Stop();
-            audioUdpPair?.Stop();
+            videoRtpTransport?.Stop();
+            audioRtpTransport?.Stop();
 
             // Drop the RTSP session
             rtspClient?.Stop();
@@ -685,6 +687,10 @@ namespace RtspClientExample
                 {
                     keepaliveTimer.Interval = message.Timeout * 1000 / 2;
                 }
+                
+                bool isVideoChannel = message.OriginalRequest.RtspUri == video_uri;
+                bool isAudioChannel = message.OriginalRequest.RtspUri == audio_uri;
+                Debug.Assert(isVideoChannel || isAudioChannel, "Unknown channel response");
 
                 // Check the Transport header
                 var transportString = message.Headers[RtspHeaderNames.Transport];
@@ -704,57 +710,50 @@ namespace RtspClientExample
                             && videoRtcpChannel.HasValue)
                         {
                             // Create the Pair of UDP Sockets in Multicast mode
-                            videoUdpPair = new MulticastUDPSocket(multicastAddress, videoDataChannel.Value, multicastAddress, videoRtcpChannel.Value);
-                            videoUdpPair.DataReceived += VideoRtpDataReceived;
-                            videoUdpPair.ControlReceived += RtcpControlDataReceived;
-                            videoUdpPair.Start();
+                            if(isVideoChannel)
+                            {
+                                videoRtpTransport = new MulticastUDPSocket(multicastAddress, videoDataChannel.Value, multicastAddress, videoRtcpChannel.Value);
+
+                            } else if (isAudioChannel)
+                            {
+                                audioRtpTransport = new MulticastUDPSocket(multicastAddress, videoDataChannel.Value, multicastAddress, videoRtcpChannel.Value);
+                            }
                         }
-                        // TODO - Need to set audio_udp_pair for Multicast
                     }
 
                     // check if the requested Interleaved channels have been modified by the camera
                     // in the SETUP Reply (Panasonic have a camera that does this)
                     if (transport.LowerTransport == RtspTransport.LowerTransportType.TCP)
                     {
-                        if (message.OriginalRequest.RtspUri == video_uri && rtspClient is not null)
+                        RtpTcpTransport? tcpTransport = null;
+                        if (isVideoChannel)
                         {
-                            var videoDataChannel = transport.Interleaved?.First;
-                            var videoRtcpChannel = transport.Interleaved?.Second;
-                            rtspClient.DataReceived += (object? sender, RtspChunkEventArgs e) =>
-                            {
-                                if (e.Message is RtspData dataMessage && !dataMessage.Data.IsEmpty)
-                                {
-                                    if (dataMessage.Channel == videoDataChannel)
-                                    {
-                                        VideoRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                    }
-                                    else if (dataMessage.Channel == videoRtcpChannel)
-                                    {
-                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                    }
-                                }
-                            };
+                            tcpTransport = videoRtpTransport as RtpTcpTransport;
                         }
 
-                        if (message.OriginalRequest.RtspUri == audio_uri && rtspClient is not null)
+                        if (isAudioChannel)
                         {
-                            var audioDataChannel = transport.Interleaved?.First;
-                            var audioRtcpChannel = transport.Interleaved?.Second;
-                            rtspClient.DataReceived += (object? sender, RtspChunkEventArgs e) =>
-                            {
-                                if (e.Message is RtspData dataMessage && !dataMessage.Data.IsEmpty)
-                                {
-                                    if (dataMessage.Channel == audioDataChannel)
-                                    {
-                                        AudioRtpDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                    }
-                                    else if (dataMessage.Channel == audioRtcpChannel)
-                                    {
-                                        RtcpControlDataReceived(sender, new RtspDataEventArgs(dataMessage));
-                                    }
-                                }
-                            };
+                            tcpTransport = audioRtpTransport as RtpTcpTransport;
                         }
+                        if (tcpTransport is not null)
+                        {
+                            tcpTransport.DataChannel = transport.Interleaved?.First ?? tcpTransport.DataChannel;
+                            tcpTransport.ControlChannel = transport.Interleaved?.Second ?? tcpTransport.ControlChannel;
+                        }
+                    }
+
+                    if(isVideoChannel && videoRtpTransport is not null)
+                    {
+                        videoRtpTransport.DataReceived += VideoRtpDataReceived;
+                        videoRtpTransport.ControlReceived += RtcpControlDataReceived;
+                        videoRtpTransport.Start();
+                    }
+
+                    if (isAudioChannel && audioRtpTransport is not null)
+                    {
+                        audioRtpTransport.DataReceived += AudioRtpDataReceived;
+                        audioRtpTransport.ControlReceived += RtcpControlDataReceived;
+                        audioRtpTransport.Start();
                     }
                 }
 
@@ -809,11 +808,6 @@ namespace RtspClientExample
             {
                 sdp_data = SdpFile.Read(sdp_stream);
             }
-
-            // RTP and RTCP 'channels' are used in TCP Interleaved mode (RTP over RTSP)
-            // These are the channels we request. The camera confirms the channel in the SETUP Reply.
-            // But, a Panasonic decides to use different channels in the reply.
-            int nextFreeRtpChannel = 0;
 
             // For old sony cameras, we need to use the control uri from the sdp
             var customControlUri = sdp_data.Attributs.FirstOrDefault(x => x.Key == "control");
@@ -919,7 +913,7 @@ namespace RtspClientExample
                     // Send the SETUP RTSP command if we have a matching Payload Decoder
                     if (videoPayloadProcessor is not null)
                     {
-                        RtspTransport? transport = CalculateTransport(ref nextFreeRtpChannel, videoUdpPair);
+                        RtspTransport? transport = CalculateTransport(videoRtpTransport);
 
                         // Generate SETUP messages
                         if (transport != null)
@@ -980,7 +974,7 @@ namespace RtspClientExample
                     // Send the SETUP RTSP command if we have a matching Payload Decoder
                     if (audioPayloadProcessor is not null)
                     {
-                        RtspTransport? transport = CalculateTransport(ref nextFreeRtpChannel, audioUdpPair);
+                        RtspTransport? transport = CalculateTransport(audioRtpTransport);
 
                         // Generate SETUP messages
                         if (transport != null)
@@ -1041,7 +1035,7 @@ namespace RtspClientExample
             return controlUri;
         }
 
-        private RtspTransport? CalculateTransport(ref int nextFreeRtpChannel, UDPSocket? udp)
+        private RtspTransport? CalculateTransport(IRtpTransport? transport)
         {
             return rtpTransport switch
             {
@@ -1051,13 +1045,13 @@ namespace RtspClientExample
                 {
                     LowerTransport = RtspTransport.LowerTransportType.TCP,
                     // Eg Channel 0 for RTP video data. Channel 1 for RTCP status reports
-                    Interleaved = new(nextFreeRtpChannel++, nextFreeRtpChannel++)
+                    Interleaved = (transport as RtpTcpTransport)?.Channels ?? throw new ApplicationException("TCP transport asked and no tcp channel allocated"),
                 },
                 RTP_TRANSPORT.UDP => new RtspTransport()
                 {
                     LowerTransport = RtspTransport.LowerTransportType.UDP,
                     IsMulticast = false,
-                    ClientPort = udp?.Ports ?? throw new ApplicationException("UDP transport asked and no udp port allocated"),
+                    ClientPort = (transport as UDPSocket)?.Ports ?? throw new ApplicationException("UDP transport asked and no udp port allocated"),
                 },
                 // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
                 // using Multicast Address and Ports that are in the reply to the SETUP message
@@ -1065,7 +1059,8 @@ namespace RtspClientExample
                 RTP_TRANSPORT.MULTICAST => new RtspTransport()
                 {
                     LowerTransport = RtspTransport.LowerTransportType.UDP,
-                    IsMulticast = true
+                    IsMulticast = true,
+                    ClientPort = new PortCouple(5000,5001)
                 },
                 _ => null,
             };

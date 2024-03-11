@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Messages;
+using System;
 
 namespace Rtsp
 {
@@ -7,8 +8,13 @@ namespace Rtsp
         private bool disposedValue;
         private readonly RtspListener rtspListener;
 
-        public int ControlChannel { get; set; }
-        public int DataChannel { get; set; }
+        public event EventHandler<RtspDataEventArgs>? DataReceived;
+        public event EventHandler<RtspDataEventArgs>? ControlReceived;
+
+        public int ControlChannel { get; set; } = int.MaxValue;
+        public int DataChannel { get; set; } = int.MaxValue;
+
+        public PortCouple Channels => new(ControlChannel, DataChannel);
 
         public RtpTcpTransport(RtspListener rtspListener)
         {
@@ -31,7 +37,7 @@ namespace Rtsp
             {
                 if (disposing)
                 {
-                    // TODO: supprimer l'état managé (objets managés)
+                    Stop();
                 }
                 disposedValue = true;
             }
@@ -43,5 +49,31 @@ namespace Rtsp
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public void Start()
+        {
+            rtspListener.DataReceived += RtspListenerDataReceived;
+        }
+
+        public void Stop()
+        {
+            rtspListener.DataReceived -= RtspListenerDataReceived;
+        }
+        private void RtspListenerDataReceived(object? sender, RtspChunkEventArgs e)
+        {
+            if (e.Message is RtspData dataMessage && !dataMessage.Data.IsEmpty)
+            {
+                if (dataMessage.Channel == ControlChannel)
+                {
+                    ControlReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                }
+                else if (dataMessage.Channel == DataChannel)
+                {
+                    DataReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                }
+            }
+        }
+
+
     }
 }
