@@ -16,8 +16,6 @@ namespace Rtsp
         public MulticastUDPSocket(string data_multicast_address, int data_multicast_port, string control_multicast_address, int control_multicast_port)
            : base(new UdpClient(), new UdpClient())
         {
-
-
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
             DataPort = data_multicast_port;
             ControlPort = control_multicast_port;
@@ -36,21 +34,16 @@ namespace Rtsp
                 controlSocket.Client.Bind(controlEndPoint);
                 controlSocket.JoinMulticastGroup(controlMulticastAddress);
 
-
                 dataSocket.Client.ReceiveBufferSize = 100 * 1024;
                 dataSocket.Client.SendBufferSize = 65535; // default is 8192. Make it as large as possible for large RTP packets which are not fragmented
 
-
                 controlSocket.Client.DontFragment = false;
-
             }
             catch (SocketException)
             {
                 // Fail to allocate port, try again
-                if (dataSocket != null)
-                    dataSocket.Close();
-                if (controlSocket != null)
-                    controlSocket.Close();
+                dataSocket?.Close();
+                controlSocket?.Close();
                 throw;
             }
 
