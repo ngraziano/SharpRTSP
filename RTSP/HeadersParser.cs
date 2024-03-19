@@ -1,4 +1,5 @@
-﻿using System.Collections.Specialized;
+﻿using System;
+using System.Collections.Specialized;
 using System.IO;
 
 namespace Rtsp
@@ -7,7 +8,7 @@ namespace Rtsp
     {
         public static NameValueCollection ParseHeaders(StreamReader headersReader)
         {
-            NameValueCollection headers = [];
+            NameValueCollection headers = new(StringComparer.InvariantCultureIgnoreCase);
             string? header;
             while (!string.IsNullOrEmpty(header = headersReader.ReadLine()))
             {
