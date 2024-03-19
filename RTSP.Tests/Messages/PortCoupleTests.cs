@@ -52,5 +52,12 @@ namespace Rtsp.Messages.Tests
             var pc = new PortCouple(1212, 1215);
             Assert.That(pc.ToString(), Is.EqualTo("1212-1215"));
         }
+
+        [Test()]
+        public void ToStringOneEqualPort()
+        {
+            var pc = PortCouple.Parse("1212-1212");
+            Assert.That(pc.ToString(), Is.EqualTo("1212"));
+        }
     }
 }

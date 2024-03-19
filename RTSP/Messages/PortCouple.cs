@@ -76,7 +76,13 @@
 
             tempValue = 0;
             if (values.Length > 1)
+            {
                 _ = int.TryParse(values[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out tempValue);
+
+                // this check is needed because some Hanwha's nvr returns a 1-1 as interleaved string, resulting in a 1-1 port couple
+                // will setup ports as 1-0
+                if (tempValue == result.First) { tempValue = 0; }
+            }
 
             result.Second = tempValue;
 
