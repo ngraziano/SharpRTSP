@@ -31,6 +31,14 @@ namespace Rtsp.Messages.Tests
         }
 
         [Test()]
+        public void ParseOneEqualPort()
+        {
+            var pc = PortCouple.Parse("1212-1212");
+            Assert.That(pc.First, Is.EqualTo(1212));
+            Assert.That(pc.IsSecondPortPresent, Is.False);
+        }
+
+        [Test()]
         public void ParseTwoPort()
         {
             var pc = PortCouple.Parse("1212-1215");
