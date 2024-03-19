@@ -630,7 +630,7 @@ namespace RtspClientExample
                 // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
                 if (message.Headers.ContainsKey(RtspHeaderNames.Public))
                 {
-                    string[]? parts = message.Headers[RtspHeaderNames.Public]?.Split(' ');
+                    string[]? parts = message.Headers[RtspHeaderNames.Public]?.Split(',');
                     if (parts != null)
                     {
                         foreach (string part in parts)
