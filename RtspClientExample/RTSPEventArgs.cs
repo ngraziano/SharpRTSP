@@ -1,34 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
 
-#pragma warning disable MA0048
-
 namespace RtspClientExample
 {
-    public class SpsPpsEventArgs : EventArgs
+    public class NewStreamEventArgs : EventArgs
     {
-        public SpsPpsEventArgs(byte[] sps, byte[] pps)
+        public NewStreamEventArgs(string streamType, IStreamConfigurationData? streamConfigurationData)
         {
-            Sps = sps;
-            Pps = pps;
+            StreamType = streamType;
+            StreamConfigurationData = streamConfigurationData;
         }
 
-        public byte[] Sps { get; }
-        public byte[] Pps { get; }
+        public string StreamType { get; }
+        public IStreamConfigurationData? StreamConfigurationData { get; }
     }
 
-    public class VpsSpsPpsEventArgs : EventArgs
+    public interface IStreamConfigurationData
     {
-        public VpsSpsPpsEventArgs(byte[] vps, byte[] sps, byte[] pps)
-        {
-            Vps = vps;
-            Sps = sps;
-            Pps = pps;
-        }
+    }
 
-        public byte[] Vps { get; }
-        public byte[] Sps { get; }
-        public byte[] Pps { get; }
+    public record H264StreamConfigurationData : IStreamConfigurationData
+    {
+        public required byte[] SPS { get; init; }
+        public required byte[] PPS { get; init; }
+
+    }
+
+    public record H265StreamConfigurationData: IStreamConfigurationData
+    {
+        public required byte[] VPS { get; init; }
+        public required byte[] SPS { get; init; }
+        public required byte[] PPS { get; init; }
+    }
+
+    public record AacStreamConfigurationData : IStreamConfigurationData
+    {
+        public int ObjectType { get; init; }
+        public int FrequencyIndex { get; init; }
+        public int SamplingFrequency { get; init; }
+        public int ChannelConfiguration { get; init; }
     }
 
     public class SimpleDataEventArgs : EventArgs
@@ -43,50 +53,5 @@ namespace RtspClientExample
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
 
-    public class G711EventArgs : EventArgs
-    {
-        public G711EventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
-        {
-            Format = format;
-            Data = data;
-            TimeStamp = timeStamp;
-        }
 
-        public DateTime TimeStamp { get; }
-        public string Format { get; }
-        public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
-    }
-
-    public class AMREventArgs : EventArgs
-    {
-        public AMREventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
-        {
-            Format = format;
-            Data = data;
-            TimeStamp = timeStamp;
-        }
-
-        public DateTime TimeStamp { get; }
-        public string Format { get; }
-        public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
-    }
-
-    public class AACEventArgs : EventArgs
-    {
-        public AACEventArgs(string format, IEnumerable<ReadOnlyMemory<byte>> data, int objectType, int frequencyIndex, int channelConfiguration, DateTime timeStamp)
-        {
-            Format = format;
-            Data = data;
-            ObjectType = objectType;
-            FrequencyIndex = frequencyIndex;
-            ChannelConfiguration = channelConfiguration;
-            TimeStamp = timeStamp;
-        }
-        public DateTime TimeStamp { get; }
-        public string Format { get; }
-        public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
-        public int ObjectType { get; }
-        public int FrequencyIndex { get; }
-        public int ChannelConfiguration { get; }
-    }
 }

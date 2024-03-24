@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
 namespace RtspClientExample
 {
-    class Program
+    public static class Program
     {
         static void Main(string[] args)
         {
@@ -25,12 +26,12 @@ namespace RtspClientExample
             // IPS IP Camera Tests
             //String url = "rtsp://192.168.1.128/ch1.h264";
 
-            //string url = "rtsp://192.168.0.89/media/video1";
+            string url = "rtsp://192.168.0.89/media/video2";
 
             // string url = "http://192.168.3.72/profile1/media.smp";
 
-            bool usePlayback = true;
-            string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
+            bool usePlayback = false;
+            // string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
             string password = "Admin123!";
@@ -62,231 +63,64 @@ namespace RtspClientExample
             // Happytime RTSP Server
             //string url = "rtsp://127.0.0.1/screenlive";
 
-
-
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
 
             // H265 Tests
 
-            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            FileStream? fs_v = null;   // used to write the video
-            FileStream? fs_a = null;   // used to write the audio
-            bool h264 = false;
-            bool h265 = false;
 
             // Create a RTSP Client
             RTSPClient client = new(loggerFactory);
 
-            // The SPS/PPS comes from the SDP data
-            // or it is the first SPS/PPS from the H264 video stream
-            client.ReceivedSpsPps += (_, args) =>
+
+            client.NewVideoStream += (_, args) =>
             {
-                var sps = args.Sps;
-                var pps = args.Pps;
-
-                h264 = true;
-                if (fs_v == null)
+                switch (args.StreamType)
                 {
-                    string filename = "rtsp_capture_" + now + ".264";
-                    fs_v = new FileStream(filename, FileMode.Create);
-                }
-                WriteNalToFile(fs_v, sps);
-                WriteNalToFile(fs_v, pps);
-                fs_v.Flush(true);
-
-            };
-
-            client.ReceivedVpsSpsPps += (_, args) =>
-            {
-                var vps = args.Vps;
-                var sps = args.Sps;
-                var pps = args.Pps;
-                h265 = true;
-                if (fs_v == null)
-                {
-                    string filename = "rtsp_capture_" + now + ".265";
-                    fs_v = new FileStream(filename, FileMode.Create);
-                }
-
-                WriteNalToFile(fs_v, vps);
-                WriteNalToFile(fs_v, sps);
-                WriteNalToFile(fs_v, pps);
-                fs_v.Flush(true);
-            };
-
-
-
-
-            // Video NALs. May also include the SPS and PPS in-band for H264
-            client.ReceivedNALs += (_, args) =>
-            {
-                if (fs_v != null)
-                {
-                    foreach (var nalUnitMem in args.Data)
-                    {
-                        var nalUnit = nalUnitMem.Span;
-                        // Output some H264 stream information
-                        if (h264 && nalUnit.Length > 5)
-                        {
-                            int nal_ref_idc = (nalUnit[4] >> 5) & 0x03;
-                            int nal_unit_type = nalUnit[4] & 0x1F;
-                            string description = nal_unit_type switch
-                            {
-                                1 => "NON IDR NAL",
-                                5 => "IDR NAL",
-                                6 => "SEI NAL",
-                                7 => "SPS NAL",
-                                8 => "PPS NAL",
-                                9 => "ACCESS UNIT DELIMITER NAL",
-                                _ => "OTHER NAL",
-                            };
-                            Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
-                            fs_v.Write(nalUnit);
-                        }
-
-                        // Output some H265 stream information
-                        if (h265 && nalUnit.Length > 5)
-                        {
-                            int nal_unit_type = (nalUnit[4] >> 1) & 0x3F;
-                            string description = nal_unit_type switch
-                            {
-                                1 => "NON IDR NAL",
-                                19 => "IDR NAL",
-                                32 => "VPS NAL",
-                                33 => "SPS NAL",
-                                34 => "PPS NAL",
-                                39 => "SEI NAL",
-                                _ => "OTHER NAL",
-                            };
-                            Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
-                            fs_v.Write(nalUnit);
-                        }
-
-                    }
+                    case "H264":
+                        NewH264Stream(args, client);
+                        break;
+                    case "H265":
+                        NewH265Stream(args, client);
+                        break;
+                    case "JPEG":
+                        NewMJPEGStream(client);
+                        break;
+                    case "MP2T":
+                        NewMP2Stream(client);
+                        break;
+                    default:
+                        Console.WriteLine("Unknow Video format" + args.StreamType);
+                        break;
                 }
             };
 
-            client.ReceivedMp2t += (_, args) =>
+            client.NewAudioStream += (_, arg) =>
             {
-                if (fs_a == null)
+                switch (arg.StreamType)
                 {
-                    string filename = "rtsp_capture_" + now + ".mp2";
-                    fs_a = new FileStream(filename, FileMode.Create);
-                }
-                foreach (var data in args.Data)
-                {
-                    fs_a?.Write(data.Span);
+                    case "PCMU":
+                        NewGenericAudio(client, "ul");
+                        break;
+                    case "PCMA":
+                        NewGenericAudio(client, "al");
+                        break;
+                    case "AMR":
+                        NewAMRAudioStream(client);
+                        break;
+                    case "AAC":
+                        NewAACAudioStream(arg, client);
+                        break;
+                    default:
+                        Console.WriteLine("Unknow Audio format" + arg.StreamType);
+                        break;
                 }
 
             };
 
-            int indexImg = 0;
-            client.ReceivedJpeg += (_, args) =>
-            {
-                // Ugly to do it each time.
-                // The interface need to change have an event on new file
-                Directory.CreateDirectory("rtsp_capture_" + now);
+            /*
 
-                foreach (var data in args.Data)
-                {
-                    string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
-                    using var fs = new FileStream(filename, FileMode.Create);
-                    fs.Write(data.Span);
-                }
-
-            };
-
-            client.ReceivedG711 += (_, args) =>
-            {
-                if (fs_a == null && args.Format.Equals("PCMU"))
-                {
-                    string filename = "rtsp_capture_" + now + ".ul";
-                    fs_a = new FileStream(filename, FileMode.Create);
-                }
-
-                if (fs_a == null && args.Format.Equals("PCMA"))
-                {
-                    string filename = "rtsp_capture_" + now + ".al";
-                    fs_a = new FileStream(filename, FileMode.Create);
-                }
-
-                if (fs_a != null)
-                {
-                    foreach (var data in args.Data)
-                    {
-                        fs_a.Write(data.Span);
-                    }
-                }
-            };
-
-            client.ReceivedAMR += (_, args) =>
-            {
-                if (fs_a == null && args.Format.Equals("AMR"))
-                {
-                    string filename = "rtsp_capture_" + now + ".amr";
-                    fs_a = new FileStream(filename, FileMode.Create);
-                    byte[] header = new byte[] { 0x23, 0x21, 0x41, 0x4D, 0x52, 0x0A }; // #!AMR<0x0A>
-                    fs_a.Write(header, 0, header.Length);
-                }
-
-                if (fs_a != null)
-                {
-                    foreach (var data in args.Data)
-                    {
-                        fs_a.Write(data.Span);
-                    }
-                }
-            };
-
-
-            client.ReceivedAAC += (_, args) =>
-            {
-                if (fs_a == null)
-                {
-                    string filename = "rtsp_capture_" + now + ".aac";
-                    fs_a = new FileStream(filename, FileMode.Create);
-                }
-
-                if (fs_a != null)
-                {
-                    foreach (var data in args.Data)
-                    {
-                        // ASDT header format
-                        int protection_absent = 1;
-                        //                        int profile = 2; // Profile 2 = AAC Low Complexity (LC)
-                        //                        int sample_freq = 4; // 4 = 44100 Hz
-                        //                        int channel_config = 2; // 2 = Stereo
-
-                        Rtsp.BitStream bs = new Rtsp.BitStream();
-                        bs.AddValue(0xFFF, 12); // (a) Start of data
-                        bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
-                        bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
-                        bs.AddValue(protection_absent, 1); // (d) 1 = No CRC
-                        bs.AddValue(args.ObjectType - 1, 2); // (e) MPEG Object Type / Profile, minus 1
-                        bs.AddValue(args.FrequencyIndex, 4); // (f)
-                        bs.AddValue(0, 1); // (g) private bit. Always zero
-                        bs.AddValue(args.ChannelConfiguration, 3); // (h)
-                        bs.AddValue(0, 1); // (i) originality
-                        bs.AddValue(0, 1); // (j) home
-                        bs.AddValue(0, 1); // (k) copyrighted id
-                        bs.AddValue(0, 1); // (l) copyright id start
-                        bs.AddValue(data.Length + 7, 13); // (m) AAC data + size of the ASDT header
-                        bs.AddValue(2047, 11); // (n) buffer fullness ???
-                        int num_acc_frames = 1;
-                        bs.AddValue(num_acc_frames - 1, 1); // (o) num of AAC Frames, minus 1
-
-                        // If Protection was On, there would be a 16 bit CRC
-                        if (protection_absent == 0) bs.AddValue(0xABCD /*CRC*/, 16); // (p)
-
-                        byte[] header = bs.ToArray();
-
-                        fs_a.Write(header, 0, header.Length);
-                        fs_a.Write(data.Span);
-                    }
-                }
-            };
-
+      */
             client.SetupMessageCompleted += (_, _) =>
             {
                 if (usePlayback)
@@ -319,11 +153,9 @@ namespace RtspClientExample
             ConsoleKeyInfo key = default;
             while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
             {
-
                 while (!Console.KeyAvailable && !client.StreamingFinished())
                 {
                     // Avoid maxing out CPU on systems that instantly return null for ReadLine
-
                     Thread.Sleep(250);
                 }
                 if (Console.KeyAvailable)
@@ -333,9 +165,200 @@ namespace RtspClientExample
             }
 
             client.Stop();
-            fs_v?.Close();
             Console.WriteLine("Finished");
+        }
 
+        private static void NewAACAudioStream(NewStreamEventArgs arg, RTSPClient client)
+        {
+
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string filename = "rtsp_capture_" + now + ".aac";
+            var fs_a = new FileStream(filename, FileMode.Create);
+            var config = arg.StreamConfigurationData as AacStreamConfigurationData;
+            Debug.Assert(config != null, "config is invalid");
+
+            client.ReceivedAudioData += (_, args) =>
+            {
+                foreach (var data in args.Data)
+                {
+                    // ASDT header format
+                    int protection_absent = 1;
+                    //                        int profile = 2; // Profile 2 = AAC Low Complexity (LC)
+                    //                        int sample_freq = 4; // 4 = 44100 Hz
+                    //                        int channel_config = 2; // 2 = Stereo
+
+                    Rtsp.BitStream bs = new Rtsp.BitStream();
+                    bs.AddValue(0xFFF, 12); // (a) Start of data
+                    bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
+                    bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
+                    bs.AddValue(protection_absent, 1); // (d) 1 = No CRC
+                    bs.AddValue(config.ObjectType - 1, 2); // (e) MPEG Object Type / Profile, minus 1
+                    bs.AddValue(config.FrequencyIndex, 4); // (f)
+                    bs.AddValue(0, 1); // (g) private bit. Always zero
+                    bs.AddValue(config.ChannelConfiguration, 3); // (h)
+                    bs.AddValue(0, 1); // (i) originality
+                    bs.AddValue(0, 1); // (j) home
+                    bs.AddValue(0, 1); // (k) copyrighted id
+                    bs.AddValue(0, 1); // (l) copyright id start
+                    bs.AddValue(data.Length + 7, 13); // (m) AAC data + size of the ASDT header
+                    bs.AddValue(2047, 11); // (n) buffer fullness ???
+                    int num_acc_frames = 1;
+                    bs.AddValue(num_acc_frames - 1, 1); // (o) num of AAC Frames, minus 1
+
+                    // If Protection was On, there would be a 16 bit CRC
+                    if (protection_absent == 0) bs.AddValue(0xABCD, 16); // (p)
+
+                    byte[] header = bs.ToArray();
+
+                    fs_a.Write(header, 0, header.Length);
+                    fs_a.Write(data.Span);
+                }
+            };
+
+        }
+
+        private static void NewAMRAudioStream(RTSPClient client)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            string filename = "rtsp_capture_" + now + ".amr";
+            FileStream fs_a = new(filename, FileMode.Create);
+            fs_a.Write("#!AMR\n"u8);
+            client.ReceivedAudioData += (_, args) =>
+            {
+                foreach (var data in args.Data)
+                {
+                    fs_a.Write(data.Span);
+                }
+            };
+        }
+
+        private static void NewGenericAudio(RTSPClient client, string extension)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string filename = "rtsp_capture_" + now + "." + extension;
+            FileStream fs_a = new(filename, FileMode.Create);
+            client.ReceivedAudioData += (_, args) =>
+            {
+                foreach (var data in args.Data)
+                {
+                    fs_a.Write(data.Span);
+                }
+            };
+        }
+
+        private static void NewMP2Stream(RTSPClient client)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            string filename = "rtsp_capture_" + now + ".mp2";
+            FileStream fs_v = new(filename, FileMode.Create);
+            client.ReceivedVideoData += (_, args) =>
+            {
+                foreach (var data in args.Data)
+                {
+                    fs_v?.Write(data.Span);
+                }
+            };
+        }
+
+        private static void NewMJPEGStream(RTSPClient client)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            Directory.CreateDirectory("rtsp_capture_" + now);
+            var indexImg = 0;
+            client.ReceivedVideoData += (_, args) =>
+            {
+                // Ugly to do it each time.
+                // The interface need to change have an event on new file
+
+                foreach (var data in args.Data)
+                {
+                    string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
+                    using var fs = new FileStream(filename, FileMode.Create);
+                    fs.Write(data.Span);
+                }
+            };
+        }
+
+        private static void NewH265Stream(NewStreamEventArgs args, RTSPClient client)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string filename = "rtsp_capture_" + now + ".265";
+            FileStream fs_v = new(filename, FileMode.Create);
+            if (args.StreamConfigurationData is H265StreamConfigurationData h265StreamConfigurationData)
+            {
+                WriteNalToFile(fs_v, h265StreamConfigurationData.VPS);
+                WriteNalToFile(fs_v, h265StreamConfigurationData.SPS);
+                WriteNalToFile(fs_v, h265StreamConfigurationData.PPS);
+            }
+            client.ReceivedVideoData += (_, dataArgs) =>
+            {
+                if (fs_v != null)
+                {
+                    foreach (var nalUnitMem in dataArgs.Data)
+                    {
+                        var nalUnit = nalUnitMem.Span;
+                        // Output some H264 stream information
+                        if (nalUnit.Length > 5)
+                        {
+                            int nal_unit_type = (nalUnit[4] >> 1) & 0x3F;
+                            string description = nal_unit_type switch
+                            {
+                                1 => "NON IDR NAL",
+                                19 => "IDR NAL",
+                                32 => "VPS NAL",
+                                33 => "SPS NAL",
+                                34 => "PPS NAL",
+                                39 => "SEI NAL",
+                                _ => "OTHER NAL",
+                            };
+                            Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
+                        }
+                        fs_v.Write(nalUnit);
+
+                    }
+                }
+            };
+        }
+
+        private static void NewH264Stream(NewStreamEventArgs args, RTSPClient client)
+        {
+            string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string filename = "rtsp_capture_" + now + ".264";
+            FileStream fs_v = new(filename, FileMode.Create);
+            if (args.StreamConfigurationData is H264StreamConfigurationData h264StreamConfigurationData)
+            {
+                WriteNalToFile(fs_v, h264StreamConfigurationData.SPS);
+                WriteNalToFile(fs_v, h264StreamConfigurationData.PPS);
+            }
+            client.ReceivedVideoData += (_, dataArgs) =>
+            {
+                foreach (var nalUnitMem in dataArgs.Data)
+                {
+                    var nalUnit = nalUnitMem.Span;
+                    // Output some H264 stream information
+                    if (nalUnit.Length > 5)
+                    {
+                        int nal_ref_idc = (nalUnit[4] >> 5) & 0x03;
+                        int nal_unit_type = nalUnit[4] & 0x1F;
+                        string description = nal_unit_type switch
+                        {
+                            1 => "NON IDR NAL",
+                            5 => "IDR NAL",
+                            6 => "SEI NAL",
+                            7 => "SPS NAL",
+                            8 => "PPS NAL",
+                            9 => "ACCESS UNIT DELIMITER NAL",
+                            _ => "OTHER NAL",
+                        };
+                        Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
+                    }
+                    fs_v.Write(nalUnit);
+
+                }
+            };
         }
 
         private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)
