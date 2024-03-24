@@ -528,20 +528,8 @@ namespace RtspClientExample
                 // Check the capabilities returned by OPTIONS
                 // The Public: header contains the list of commands the RTSP server supports
                 // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
-                if (message.Headers.ContainsKey(RtspHeaderNames.Public))
-                {
-                    string[]? parts = message.Headers[RtspHeaderNames.Public]?.Split(' ');
-                    if (parts != null)
-                    {
-                        foreach (string part in parts)
-                        {
-                            if (part.Trim().Equals("GET_PARAMETER", StringComparison.OrdinalIgnoreCase))
-                            {
-                                serverSupportsGetParameter = true;
-                            }
-                        }
-                    }
-                }
+                var supportedCommand = RTSPHeaderUtils.ParsePublicHeader(message);
+                serverSupportsGetParameter = supportedCommand.Contains("GET_PARAMETER", StringComparer.OrdinalIgnoreCase);
 
                 if (keepaliveTimer == null)
                 {

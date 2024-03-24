@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
+using Rtsp.Messages;
 
 namespace Rtsp
 {
@@ -90,7 +91,7 @@ namespace Rtsp
                 _authentication == null)
             {
                 NameValueCollection headers = HeadersParser.ParseHeaders(streamReader);
-                string? authenticateHeader = headers.Get(WellKnownHeaders.WwwAuthenticate);
+                string? authenticateHeader = headers.Get(RtspHeaderNames.WWWAuthenticate);
 
                 if (string.IsNullOrEmpty(authenticateHeader))
                     throw new HttpBadResponseCodeException(statusCode);
