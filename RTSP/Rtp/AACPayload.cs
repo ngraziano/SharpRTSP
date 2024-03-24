@@ -70,10 +70,14 @@ namespace Rtsp.Rtp
         public int ChannelConfiguration { get; set; } = 0;
 
         // Constructor
-        public AACPayload(string config_string, MemoryPool<byte>? memoryPool = null)
+        public AACPayload(string configString, MemoryPool<byte>? memoryPool = null)
         {
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-            /***
+
+
+            /* 
+            Format of config string  
+            https://wiki.multimedia.cx/index.php/MPEG-4_Audio#Audio_Specific_Config
             5 bits: object type
                 if (object type == 31)
                 6 bits + 32: object type
@@ -82,16 +86,19 @@ namespace Rtsp.Rtp
                 24 bits: frequency
             4 bits: channel configuration
             var bits: AOT Specific Config
-             ***/
+            */
 
             // config is a string in hex eg 1490 or 1210
             // Read each ASCII character and add to a bit array
             BitStream bs = new();
-            bs.AddHexString(config_string);
+            bs.AddHexString(configString);
 
             // Read 5 bits
             ObjectType = bs.Read(5);
-
+            if (ObjectType == 31)
+            {
+                ObjectType = bs.Read(6) + 32;
+            }
             // Read 4 bits
             FrequencyIndex = bs.Read(4);
 
