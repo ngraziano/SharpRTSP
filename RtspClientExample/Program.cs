@@ -8,7 +8,7 @@ namespace RtspClientExample
 {
     public static class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var loggerFactory = LoggerFactory.Create(builder =>
             {
@@ -68,10 +68,8 @@ namespace RtspClientExample
 
             // H265 Tests
 
-
             // Create a RTSP Client
             RTSPClient client = new(loggerFactory);
-
 
             client.NewVideoStream += (_, args) =>
             {
@@ -115,12 +113,8 @@ namespace RtspClientExample
                         Console.WriteLine("Unknow Audio format" + arg.StreamType);
                         break;
                 }
-
             };
 
-            /*
-
-      */
             client.SetupMessageCompleted += (_, _) =>
             {
                 if (usePlayback)
@@ -170,7 +164,6 @@ namespace RtspClientExample
 
         private static void NewAACAudioStream(NewStreamEventArgs arg, RTSPClient client)
         {
-
             string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string filename = "rtsp_capture_" + now + ".aac";
             var fs_a = new FileStream(filename, FileMode.Create);
@@ -187,7 +180,7 @@ namespace RtspClientExample
                     //                        int sample_freq = 4; // 4 = 44100 Hz
                     //                        int channel_config = 2; // 2 = Stereo
 
-                    Rtsp.BitStream bs = new Rtsp.BitStream();
+                    Rtsp.BitStream bs = new();
                     bs.AddValue(0xFFF, 12); // (a) Start of data
                     bs.AddValue(0, 1); // (b) Version ID, 0 = MPEG4
                     bs.AddValue(0, 2); // (c) Layer always 2 bits set to 0
@@ -214,7 +207,6 @@ namespace RtspClientExample
                     fs_a.Write(data.Span);
                 }
             };
-
         }
 
         private static void NewAMRAudioStream(RTSPClient client)
@@ -317,7 +309,6 @@ namespace RtspClientExample
                             Console.WriteLine("NAL Type = " + nal_unit_type + " " + description);
                         }
                         fs_v.Write(nalUnit);
-
                     }
                 }
             };
@@ -356,7 +347,6 @@ namespace RtspClientExample
                         Console.WriteLine("NAL Ref = " + nal_ref_idc + " NAL Type = " + nal_unit_type + " " + description);
                     }
                     fs_v.Write(nalUnit);
-
                 }
             };
         }

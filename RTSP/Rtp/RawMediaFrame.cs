@@ -35,7 +35,6 @@ namespace Rtsp.Rtp
 
         public bool Any() => Data.Any();
 
-
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)

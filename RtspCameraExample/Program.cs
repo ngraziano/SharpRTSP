@@ -86,7 +86,7 @@ namespace RtspCameraExample
                 // It will feed YUV Images into the event handler, which will compress the video into NALs and pass them into the RTSP Server
                 // It will feed PCM Audio into the event handler, which will compress the audio into G711 uLAW packets and pass them into the RTSP Server
                 /////////////////////////////////////////
-                TestCard av_source = new TestCard((int)width, (int)height, (int)fps);
+                TestCard av_source = new(width, height, (int)fps);
                 av_source.ReceivedYUVFrame += Video_source_ReceivedYUVFrame; // the event handler is where all the magic happens
                 av_source.ReceivedAudioFrame += Audio_source_ReceivedAudioFrame; // the event handler is where all the magic happens
 

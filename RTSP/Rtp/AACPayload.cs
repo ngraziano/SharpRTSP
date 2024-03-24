@@ -59,7 +59,6 @@ namespace Rtsp.Rtp
 
     */
 
-
     public class AACPayload : IPayloadProcessor
     {
         private readonly MemoryPool<byte> _memoryPool;

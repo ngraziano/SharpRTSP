@@ -15,15 +15,12 @@ namespace RtspClientExample
         public IStreamConfigurationData? StreamConfigurationData { get; }
     }
 
-    public interface IStreamConfigurationData
-    {
-    }
+    public interface IStreamConfigurationData;
 
     public record H264StreamConfigurationData : IStreamConfigurationData
     {
         public required byte[] SPS { get; init; }
         public required byte[] PPS { get; init; }
-
     }
 
     public record H265StreamConfigurationData: IStreamConfigurationData
@@ -52,6 +49,4 @@ namespace RtspClientExample
         public DateTime TimeStamp { get; }
         public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
     }
-
-
 }

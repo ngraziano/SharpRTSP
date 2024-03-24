@@ -18,7 +18,6 @@ namespace RtspCameraExample
 
         public static void WriteSenderReport(Span<byte> rtcpSenderReport, DateTime now, uint rtp_timestamp, uint rtpPacketCount, uint octetCount)
         {
-
             // Bytes 8, 9, 10, 11 and 12,13,14,15 are the Wall Clock
             // Bytes 16,17,18,19 are the RTP payload timestamp
 

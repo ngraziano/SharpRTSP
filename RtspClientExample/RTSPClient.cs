@@ -288,7 +288,6 @@ namespace RtspClientExample
 
         public void Stop()
         {
-
             // Send TEARDOWN
             RtspRequest teardown_message = new RtspRequestTeardown
             {
@@ -774,7 +773,6 @@ namespace RtspClientExample
                                 33 => "MP2T",
                                 _ => string.Empty,
                             };
-
                         }
                     }
 
@@ -794,7 +792,6 @@ namespace RtspClientExample
                     }
                     else if (videoPayloadProcessor is H265Payload && fmtp?.FormatParameter is not null)
                     {
-
                         // If the rtpmap contains H265 then split the fmtp to get the sprop-vps, sprop-sps and sprop-pps
                         // The RFC makes the VPS, SPS and PPS OPTIONAL so they may not be present. In which we pass back NULL values
                         var param = H265Parameters.Parse(fmtp.FormatParameter);
@@ -896,7 +893,7 @@ namespace RtspClientExample
                                 RtspUri = audio_uri,
                             };
                             setup_message.AddTransport(transport);
-                            setup_message.AddAuthorization(_authentication!, _uri!, rtspSocket!.NextCommandIndex());
+                            setup_message.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
                             if (_playbackSession)
                             {
                                 setup_message.AddRequireOnvifRequest();

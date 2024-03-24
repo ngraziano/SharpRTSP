@@ -734,9 +734,9 @@ namespace RtspCameraExample
                         RTPPacketUtil.WriteTS(rtp_packet.Span, rtp_timestamp);
 
                         // Now append the Fragmentation Header (with Start and End marker) and part of the raw_nal
-                        byte f_bit = 0;
+                        const byte f_bit = 0;
                         byte nri = (byte)(first_byte >> 5 & 0x03); // Part of the 1st byte of the Raw NAL (NAL Reference ID)
-                        byte type = 28; // FU-A Fragmentation
+                        const byte type = 28; // FU-A Fragmentation
 
                         rtp_packet.Span[12] = (byte)((f_bit << 7) + (nri << 5) + type);
                         rtp_packet.Span[13] = (byte)((start_bit << 7) + (end_bit << 6) + (0 << 5) + (first_byte & 0x1F));
