@@ -1,4 +1,8 @@
-﻿namespace Rtsp
+﻿using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
+
+namespace Rtsp
 {
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Logging.Abstractions;
@@ -29,6 +33,8 @@
 
         private int _sequenceNumber;
 
+        private readonly bool _enableSsl;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
@@ -37,14 +43,31 @@
         public RtspListener(
             IRtspTransport connection,
             ILogger<RtspListener>? logger = null,
-            MemoryPool<byte>? memoryPool = null
+            MemoryPool<byte>? memoryPool = null,
+            bool enableSsl = false
             )
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-
+            _enableSsl = enableSsl;
             _transport = connection ?? throw new ArgumentNullException(nameof(connection));
-            _stream = connection.GetStream();
+            _stream = GetStream();
+        }
+
+        private bool RemoteCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslpolicyerrors)
+        {
+            // todo: allow the validation of remote certificate to be handled by user
+            if (sslpolicyerrors == SslPolicyErrors.None)
+                return true;
+
+            // returning false will cause the stream to not be opened for writing
+            if ((sslpolicyerrors & SslPolicyErrors.RemoteCertificateNotAvailable) != 0)
+                return false;
+            
+            _logger.LogWarning("Certificate Error: {SslPolicyErrors}", sslpolicyerrors);
+            
+            // return true, even for server certificate name mismatches
+            return true;
         }
 
         /// <summary>
@@ -279,14 +302,34 @@
 
             // reconnect 
             _transport.Reconnect();
-            _stream = _transport.GetStream();
+            _stream = GetStream();
 
             // If listen thread exist restart it
             if (_mainTask != null)
                 Start();
         }
 
-        private readonly List<byte> readOneMessageBuffer = new(256);
+        private readonly List<byte> _readOneMessageBuffer = new(256);
+        
+        private Stream GetStream() {
+            // if enableSSL flag is true, wrap the stream with the SslStream and a callback for validating the remote certificate
+            if (_enableSsl)
+            {
+                var sslStream = new SslStream(_transport.GetStream(), true, RemoteCertificateValidationCallback, null);
+                try
+                {
+                    sslStream.AuthenticateAsClient(_transport.RemoteAddress);
+                    return sslStream;
+                }
+                catch (AuthenticationException authException)
+                {
+                    _logger.LogError("Exception occurred authenticating with remote server: {AuthException}", authException.Message);
+                }
+            }
+
+            return _transport.GetStream();
+        }
+            
 
         /// <summary>
         /// Reads one message.
@@ -305,7 +348,7 @@
 
             int size = 0;
             int byteReaden = 0;
-            readOneMessageBuffer.Clear();
+            _readOneMessageBuffer.Clear();
             string oneLine = string.Empty;
             while (currentReadingState != ReadingState.End)
             {
@@ -327,20 +370,20 @@
                                 needMoreChar = false;
                                 break;
                             case '\n':
-                                oneLine = Encoding.UTF8.GetString(readOneMessageBuffer.ToArray());
-                                readOneMessageBuffer.Clear();
+                                oneLine = Encoding.UTF8.GetString(_readOneMessageBuffer.ToArray());
+                                _readOneMessageBuffer.Clear();
                                 needMoreChar = false;
                                 break;
                             case '\r':
                                 // simply ignore this
                                 break;
                             // if first caracter of packet is $ it is an interleaved data packet
-                            case '$' when currentReadingState == ReadingState.NewCommand && readOneMessageBuffer.Count == 0:
+                            case '$' when currentReadingState == ReadingState.NewCommand && _readOneMessageBuffer.Count == 0:
                                 currentReadingState = ReadingState.InterleavedData;
                                 needMoreChar = false;
                                 break;
                             default:
-                                readOneMessageBuffer.Add((byte)currentByte);
+                                _readOneMessageBuffer.Add((byte)currentByte);
                                 break;
                         }
                     }
@@ -592,6 +635,7 @@
             {
                 Stop();
                 _stream?.Dispose();
+                _cancelationTokenSource?.Dispose();
             }
         }
 

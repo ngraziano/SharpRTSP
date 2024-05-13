@@ -16,3 +16,4 @@ RTSP.Tests/Coverage/
 .vs/
 *.TMP
 *.user
+.idea/
