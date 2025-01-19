@@ -26,7 +26,7 @@ namespace Rtsp.Utils.Tests
             }
         }
 
-        private static ReadOnlySequence<byte> CreateSequence(params byte[][] buffers)
+        internal static ReadOnlySequence<byte> CreateSequence(params byte[][] buffers)
         {
             var firstSegment = new TestSegment(buffers[0]);
             var lastSegment = firstSegment;

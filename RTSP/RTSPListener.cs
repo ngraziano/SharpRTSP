@@ -343,8 +343,11 @@ namespace Rtsp
             {
                 if (buffer.Length < 4) return ReadingMessage.NotEnoughtData;
 
-                var channel = buffer.First.Span[1];
-                var size = BinaryPrimitives.ReadUInt16BigEndian(buffer.First.Span[2..]);
+                Span<byte> header = stackalloc byte[3];
+                buffer.Slice(1, 3).CopyTo(header);
+
+                var channel = header[0];
+                var size = BinaryPrimitives.ReadUInt16BigEndian(header[1..]);
                 if (buffer.Length < size + 4)
                     return ReadingMessage.NotEnoughtData;
 
