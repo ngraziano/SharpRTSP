@@ -9,6 +9,8 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO.Pipelines;
+using System.Buffers;
 
 namespace Rtsp.Tests
 {
@@ -562,6 +564,35 @@ namespace Rtsp.Tests
             Assert.That(
                 () => testedListener.SendData(data.Channel, data.Data),
                 Throws.InstanceOf<ArgumentException>());
+        }
+
+        [Test]
+        public async Task InterleavedDataHeaderSplitAcrossPipeSegments()
+        {
+            var payload = new byte[] { 1, 2, 3, 4, 5 };
+            var size = payload.Length;
+            byte channel = 7;
+
+            // Setup test object.
+            using var testedListener = new RtspListener(_mockTransport);
+
+            var reader = PipeReader.Create(
+                Utils.Tests.ReadOnlySequenceExtensionsTests.CreateSequence(
+                    [(byte)'$'],
+                    [channel, (byte)(size >> 8), (byte)(size & 0xFF)],
+                    payload));
+
+            var message = await testedListener.ReadOneMessageAsync(reader);
+            Assert.That(message, Is.Not.Null, "Message should be parsed correctly even with split header");
+            Assert.That(message, Is.InstanceOf<RtspData>());
+            
+            var dataMsg = (RtspData)message;
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(dataMsg.Channel, Is.EqualTo(channel));
+                Assert.That(dataMsg.Data.Length, Is.EqualTo(payload.Length));
+                Assert.That(dataMsg.Data.ToArray(), Is.EqualTo(payload));
+            }
         }
     }
 }
