@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace Rtsp.Sdp
 {
@@ -17,7 +18,7 @@ namespace Rtsp.Sdp
             if (originString == null)
                 throw new ArgumentNullException(nameof(originString));
 
-            string[] parts = originString.Split(' ');
+            string[] parts = originString.Split(' ').TakeLast(6).ToArray();
 
             if (parts.Length != 6)
                 throw new FormatException("Number of element invalid in origin string.");
