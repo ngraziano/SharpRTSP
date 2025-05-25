@@ -31,6 +31,10 @@
 		<EmbeddedResource Include="Sdp\Data\test5.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test6.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test7.sdp" />
+		<None Remove="Sdp\Data\test8.sdp" />
+		<EmbeddedResource Include="Sdp\Data\test8.sdp" />
+		<None Remove="Sdp\Data\test9.sdp" />
+		<EmbeddedResource Include="Sdp\Data\test9.sdp" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\RTSP\RTSP.csproj" />

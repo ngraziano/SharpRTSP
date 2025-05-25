@@ -305,5 +305,79 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
             });
         }
+        
+        [Test]
+        public void Read8Strict()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test8.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            Assert.That(
+                () => SdpFile.ReadStrict(testReader),
+                Throws.InstanceOf<InvalidDataException>());
+        }
+        
+        [Test]
+        public void Read8Loose()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test8.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            SdpFile sdp = SdpFile.ReadLoose(testReader);
+
+            Assert.That(sdp.Origin, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Session, Is.EqualTo("Session99"));
+                Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
+                Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));
+                Assert.That(sdp.Origin.SessionVersion, Is.EqualTo("98969053"));
+                Assert.That(sdp.Origin.NetType, Is.EqualTo("IN"));
+                Assert.That(sdp.Origin.AddressType, Is.EqualTo("IP6"));
+                Assert.That(sdp.Origin.UnicastAddress, Is.EqualTo("2201:056D::112E:144A:1E24"));
+                Assert.That(sdp.Connection?.Host, Is.EqualTo("FF1E:03AD::7F2E:172A:1E24"));
+                Assert.That(sdp.Attributs, Has.Count.EqualTo(0));
+                Assert.That(sdp.Medias, Has.Count.EqualTo(1));
+                Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
+            });
+        }
+        
+        [Test]
+        public void Read9Strict()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test9.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            Assert.That(
+                () => SdpFile.ReadStrict(testReader),
+                Throws.InstanceOf<InvalidDataException>());
+        }
+        
+        [Test]
+        public void Read9Loose()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.test9.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            SdpFile sdp = SdpFile.ReadLoose(testReader);
+
+            Assert.That(sdp.Origin, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Session, Is.EqualTo("Session99"));
+                Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
+                Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));
+                Assert.That(sdp.Origin.SessionVersion, Is.EqualTo("98969053"));
+                Assert.That(sdp.Origin.NetType, Is.EqualTo("IN"));
+                Assert.That(sdp.Origin.AddressType, Is.EqualTo("IP4"));
+                Assert.That(sdp.Origin.UnicastAddress, Is.EqualTo("0.0.0.0"));
+                Assert.That(sdp.Connection?.Host, Is.EqualTo("FF1E:03AD::7F2E:172A:1E24"));
+                Assert.That(sdp.Attributs, Has.Count.EqualTo(0));
+                Assert.That(sdp.Medias, Has.Count.EqualTo(1));
+                Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
+            });
+        }
     }
 }

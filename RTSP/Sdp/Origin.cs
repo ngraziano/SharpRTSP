@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace Rtsp.Sdp
 {
@@ -30,6 +31,27 @@ namespace Rtsp.Sdp
                 NetType = parts[3],
                 AddressType = parts[4],
                 UnicastAddress = parts[5],
+            };
+        }
+
+        public static Origin ParseLoose(string originString)
+        {
+            if (originString == null)
+                throw new ArgumentNullException(nameof(originString));
+
+            string[] parts = originString.Split(' ');
+            // some camera report invalid origin with more than 6 elements
+            // the goods values are at the end.
+            parts = parts.Skip(parts.Length - 6).ToArray();
+
+            return new()
+            {
+                Username = parts.ElementAtOrDefault(0) ?? "-",
+                SessionId = parts.ElementAtOrDefault(1) ?? "0",
+                SessionVersion = parts.ElementAtOrDefault(2) ?? "0",
+                NetType = parts.ElementAtOrDefault(3) ?? "IN",
+                AddressType = parts.ElementAtOrDefault(4) ?? "IP4",
+                UnicastAddress = parts.ElementAtOrDefault(5) ?? "0.0.0.0",
             };
         }
 
@@ -73,21 +95,21 @@ namespace Rtsp.Sdp
         public string AddressType { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the unicast address (IP or FDQN).
+        /// Gets or sets the unicast address (IP or FQDN).
         /// </summary>
         /// <value>The unicast address.</value>
         public string UnicastAddress { get; set; } = string.Empty;
 
         public override string ToString()
         {
-            return string.Join(" ", new string[]
+            return string.Join(" ", new []
             {
-                    Username,
-                    SessionId,
-                    SessionVersion,
-                    NetType,
-                    AddressType,
-                    UnicastAddress,
+                Username,
+                SessionId,
+                SessionVersion,
+                NetType,
+                AddressType,
+                UnicastAddress,
             });
         }
     }

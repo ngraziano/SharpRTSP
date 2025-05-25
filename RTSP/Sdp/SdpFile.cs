@@ -253,7 +253,7 @@ namespace Rtsp.Sdp
                         returnValue.Version = int.Parse(value.Value, CultureInfo.InvariantCulture);
                         break;
                     case 'o':
-                        returnValue.Origin = Origin.Parse(value.Value);
+                        returnValue.Origin = Origin.ParseLoose(value.Value);
                         break;
                     case 's':
                         returnValue.Session = value.Value;

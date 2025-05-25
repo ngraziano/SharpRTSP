@@ -1,0 +1,11 @@
+v=0
+c=IN IP6 FF1E:03AD::7F2E:172A:1E24
+o=extra value - 98969043 98969053 IN IP6 2201:056D::112E:144A:1E24
+s=Session99
+m=video 0 RTP/AVP 98
+c=IN IP4 0.0.0.0
+a=rtpmap:98 H264/90000
+a=fmtp:98 packetization-mode=1; profile-level-id=4d401f; sprop-parameter-sets=Z01AH42NQCgC3/gLcBAQFAAAD6AAALuDoYAGMsAAb5Qu8uNDAAxlgADfKF3lwoA=,aO44gA==
+a=framerate:6.25
+a=control:trackID=0
+a=recvonly
