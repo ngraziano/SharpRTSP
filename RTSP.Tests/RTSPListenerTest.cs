@@ -97,7 +97,7 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            //Check the message recevied
+            //Check the message received
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
@@ -150,7 +150,7 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            //Check the message recevied
+            //Check the message received
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
@@ -199,7 +199,7 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            //Check the message recevied
+            //Check the message received
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspResponse>());
@@ -256,7 +256,7 @@ namespace Rtsp.Tests
             _mockTransport.Received().Close();
             Assert.Multiple(() =>
             {
-                //Check the message recevied
+                //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Has.Count.EqualTo(1));
             });
@@ -317,7 +317,7 @@ namespace Rtsp.Tests
             _mockTransport.Received().Close();
             Assert.Multiple(() =>
             {
-                //Check the message recevied
+                //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Has.Count.EqualTo(2));
             });
@@ -387,14 +387,14 @@ namespace Rtsp.Tests
             // Run
             testedListener.Start();
             await WaitNMessageOrTimeout(1, 100);
-            // No exception should be generate.
+            // No exception should be generated.
             stream.Close();
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
             Assert.Multiple(() =>
             {
-                //Check the message recevied
+                //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Is.Empty);
             });
