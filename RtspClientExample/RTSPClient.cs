@@ -610,6 +610,8 @@ class RTSPClient
 
     private void HandleSetupResponse(RtspResponse message)
     {
+        Debug.Assert(message.OriginalRequest is RtspRequestSetup, "Expected a SETUP request");
+
         _logger.LogDebug("Got reply from Setup. Session is {session}", message.Session);
 
         // Session value used with Play, Pause, Teardown and and additional Setups
