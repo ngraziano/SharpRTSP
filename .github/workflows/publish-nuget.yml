@@ -1,6 +1,10 @@
 # Action to publish a new version of the package to NuGet
 
 name: Publish
+
+permissions:
+  contents: read
+
 on:
   release:
     types: [released]
