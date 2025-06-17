@@ -20,6 +20,6 @@ public static class RtspHeaderNames
     public const string RateControl = "Rate-Control";
     public const string Require = "Require";
 
-    public const string Range = "range";
-    public const string Scale = "scale";
+    public const string Range = "Range";
+    public const string Scale = "Scale";
 }
