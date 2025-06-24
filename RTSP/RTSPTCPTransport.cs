@@ -12,8 +12,6 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
-        private readonly IPEndPoint _currentEndPoint;
-        private readonly IPEndPoint _localEndPoint;
         private TcpClient _RtspServerClient;
         private uint _commandCounter;
 
@@ -27,8 +25,8 @@ namespace Rtsp
                 throw new ArgumentNullException(nameof(tcpConnection));
             Contract.EndContractBlock();
 
-            _currentEndPoint = tcpConnection.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
-            _localEndPoint = tcpConnection.Client.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The remote endpoint can not be determined.");
+            RemoteEndPoint = tcpConnection.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
+            LocalEndPoint = tcpConnection.Client.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The remote endpoint can not be determined.");
             _RtspServerClient = tcpConnection;
         }
 
@@ -52,19 +50,19 @@ namespace Rtsp
         /// Gets the remote address.
         /// </summary>
         /// <value>The remote address.</value>
-        public string RemoteAddress => _currentEndPoint.ToString();
+        public string RemoteAddress => RemoteEndPoint.ToString();
 
         /// <summary>
         /// Gets the remote endpoint.
         /// </summary>
         /// <value>The remote endpoint.</value>
-        public IPEndPoint RemoteEndPoint => _currentEndPoint;
+        public IPEndPoint RemoteEndPoint { get; }
 
         /// <summary>
         /// Gets the local endpoint.
         /// </summary>
         /// <value>The local endpoint.</value>
-        public IPEndPoint LocalEndPoint => _localEndPoint;
+        public IPEndPoint LocalEndPoint { get; }
 
         public uint NextCommandIndex() => ++_commandCounter;
 
@@ -92,7 +90,7 @@ namespace Rtsp
             if (Connected)
                 return;
             _RtspServerClient = new TcpClient();
-            _RtspServerClient.Connect(_currentEndPoint);
+            _RtspServerClient.Connect(RemoteEndPoint);
         }
 
         #endregion
