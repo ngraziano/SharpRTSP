@@ -18,12 +18,12 @@ namespace Rtsp.Messages.Tests
             var cloneObject = testObject.Clone() as RtspData;
 
             Assert.That(cloneObject, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(cloneObject.Channel, Is.EqualTo(testObject.Channel));
                 Assert.That(cloneObject.Data, Is.EqualTo(testObject.Data));
                 Assert.That(cloneObject.SourcePort, Is.SameAs(testObject.SourcePort));
-            });
+            }
         }
     }
 }

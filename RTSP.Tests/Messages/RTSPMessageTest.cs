@@ -38,11 +38,11 @@ namespace Rtsp.Messages.Tests
 
             var oneResponse = oneMessage as RtspResponse;
             Assert.That(oneResponse, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(oneResponse.ReturnCode, Is.EqualTo(returnCode));
                 Assert.That(oneResponse.ReturnMessage, Is.EqualTo(returnMessage));
-            });
+            }
         }
 
         [Test]

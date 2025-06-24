@@ -32,11 +32,11 @@ namespace Rtsp.Tests.Onvif
                 ];
 
             var timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(extension, out int headerPosition);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(timestamp, Is.EqualTo(DateTime.MinValue));
                 Assert.That(headerPosition, Is.EqualTo(0));
-            });
+            }
         }
     }
 }

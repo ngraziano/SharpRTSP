@@ -11,11 +11,11 @@ namespace Rtsp.Sdp.Tests
             var parsed = H264Parameters.Parse("profile-level-id=42A01E; sprop-parameter-sets=Z01AH/QFgJP6,aP48gA==; packetization-mode=1;");
 
             Assert.That(parsed, Has.Count.EqualTo(3));
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(parsed["profile-level-id"], Is.EqualTo("42A01E"));
                 Assert.That(parsed["packetization-mode"], Is.EqualTo("1"));
-            });
+            }
             var sprop = parsed.SpropParameterSets;
             Assert.That(sprop, Has.Count.EqualTo(2));
 

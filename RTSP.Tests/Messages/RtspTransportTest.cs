@@ -37,11 +37,11 @@ namespace Rtsp.Messages.Tests
         {
             RtspTransport testValue = new();
             Assert.That(testValue.IsMulticast, Is.True);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.UDP));
                 Assert.That(testValue.Mode, Is.EqualTo("PLAY"));
-            });
+            }
         }
 
         [Test]
@@ -49,11 +49,11 @@ namespace Rtsp.Messages.Tests
         {
             RtspTransport testValue = RtspTransport.Parse("RTP/AVP");
             Assert.That(testValue.IsMulticast, Is.True);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.UDP));
                 Assert.That(testValue.Mode, Is.EqualTo("PLAY"));
-            });
+            }
         }
 
         [Test]
@@ -61,11 +61,11 @@ namespace Rtsp.Messages.Tests
         {
             RtspTransport testValue = RtspTransport.Parse("RTP/AVP/UDP;destination");
             Assert.That(testValue.IsMulticast, Is.True);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.UDP));
                 Assert.That(testValue.Mode, Is.EqualTo("PLAY"));
-            });
+            }
         }
 
         [Test]
@@ -74,13 +74,13 @@ namespace Rtsp.Messages.Tests
             // not realistic
             RtspTransport testValue = RtspTransport.Parse("RTP/AVP/TCP;multicast;destination=test.example.com;ttl=234;ssrc=cd3b20a5;mode=RECORD");
             Assert.That(testValue.IsMulticast, Is.True);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.TCP));
                 Assert.That(testValue.Destination, Is.EqualTo("test.example.com"));
                 Assert.That(testValue.SSrc, Is.EqualTo("cd3b20a5"));
                 Assert.That(testValue.Mode, Is.EqualTo("RECORD"));
-            });
+            }
         }
 
         [Test]
@@ -88,29 +88,29 @@ namespace Rtsp.Messages.Tests
         {
             RtspTransport testValue = RtspTransport.Parse("RTP/AVP/TCP;interleaved=3-4");
             Assert.That(testValue.IsMulticast, Is.False);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.TCP));
                 Assert.That(testValue.Interleaved?.First, Is.EqualTo(3));
-            });
-            Assert.Multiple(() =>
+            }
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.Interleaved?.IsSecondPortPresent, Is.True);
                 Assert.That(testValue.Interleaved?.Second, Is.EqualTo(4));
-            });
+            }
         }
 
         [Test]
         public void Parse4()
         {
             RtspTransport testValue = RtspTransport.Parse("RTP/AVP;unicast;destination=1.2.3.4;source=3.4.5.6;server_port=5000-5001;client_port=5003-5004");
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.IsMulticast, Is.False);
                 Assert.That(testValue.ServerPort, Is.Not.Null);
                 Assert.That(testValue.ClientPort, Is.Not.Null);
-            });
-            Assert.Multiple(() =>
+            }
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testValue.LowerTransport, Is.EqualTo(RtspTransport.LowerTransportType.UDP));
                 Assert.That(testValue.Destination, Is.EqualTo("1.2.3.4"));
@@ -119,7 +119,7 @@ namespace Rtsp.Messages.Tests
                 Assert.That(testValue.ServerPort.Second, Is.EqualTo(5001));
                 Assert.That(testValue.ClientPort.First, Is.EqualTo(5003));
                 Assert.That(testValue.ClientPort.Second, Is.EqualTo(5004));
-            });
+            }
         }
 
         [Test]

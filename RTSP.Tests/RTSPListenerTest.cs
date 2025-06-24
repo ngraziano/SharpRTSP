@@ -101,28 +101,28 @@ namespace Rtsp.Tests
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
-                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.Data.Length, Is.Zero);
                 Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
-            });
+            }
 
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
             var theRequest = theMessage as RtspRequest;
-            Assert.Multiple(() =>
-                    {
+            using (Assert.EnterMultipleScope())
+            {
                         Assert.That(theRequest?.RequestTyped, Is.EqualTo(RtspRequest.RequestType.OPTIONS));
                         Assert.That(theRequest?.Headers, Has.Count.EqualTo(3));
                         Assert.That(theRequest?.CSeq, Is.EqualTo(1));
-                    });
+                    }
             Assert.That(theRequest.Headers.Keys, Does.Contain("Require"));
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(theRequest.Headers.Keys, Does.Contain("Proxy-Require"));
                 Assert.That(theRequest.RtspUri, Is.EqualTo(null));
 
                 Assert.That(_receivedData, Is.Empty);
-            });
+            }
         }
 
         [Test]
@@ -154,15 +154,15 @@ namespace Rtsp.Tests
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(theMessage.Data.Length, Is.EqualTo(0));
                 Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
-            });
+            }
 
             var theRequest = theMessage as RtspRequest;
             Assert.That(theRequest, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(theRequest.RequestTyped, Is.EqualTo(RtspRequest.RequestType.PLAY));
                 Assert.That(theRequest.Headers, Has.Count.EqualTo(1));
@@ -170,7 +170,7 @@ namespace Rtsp.Tests
                 Assert.That(theRequest.RtspUri?.ToString(), Is.EqualTo("rtsp://audio.example.com/audio"));
 
                 Assert.That(_receivedData, Is.Empty);
-            });
+            }
         }
 
         [Test]
@@ -203,15 +203,15 @@ namespace Rtsp.Tests
             Assert.That(_receivedMessage, Has.Count.EqualTo(1));
             RtspChunk theMessage = _receivedMessage[0];
             Assert.That(theMessage, Is.InstanceOf<RtspResponse>());
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(theMessage.Data.Length, Is.EqualTo(0));
                 Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
-            });
+            }
 
             var theResponse = theMessage as RtspResponse;
             Assert.That(theResponse, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(theResponse.ReturnCode, Is.EqualTo(551));
                 Assert.That(theResponse.ReturnMessage, Is.EqualTo("Option not supported"));
@@ -219,7 +219,7 @@ namespace Rtsp.Tests
                 Assert.That(theResponse.CSeq, Is.EqualTo(302));
 
                 Assert.That(_receivedData, Is.Empty);
-            });
+            }
         }
 
         [Test]
@@ -254,22 +254,22 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Has.Count.EqualTo(1));
-            });
+            }
             Assert.That(_receivedData[0], Is.InstanceOf<RtspData>());
             var dataMessage = _receivedData[0] as RtspData;
 
             Assert.That(dataMessage, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(dataMessage.Channel, Is.EqualTo(11));
                 Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
                 Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
-            });
+            }
         }
 
         [Test]
@@ -315,31 +315,31 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Has.Count.EqualTo(2));
-            });
+            }
             Assert.That(_receivedData[0], Is.InstanceOf<RtspData>());
             var dataMessage = _receivedData[0] as RtspData;
             Assert.That(dataMessage, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(dataMessage.Channel, Is.EqualTo(11));
                 Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
                 Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
-            });
+            }
 
             Assert.That(_receivedData[1], Is.InstanceOf<RtspData>());
             dataMessage = _receivedData[1] as RtspData;
             Assert.That(dataMessage, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(dataMessage.Channel, Is.EqualTo(11));
                 Assert.That(dataMessage.SourcePort, Is.SameAs(testedListener));
                 Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
-            });
+            }
         }
 
         [Test]
@@ -364,11 +364,11 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Is.Empty);
-            });
+            }
         }
 
         [Test]
@@ -392,12 +392,12 @@ namespace Rtsp.Tests
 
             // Check the transport was closed.
             _mockTransport.Received().Close();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 //Check the message received
                 Assert.That(_receivedMessage, Is.Empty);
                 Assert.That(_receivedData, Is.Empty);
-            });
+            }
         }
 
         [Test]

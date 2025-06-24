@@ -49,13 +49,12 @@ namespace RTSP.Tests.Rtp
             var r0 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_0"));
             var r1 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_1"));
             var r2 = jpegPayloadParser.ProcessPacket(ReadPacket("jpeg_2"));
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(r0.Data, Is.Empty);
                 Assert.That(r1.Data, Is.Empty);
                 Assert.That(r2.Data, Is.Not.Empty);
-            });
+            }
 
             var jpeg = r2.Data.First();
             var expected = ReadBytes("img_jpg_0.jpg");

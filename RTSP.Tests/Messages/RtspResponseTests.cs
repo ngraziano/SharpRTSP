@@ -34,12 +34,11 @@ namespace Rtsp.Messages.Tests
             var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345";
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testObject.Session, Is.EqualTo("12345"));
                 Assert.That(testObject.Timeout, Is.EqualTo(60));
-            });
+            }
         }
 
         [Test()]
@@ -48,12 +47,11 @@ namespace Rtsp.Messages.Tests
             var testObject = new RtspResponse();
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testObject.Session, Is.EqualTo("12345"));
                 Assert.That(testObject.Timeout, Is.EqualTo(33));
-            });
+            }
         }
 
         [Test()]
@@ -63,13 +61,12 @@ namespace Rtsp.Messages.Tests
 
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=29";
             testObject.Timeout = 33;
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testObject.Session, Is.EqualTo("12345"));
                 Assert.That(testObject.Timeout, Is.EqualTo(33));
                 Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("12345;timeout=33"));
-            });
+            }
         }
 
         [Test()]
@@ -80,13 +77,12 @@ namespace Rtsp.Messages.Tests
             testObject.Headers[RtspHeaderNames.Session] = "12345;timeout=33";
 
             testObject.Session = "456";
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(testObject.Session, Is.EqualTo("456"));
                 Assert.That(testObject.Timeout, Is.EqualTo(33));
                 Assert.That(testObject.Headers[RtspHeaderNames.Session], Is.EqualTo("456;timeout=33"));
-            });
+            }
         }
     }
 }

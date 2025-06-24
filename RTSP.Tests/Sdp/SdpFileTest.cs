@@ -46,7 +46,7 @@ namespace Rtsp.Sdp.Tests
 
             Assert.That(readenSDP.Version, Is.EqualTo(0));
             Assert.That(readenSDP.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(readenSDP.Origin.Username, Is.EqualTo("Teleste"));
                 Assert.That(readenSDP.Origin.SessionId, Is.EqualTo("749719680"));
@@ -57,8 +57,8 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Session, Is.EqualTo("COD_9003-P2-0"));
                 Assert.That(readenSDP.SessionInformation, Is.EqualTo("Teleste MPH H.264 Encoder - HK01121135"));
                 Assert.That(readenSDP.Connection, Is.Not.Null);
-            });
-            Assert.Multiple(() =>
+            }
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(readenSDP.Connection.NumberOfAddress, Is.EqualTo(1), "Number of address");
                 Assert.That(readenSDP.Connection, Is.InstanceOf<ConnectionIP4>());
@@ -66,7 +66,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Timings, Has.Count.EqualTo(1));
                 //Assert.Fail("Timing not well implemented...");
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(1));
-            });
+            }
             Media media = readenSDP.Medias[0];
             Assert.That(media.Attributs, Has.Count.EqualTo(3));
 
@@ -77,7 +77,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That((rtpmaps[0] as AttributRtpMap)?.PayloadNumber, Is.EqualTo(98));
 
             var fmtps = media.Attributs.Where(x => x.Key == AttributFmtp.NAME).ToList();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(rtpmaps, Has.Count.EqualTo(1));
                 Assert.That(fmtps[0].Value, Is.EqualTo("98 profile-level-id=42A01E; sprop-parameter-sets=Z01AH/QFgJP6,aP48gA==; packetization-mode=1;"));
@@ -87,7 +87,7 @@ namespace Rtsp.Sdp.Tests
 
                 // Check the reader have read everything
                 Assert.That(testReader.ReadToEnd(), Is.EqualTo(string.Empty));
-            });
+            }
         }
 
         [Test]
@@ -97,13 +97,12 @@ namespace Rtsp.Sdp.Tests
             Debug.Assert(sdpFile != null, "Missing test file");
             using var testReader = new StreamReader(sdpFile);
             SdpFile readenSDP = SdpFile.ReadLoose(testReader);
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(readenSDP.Version, Is.EqualTo(0));
                 Assert.That(readenSDP.Origin, Is.Not.Null);
-            });
-            Assert.Multiple(() =>
+            }
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(readenSDP.Origin.Username, Is.EqualTo("Teleste"));
                 Assert.That(readenSDP.Origin.SessionId, Is.EqualTo("749719680"));
@@ -119,21 +118,21 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Timings, Has.Count.EqualTo(1));
                 //Assert.Fail("Timing not well implemented...");
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(1));
-            });
+            }
             Media media = readenSDP.Medias[0];
             Assert.That(media.Attributs, Has.Count.EqualTo(3));
 
             var rtpmaps = media.Attributs.Where(x => x.Key == AttributRtpMap.NAME).ToList();
             Assert.That(rtpmaps, Has.Count.EqualTo(1));
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(rtpmaps[0].Value, Is.EqualTo("98 H264/90000"));
                 Assert.That(rtpmaps[0], Is.InstanceOf<AttributRtpMap>());
                 Assert.That((rtpmaps[0] as AttributRtpMap)?.PayloadNumber, Is.EqualTo(98));
-            });
+            }
 
             var fmtps = media.Attributs.Where(x => x.Key == AttributFmtp.NAME).ToList();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(rtpmaps, Has.Count.EqualTo(1));
                 Assert.That(fmtps[0].Value, Is.EqualTo("98 profile-level-id=42A01E; sprop-parameter-sets=Z01AH/QFgJP6,aP48gA==; packetization-mode=1;"));
@@ -143,7 +142,7 @@ namespace Rtsp.Sdp.Tests
 
                 // Check the reader have read everything
                 Assert.That(testReader.ReadToEnd(), Is.EqualTo(string.Empty));
-            });
+            }
         }
 
         [Test]
@@ -179,7 +178,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile readenSDP = SdpFile.ReadLoose(testReader);
 
             Assert.That(readenSDP.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(readenSDP.Version, Is.EqualTo(0));
                 Assert.That(readenSDP.Origin.Username, Is.EqualTo("-"));
@@ -193,16 +192,15 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Email, Is.EqualTo("admin@"));
                 Assert.That(readenSDP.Attributs, Has.Count.EqualTo(2));
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(2));
-            });
+            }
 
             Media firstMedia = readenSDP.Medias[0];
             Assert.That(firstMedia.Bandwidths, Has.Count.EqualTo(1));
-
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(firstMedia.Bandwidths[0].Type, Is.EqualTo("AS"));
                 Assert.That(firstMedia.Bandwidths[0].Value, Is.EqualTo(5000));
-            });
+            }
         }
 
         [Test]
@@ -236,7 +234,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile sdp = SdpFile.ReadLoose(testReader);
 
             Assert.That(sdp.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(sdp.Version, Is.EqualTo(0));
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
@@ -251,7 +249,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
                 Assert.That(sdp.Medias[0].Connections, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias[0].Connections[0].Host, Is.EqualTo("0.0.0.0"));
-            });
+            }
         }
 
         [Test]
@@ -263,7 +261,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile sdp = SdpFile.ReadLoose(testReader);
 
             Assert.That(sdp.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(sdp.Version, Is.EqualTo(0));
                 Assert.That(sdp.Session, Is.EqualTo("HIK Media Server V3.0.2"));
@@ -277,7 +275,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Attributs, Has.Count.EqualTo(2));
                 Assert.That(sdp.Medias, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
-            });
+            }
         }
 
         [Test]
@@ -289,7 +287,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile sdp = SdpFile.ReadLoose(testReader);
 
             Assert.That(sdp.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(sdp.Version, Is.EqualTo(0));
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
@@ -303,7 +301,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Attributs, Has.Count.EqualTo(0));
                 Assert.That(sdp.Medias, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
-            });
+            }
         }
         
         [Test]
@@ -326,7 +324,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile sdp = SdpFile.ReadLoose(testReader);
 
             Assert.That(sdp.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(sdp.Version, Is.EqualTo(0));
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
@@ -340,7 +338,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Attributs, Has.Count.EqualTo(0));
                 Assert.That(sdp.Medias, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
-            });
+            }
         }
         
         [Test]
@@ -363,7 +361,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile sdp = SdpFile.ReadLoose(testReader);
 
             Assert.That(sdp.Origin, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(sdp.Version, Is.EqualTo(0));
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
@@ -377,7 +375,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Attributs, Has.Count.EqualTo(0));
                 Assert.That(sdp.Medias, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
-            });
+            }
         }
     }
 }
