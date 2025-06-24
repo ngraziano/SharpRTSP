@@ -6,7 +6,6 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -195,10 +194,7 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
-            var result = new RawMediaFrame(
-                new List<ReadOnlyMemory<byte>>(nalUnits),
-                new List<IMemoryOwner<byte>>(owners)
-                )
+            var result = new RawMediaFrame([.. nalUnits], [.. owners])
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = _timestamp,
