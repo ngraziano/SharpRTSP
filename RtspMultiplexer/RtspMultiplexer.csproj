@@ -17,6 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="NLog" Version="5.4.0" />
+    <PackageReference Include="NLog" Version="6.0.0" />
   </ItemGroup>
 </Project>
