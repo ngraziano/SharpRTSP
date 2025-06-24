@@ -21,7 +21,7 @@ namespace Rtsp.Tests.Onvif
             var timestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(extensionSpan, out int headerPosition);
             Assert.That(timestamp, Is.EqualTo(new DateTime(1900, 01, 01)));
             extensionSpan = extensionSpan[headerPosition..];
-            Assert.That(extensionSpan.Length, Is.EqualTo(0));
+            Assert.That(extensionSpan.Length, Is.Zero);
         }
 
         [Test]
@@ -35,7 +35,7 @@ namespace Rtsp.Tests.Onvif
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(timestamp, Is.EqualTo(DateTime.MinValue));
-                Assert.That(headerPosition, Is.EqualTo(0));
+                Assert.That(headerPosition, Is.Zero);
             }
         }
     }

@@ -44,7 +44,7 @@ namespace Rtsp.Sdp.Tests
             using var testReader = new StreamReader(sdpFile);
             SdpFile readenSDP = SdpFile.ReadStrict(testReader);
 
-            Assert.That(readenSDP.Version, Is.EqualTo(0));
+            Assert.That(readenSDP.Version, Is.Zero);
             Assert.That(readenSDP.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
@@ -99,7 +99,7 @@ namespace Rtsp.Sdp.Tests
             SdpFile readenSDP = SdpFile.ReadLoose(testReader);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(readenSDP.Version, Is.EqualTo(0));
+                Assert.That(readenSDP.Version, Is.Zero);
                 Assert.That(readenSDP.Origin, Is.Not.Null);
             }
             using (Assert.EnterMultipleScope())
@@ -180,7 +180,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(readenSDP.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(readenSDP.Version, Is.EqualTo(0));
+                Assert.That(readenSDP.Version, Is.Zero);
                 Assert.That(readenSDP.Origin.Username, Is.EqualTo("-"));
                 Assert.That(readenSDP.Origin.SessionId, Is.EqualTo("1707291593123122"));
                 Assert.That(readenSDP.Origin.SessionVersion, Is.EqualTo("1"));
@@ -236,7 +236,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(sdp.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Version, Is.Zero);
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
                 Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
                 Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));
@@ -263,7 +263,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(sdp.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Version, Is.Zero);
                 Assert.That(sdp.Session, Is.EqualTo("HIK Media Server V3.0.2"));
                 Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
                 Assert.That(sdp.Origin.SessionId, Is.EqualTo("1109162014219182"));
@@ -289,7 +289,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(sdp.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Version, Is.Zero);
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
                 Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
                 Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));
@@ -326,7 +326,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(sdp.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Version, Is.Zero);
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
                 Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
                 Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));
@@ -363,7 +363,7 @@ namespace Rtsp.Sdp.Tests
             Assert.That(sdp.Origin, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(sdp.Version, Is.EqualTo(0));
+                Assert.That(sdp.Version, Is.Zero);
                 Assert.That(sdp.Session, Is.EqualTo("Session99"));
                 Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
                 Assert.That(sdp.Origin.SessionId, Is.EqualTo("98969043"));

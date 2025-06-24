@@ -119,7 +119,7 @@ namespace Rtsp.Tests
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(theRequest.Headers.Keys, Does.Contain("Proxy-Require"));
-                Assert.That(theRequest.RtspUri, Is.EqualTo(null));
+                Assert.That(theRequest.RtspUri, Is.Null);
 
                 Assert.That(_receivedData, Is.Empty);
             }
@@ -156,7 +156,7 @@ namespace Rtsp.Tests
             Assert.That(theMessage, Is.InstanceOf<RtspRequest>());
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.Data.Length, Is.Zero);
                 Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
             }
 
@@ -205,7 +205,7 @@ namespace Rtsp.Tests
             Assert.That(theMessage, Is.InstanceOf<RtspResponse>());
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(theMessage.Data.Length, Is.EqualTo(0));
+                Assert.That(theMessage.Data.Length, Is.Zero);
                 Assert.That(theMessage.SourcePort, Is.SameAs(testedListener));
             }
 
