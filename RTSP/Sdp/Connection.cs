@@ -34,7 +34,7 @@ namespace Rtsp.Sdp
                     "IP4" => ConnectionIP4.Parse(firstMatch.Groups["Address"].Value),
                     "IP6" => ConnectionIP6.Parse(firstMatch.Groups["Address"].Value),
                     _ => throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture,
-                        "Address type {0} not suported", firstMatch.Groups["Address"].Value))
+                        "Address type {0} not suported", firstMatch.Groups["Address"].Value)),
                 };
             }
 

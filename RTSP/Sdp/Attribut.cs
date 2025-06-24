@@ -32,13 +32,13 @@ namespace Rtsp.Sdp
             Contract.EndContractBlock();
 
             var listValues = value.Split(':', 2);
-            
+
             // Call parser of child type
             if (!attributMap.TryGetValue(listValues[0], out var childContructor))
             {
-               childContructor = () => new Attribut(listValues[0]);
+                childContructor = () => new Attribut(listValues[0]);
             }
-            
+
             var returnValue = childContructor.Invoke();
             // Parse the value. Note most attributes have a value but recvonly does not have a value
             if (listValues.Length > 1) returnValue.ParseValue(listValues[1]);

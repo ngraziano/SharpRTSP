@@ -20,7 +20,7 @@ namespace Rtsp.Utils
             {
                 if (segment.Length == 0)
                     continue;
-
+                
                 if (checkForEndOfLine)
                 {
                     var nbToskip = segment.Span[0] == lf ? 1 : 0;
