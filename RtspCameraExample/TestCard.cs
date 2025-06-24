@@ -82,7 +82,7 @@ public class TestCard
             Interval = 1, // on first pass timer will fire straight away (cannot have zero interval)
             AutoReset = false // do not restart timer after the time has elapsed
         };
-        frame_timer.Elapsed += (object? sender, System.Timers.ElapsedEventArgs e) =>
+        frame_timer.Elapsed += (sender, e) =>
         {
             // send a video frame
             Send_YUV_Frame();
@@ -104,7 +104,7 @@ public class TestCard
             Interval = 1, // on first pass timer will fire straight away (cannot have zero interval)
             AutoReset = false // do not restart timer after the time has elapsed
         };
-        audio_timer.Elapsed += (object? sender, System.Timers.ElapsedEventArgs e) =>
+        audio_timer.Elapsed += (sender, e) =>
         {
             // send an audio frame
             Send_Audio_Frame();

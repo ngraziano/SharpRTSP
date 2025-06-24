@@ -1,5 +1,4 @@
 ﻿using NUnit.Framework;
-using NUnit.Framework.Legacy;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -303,7 +302,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
             }
         }
-        
+
         [Test]
         public void Read8Strict()
         {
@@ -314,7 +313,7 @@ namespace Rtsp.Sdp.Tests
                 () => SdpFile.ReadStrict(testReader),
                 Throws.InstanceOf<InvalidDataException>());
         }
-        
+
         [Test]
         public void Read8Loose()
         {
@@ -340,7 +339,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
             }
         }
-        
+
         [Test]
         public void Read9Strict()
         {
@@ -351,7 +350,7 @@ namespace Rtsp.Sdp.Tests
                 () => SdpFile.ReadStrict(testReader),
                 Throws.InstanceOf<InvalidDataException>());
         }
-        
+
         [Test]
         public void Read9Loose()
         {

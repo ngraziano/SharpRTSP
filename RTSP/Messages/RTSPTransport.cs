@@ -7,7 +7,7 @@ namespace Rtsp.Messages
 {
     public class RtspTransport
     {
-        
+
 
         /*
 RFC
@@ -251,7 +251,7 @@ mode                =    <"> *Method <"> | Method
         private static void ReadLowerTransport(RtspTransport returnValue, string[] transportProtocolPart)
         {
             if (transportProtocolPart.Length != 3) return;
-            
+
             if (!Enum.TryParse(transportProtocolPart[2], out LowerTransportType lowerTransport))
                 throw new ArgumentException("Lower transport type invalid", nameof(transportProtocolPart));
             returnValue.LowerTransport = lowerTransport;
