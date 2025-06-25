@@ -30,7 +30,7 @@ namespace Rtsp
         private CancellationTokenSource? _cancelationTokenSource;
         private Task? _mainTask;
         private Stream _stream;
-        private readonly SemaphoreSlim writeSemaphoreSlim = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim writeSemaphoreSlim = new(1, 1);
 
         private int _sequenceNumber;
 

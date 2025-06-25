@@ -5,7 +5,7 @@ using System.Linq;
 
 public static class RTSPHeaderUtils
 {
-    public static IList<string> ParsePublicHeader(string? headerValue) => 
+    public static IList<string> ParsePublicHeader(string? headerValue) =>
         string.IsNullOrEmpty(headerValue) ? [] : headerValue!.Split(',').Select(m => m.Trim()).ToList();
 
     public static IList<string> ParsePublicHeader(RtspResponse response)

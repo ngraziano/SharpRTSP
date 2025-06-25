@@ -23,3 +23,6 @@ dotnet_diagnostic.MA0111.severity = none
 
 # not supported in netstandard 2.0
 dotnet_diagnostic.MA0089.severity = none
+
+# not supported in netstandart 2.0
+dotnet_diagnostic.RCS1261.severity = none

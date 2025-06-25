@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Rtsp.Rtp
+﻿namespace Rtsp.Rtp
 {
     public interface IPayloadProcessor
     {
-  
+
         /// <summary>
         /// Process an RtpPacket and return a RawMediaFrame containing the data of the stream.
         /// </summary>
