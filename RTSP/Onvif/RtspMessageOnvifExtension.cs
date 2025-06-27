@@ -20,7 +20,7 @@ namespace Rtsp.Onvif
             message.Headers.Add(RtspHeaderNames.Range, $"clock={Seek(seekTimeFrom)}-{Seek(seekTimeTo)}");
         }
 
-        private static string Seek(DateTime dt) => FormattableString.Invariant($"{dt:yyyyMMdd}T{dt:HHmmss}");
+        private static string Seek(DateTime dt) => FormattableString.Invariant($"{dt:yyyyMMdd}T{dt:HHmmss}Z");
 
         /// <summary>
         /// Add the Require: onvif-replay header to the message for ONVIF compatibility
