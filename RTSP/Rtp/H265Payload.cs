@@ -5,8 +5,6 @@ using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Rtsp.Rtp
 {
@@ -110,7 +108,7 @@ namespace Rtsp.Rtp
 
             _logger.LogTrace("Frag FU-A s={headerS} e={headerE}", fu_header_s, fu_header_e);
 
-            // Check Start and End flags
+            // Check Start flag
             if (fu_header_s == 1)
             {
                 // Start of Fragment.
@@ -128,7 +126,6 @@ namespace Rtsp.Rtp
 
             // Part of Fragment
             // Append this payload to the fragmented_nal
-
             if (hasDonl)
             {
                 // start copying after the DONL data
@@ -140,11 +137,11 @@ namespace Rtsp.Rtp
                 fragmentedNal.Write(payload[3..]);
             }
 
+            // Check end Flag
             if (fu_header_e == 1)
             {
                 // Add the NAL to the array of NAL units
-                var length = (int)fragmentedNal.Length;
-                var nalSpan = PrepareNewNal(length);
+                var nalSpan = PrepareNewNal(fragmentedNal.Length);
                 fragmentedNal.CopyTo(nalSpan);
             }
         }
@@ -208,6 +205,9 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
+
+            // FIXME : Why a deep copy here if we suppress the original buffers just after
+            // it's a copy that was not present before.
             var data = nalsBuffer.Clone();
             var result = new RawMediaFrame(data.GetReadOnlySequence(), data)
             {
