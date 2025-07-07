@@ -5,8 +5,6 @@ using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Rtsp.Rtp
 {
@@ -110,43 +108,29 @@ namespace Rtsp.Rtp
                 _logger.LogDebug("Frag FU-A s={fuHeadersS} e={fuHeadersE}", fu_header_s, fu_header_e);
 
                 // Check Start and End flags
-                if (fu_header_s == 1 && fu_header_e == 0)
+                if (fu_header_s == 1)
                 {
                     // Start of Fragment.
                     // Initializes the fragmented_nal byte array
                     // Build the NAL header with the original F and NRI flags but use the the Type field from the fu_header_type
                     byte reconstructed_nal_type = (byte)((nal_header_f_bit << 7) + (nal_header_nri << 5) + fu_header_type);
 
-                    // Empty the stream
+                    // Empty the temporary buffer
                     fragmentedNal.Clear();
-
-                    var buffer = fragmentedNal.GetMemory(1 + 1 + payload.Length - 2).Span;
+                    fragmentedNal.EnsureCapacity(1 + 1 + payload.Length - 2);
 
                     // Add reconstructed_nal_type byte to the memory stream
                     fragmentedNal.Write(reconstructed_nal_type);
-
-                    // copy the rest of the RTP payload to the memory stream
-                    fragmentedNal.Write(payload[2..]);
                 }
 
-                if (fu_header_s == 0 && fu_header_e == 0)
-                {
-                    // Middle part of Fragment
-                    // Append this payload to the fragmented_nal
-                    // Data starts after the NAL Unit Type byte and the FU Header byte
-                    fragmentedNal.Write(payload[2..]);
-                }
+                // copy the rest of the RTP payload to the memory stream
+                fragmentedNal.Write(payload[2..]);
 
-                if (fu_header_s == 0 && fu_header_e == 1)
+                if (fu_header_e == 1)
                 {
                     // End part of Fragment
-                    // Append this payload to the fragmented_nal
-                    // Data starts after the NAL Unit Type byte and the FU Header byte
-                    fragmentedNal.Write(payload[2..]);
-
                     // Add the NAL to the array of NAL units
-                    var length = (int)fragmentedNal.Length;
-                    var nalSpan = PrepareNewNal(length);
+                    var nalSpan = PrepareNewNal(fragmentedNal.Length);
                     fragmentedNal.CopyTo(nalSpan);
                 }
             }
@@ -163,8 +147,8 @@ namespace Rtsp.Rtp
 
         private Span<byte> PrepareNewNal(int sizeWitoutHeader)
         {
-            int size = sizeWitoutHeader + 4;
-            var memory = nalUnitsBuffer.GetMemory(size);
+            var memory = nalUnitsBuffer.GetMemory(sizeWitoutHeader + 4);
+
             // Add the NAL start code 00 00 00 01
             memory.Span[0] = 0;
             memory.Span[1] = 0;
@@ -194,6 +178,9 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
+
+            // FIXME : Why a deep copy here if we suppress the original buffers just after
+            // it's a copy that was not present before.
             var data = nalUnitsBuffer.Clone();
             var result = new RawMediaFrame(data.GetReadOnlySequence(), data)
             {

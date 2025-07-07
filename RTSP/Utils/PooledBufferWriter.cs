@@ -140,7 +140,7 @@ internal sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// If not, commits the current buffer and rents a new one.
     /// </summary>
     /// <param name="sizeHint">The minimum number of bytes required.</param>
-    private void EnsureCapacity(int sizeHint)
+    public void EnsureCapacity(int sizeHint)
     {
         if (_currentMemory.Length - _currentIndex < sizeHint)
         {

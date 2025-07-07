@@ -112,9 +112,9 @@ namespace Rtsp.Rtp
             if (fu_header_s == 1)
             {
                 // Start of Fragment.
-                // Initiise the fragmented_nal byte array
+                // Initializes the fragmented_nal byte array
 
-                // Empty the stream
+                // Empty the temporary buffer
                 fragmentedNal.Clear();
 
                 // Reconstrut the NAL header from the rtp_payload_header, replacing the Type with FU Type
