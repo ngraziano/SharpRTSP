@@ -1,8 +1,6 @@
 ﻿using Rtsp.Onvif;
 using Rtsp.Utils;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 
 namespace Rtsp.Rtp
 {
@@ -44,18 +42,18 @@ namespace Rtsp.Rtp
                 return RawMediaFrame.Empty;
             }
 
-            var memoryPool = new PooledSequence(_memoryPool);
+            var poolSequence = new PooledSequence(_memoryPool);
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
             while (frame_start + sizeOfOneFrame < rtpPayload.Length)
             {
                 // Return just the basic u-Law or A-Law audio (the Layer 0 audio)
-                var memory = memoryPool.GetMemory(40);
+                var memory = poolSequence.GetMemory(40);
                 // only copy the Layer 0 data (the first 40 bytes)
                 rtpPayload[frame_start..(frame_start + 40)].CopyTo(memory.Span);
                 frame_start += sizeOfOneFrame;
             }
-            return new(memoryPool.GetReadOnlySequence(), memoryPool)
+            return new(poolSequence.GetReadOnlySequence(), poolSequence)
             {
                 ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
                 RtpTimestamp = packet.Timestamp,
