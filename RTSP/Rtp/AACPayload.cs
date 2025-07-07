@@ -2,7 +2,6 @@
 using Rtsp.Utils;
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 
 namespace Rtsp.Rtp
 {
@@ -122,7 +121,7 @@ namespace Rtsp.Rtp
             // Part 3 - Access Unit Audio Data
 
             // The rest of the RTP packet is the AMR data
-            var buffer = new PooledSequence(_memoryPool);
+            var pooledSequence = new PooledSequence(_memoryPool);
 
             int position = 0;
             var rtpPayload = packet.Payload;
@@ -143,13 +142,13 @@ namespace Rtsp.Rtp
                 // extract the AAC block
                 if (position + aac_frame_size > rtpPayload.Length) break; // not enough data to copy
 
-                var data = buffer.GetMemory(aac_frame_size);
+                var data = pooledSequence.GetMemory(aac_frame_size);
                 rtpPayload[position..(position + aac_frame_size)].CopyTo(data.Span);
 
                 position += aac_frame_size;
             }
 
-            return new(buffer.GetReadOnlySequence(), buffer)
+            return new(pooledSequence.GetReadOnlySequence(), pooledSequence)
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),

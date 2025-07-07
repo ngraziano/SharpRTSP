@@ -1,8 +1,5 @@
 ﻿using Rtsp.Onvif;
-using Rtsp.Utils;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 
 namespace Rtsp.Rtp
 {
@@ -30,12 +27,12 @@ namespace Rtsp.Rtp
             }
             // byte payloadHeader = payload[0];
 
-            int lenght = packet.PayloadSize - 1;
-            IMemoryOwner<byte> owner = _memoryPool.Rent(lenght);
+            int length = packet.PayloadSize - 1;
+            IMemoryOwner<byte> owner = _memoryPool.Rent(length);
             // The rest of the RTP packet is the AMR data
             packet.Payload[1..].CopyTo(owner.Memory.Span);
 
-            return new(new ReadOnlySequence<byte>(owner.Memory[..lenght]), owner)
+            return new(new ReadOnlySequence<byte>(owner.Memory[..length]), owner)
             {
                 ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
                 RtpTimestamp = packet.Timestamp,
