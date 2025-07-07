@@ -3,8 +3,6 @@ using Rtsp.Utils;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Rtsp.Rtp
 {
@@ -71,11 +69,11 @@ namespace Rtsp.Rtp
                 return RawMediaFrame.Empty;
             }
             // End Marker is set. The frame is complete
-            var length = (int)_frameBuffer.Length;
+            var length = _frameBuffer.Length;
             var memoryOwner = _memoryPool.Rent(length);
             _frameBuffer.CopyTo(memoryOwner.Memory.Span);
             _frameBuffer.Clear();
-            return new RawMediaFrame(new ReadOnlySequence<byte>(memoryOwner.Memory.Slice(0, length)), memoryOwner)
+            return new RawMediaFrame(new ReadOnlySequence<byte>(memoryOwner.Memory[..length]), memoryOwner)
             {
                 RtpTimestamp = packet.Timestamp,
                 ClockTimestamp = _timestamp ?? DateTime.MinValue,
@@ -150,7 +148,7 @@ namespace Rtsp.Rtp
                     ReInitializeJpegHeader();
                 }
 
-                _frameBuffer.Write(_jpegHeaderBytes.AsSpan());
+                _frameBuffer.Write(_jpegHeaderBytes);
             }
 
             if (fragmentOffset != 0 && _frameBuffer.Length == 0) { return false; }
