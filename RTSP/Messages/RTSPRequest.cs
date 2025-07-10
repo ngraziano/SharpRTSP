@@ -54,12 +54,10 @@ namespace Rtsp.Messages
                 RequestType.PAUSE => new RtspRequestPause(),
                 RequestType.TEARDOWN => new RtspRequestTeardown(),
                 RequestType.GET_PARAMETER => new RtspRequestGetParameter(),
+                RequestType.SET_PARAMETER => new RtspRequestSetParameter(),
                 RequestType.ANNOUNCE => new RtspRequestAnnounce(),
                 RequestType.RECORD => new RtspRequestRecord(),
-                /*
                 RequestType.REDIRECT => new RtspRequestRedirect(),
-                RequestType.SET_PARAMETER => new RtspRequestSetParameter(),
-                */
                 _ => new RtspRequest(),
             };
         }
