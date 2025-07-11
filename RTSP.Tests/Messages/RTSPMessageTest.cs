@@ -64,8 +64,10 @@ namespace Rtsp.Messages.Tests
         [GenericTestCase<RtspRequestPause>(RtspRequest.RequestType.PAUSE)]
         [GenericTestCase<RtspRequestTeardown>(RtspRequest.RequestType.TEARDOWN)]
         [GenericTestCase<RtspRequestGetParameter>(RtspRequest.RequestType.GET_PARAMETER)]
+        [GenericTestCase<RtspRequestSetParameter>(RtspRequest.RequestType.SET_PARAMETER)]
         [GenericTestCase<RtspRequestAnnounce>(RtspRequest.RequestType.ANNOUNCE)]
         [GenericTestCase<RtspRequestRecord>(RtspRequest.RequestType.RECORD)]
+        [GenericTestCase<RtspRequestRedirect>(RtspRequest.RequestType.REDIRECT)]
         public void CheckRequestType<T>(RtspRequest.RequestType expectedType) where T : RtspRequest, new()
         {
             RtspRequest onMessage = new T();
