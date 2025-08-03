@@ -5,14 +5,7 @@
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Nullable>enable</Nullable>
 	</PropertyGroup>
-	<ItemGroup>
-	  <None Remove="Rtp\Data\img_jpg_0.jpg" />
-	  <None Remove="Rtp\Data\jpeg_0.rtp" />
-	  <None Remove="Rtp\Data\jpeg_1.rtp" />
-	  <None Remove="Rtp\Data\jpeg_2.rtp" />
-	  <None Remove="Sdp\Data\test4.sdp" />
-	  <None Remove="Sdp\Data\test5.sdp" />
-	</ItemGroup>
+
 
 	<ItemGroup>
 		<CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
@@ -31,10 +24,9 @@
 		<EmbeddedResource Include="Sdp\Data\test5.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test6.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test7.sdp" />
-		<None Remove="Sdp\Data\test8.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test8.sdp" />
-		<None Remove="Sdp\Data\test9.sdp" />
 		<EmbeddedResource Include="Sdp\Data\test9.sdp" />
+		<EmbeddedResource Include="Sdp\Data\testA.sdp" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\RTSP\RTSP.csproj" />

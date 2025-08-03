@@ -376,5 +376,47 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(5));
             }
         }
+
+        [Test]
+        public void ReadAStrict()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.testA.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            Assert.That(
+                () => SdpFile.ReadStrict(testReader),
+                Throws.InstanceOf<InvalidDataException>());
+        }
+        
+                [Test]
+        public void ReadALoose()
+        {
+            using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.testA.sdp");
+            Debug.Assert(sdpFile != null, "Missing test file");
+            using var testReader = new StreamReader(sdpFile);
+            SdpFile sdp = SdpFile.ReadLoose(testReader);
+
+            Assert.That(sdp.Origin, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(sdp.Version, Is.Zero);
+                Assert.That(sdp.Session, Is.EqualTo("Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film"));
+                Assert.That(sdp.Origin.Username, Is.EqualTo("-"));
+                Assert.That(sdp.Origin.SessionId, Is.EqualTo("0"));
+                Assert.That(sdp.Origin.SessionVersion, Is.EqualTo("0"));
+                Assert.That(sdp.Origin.NetType, Is.EqualTo("IN"));
+                Assert.That(sdp.Origin.AddressType, Is.EqualTo("IP4"));
+                Assert.That(sdp.Origin.UnicastAddress, Is.EqualTo("127.0.0.1"));
+                Assert.That(sdp.Connection, Is.Null);
+                Assert.That(sdp.Attributs, Has.Count.EqualTo(1));
+                Assert.That(sdp.Medias, Has.Count.EqualTo(2));
+                Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(3));
+                Assert.That(sdp.Medias[0].Attributs, Has.One.AssignableTo<AttributRtpMap>());
+                Assert.That(sdp.Medias[0].Attributs, Has.One.AssignableTo<AttributFmtp>());
+                Assert.That(sdp.Medias[1].Attributs, Has.Count.EqualTo(3));
+                Assert.That(sdp.Medias[1].Attributs, Has.One.AssignableTo<AttributRtpMap>());
+                Assert.That(sdp.Medias[1].Attributs, Has.One.AssignableTo<AttributFmtp>());
+            }
+        }
     }
 }

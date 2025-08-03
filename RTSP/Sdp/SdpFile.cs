@@ -186,6 +186,12 @@ namespace Rtsp.Sdp
                 returnValue.Medias.Add(newMedia);
             }
 
+            // there should be nothing after the last media
+            if (value.Key != '\0')
+            {
+                throw new InvalidDataException("Unexpected key/value pair");
+            }
+
             return returnValue;
         }
 
