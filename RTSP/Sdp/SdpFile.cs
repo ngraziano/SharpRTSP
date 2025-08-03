@@ -306,10 +306,55 @@ namespace Rtsp.Sdp
                     case 'm':
                         while (value.Key == 'm')
                         {
-                            Media newMedia = ReadMedia(sdpStream, ref value);
+                            Media newMedia = ReadMediaLoose(sdpStream, ref value);
                             returnValue.Medias.Add(newMedia);
                         }
                         break;
+                }
+            }
+
+            return returnValue;
+        }
+
+        private static Media ReadMediaLoose(TextReader sdpStream, ref KeyValuePair<char, string> value)
+        {
+            Media returnValue = new(value.Value);
+
+            while (true)
+            {
+                value = GetKeyValue(sdpStream);
+
+                // Media title
+                if (value.Key == 'i')
+                {
+                }
+
+                // Connexion optional and multiple in media
+                else if (value.Key == 'c')
+                {
+                    returnValue.Connections.Add(Connection.Parse(value.Value));
+                }
+
+                // bandwidth optional multiple value possible
+                else if (value.Key == 'b')
+                {
+                    returnValue.Bandwidths.Add(Bandwidth.Parse(value.Value));
+                }
+
+                // encryption key optional
+                else if (value.Key == 'k')
+                {
+                    // Obsolete in RFC 8866 ignored
+                }
+
+                //Attribut optional multiple
+                else if (value.Key == 'a')
+                {
+                    returnValue.Attributs.Add(Attribut.ParseInvariant(value.Value));
+                }
+                else
+                {
+                    break;
                 }
             }
 
