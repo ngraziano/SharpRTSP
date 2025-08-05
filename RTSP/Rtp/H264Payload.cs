@@ -102,18 +102,17 @@ namespace Rtsp.Rtp
                 fu_a++;
 
                 // Parse Fragmentation Unit Header
-                int fu_header_s = payload[1] >> 7 & 0x01;  // start marker
-                int fu_header_e = payload[1] >> 6 & 0x01;  // end marker
-                                                           // int fu_header_r = payload[1] >> 5 & 0x01;  // reserved. should be 0
+                bool startMarker = (payload[1] >> 7 & 0x01) == 1;
+                bool endMarker = (payload[1] >> 6 & 0x01) == 1;
+
+                // int fu_header_r = payload[1] >> 5 & 0x01;  // reserved. should be 0
                 int fu_header_type = payload[1] >> 0 & 0x1F; // Original NAL unit header
 
-                _logger.LogDebug("Frag FU-A s={fuHeadersS} e={fuHeadersE}", fu_header_s, fu_header_e);
+                _logger.LogDebug("Frag FU-A s={startMarker} e={endMarker}", startMarker, endMarker);
 
-                // Check Start and End flags
-                if (fu_header_s == 1 && fu_header_e == 0)
+                if (startMarker)
                 {
                     // Start of Fragment.
-                    // Initiise the fragmented_nal byte array
                     // Build the NAL header with the original F and NRI flags but use the the Type field from the fu_header_type
                     byte reconstructed_nal_type = (byte)((nal_header_f_bit << 7) + (nal_header_nri << 5) + fu_header_type);
 
@@ -122,26 +121,15 @@ namespace Rtsp.Rtp
 
                     // Add reconstructed_nal_type byte to the memory stream
                     fragmentedNal.WriteByte(reconstructed_nal_type);
-
-                    // copy the rest of the RTP payload to the memory stream
-                    fragmentedNal.Write(payload[2..]);
                 }
 
-                if (fu_header_s == 0 && fu_header_e == 0)
-                {
-                    // Middle part of Fragment
-                    // Append this payload to the fragmented_nal
-                    // Data starts after the NAL Unit Type byte and the FU Header byte
-                    fragmentedNal.Write(payload[2..]);
-                }
+                // copy the rest of the RTP payload to the memory stream
+                fragmentedNal.Write(payload[2..]);
 
-                if (fu_header_s == 0 && fu_header_e == 1)
+
+                if (endMarker)
                 {
                     // End part of Fragment
-                    // Append this payload to the fragmented_nal
-                    // Data starts after the NAL Unit Type byte and the FU Header byte
-                    fragmentedNal.Write(payload[2..]);
-
                     // Add the NAL to the array of NAL units
                     var length = (int)fragmentedNal.Length;
                     var nalSpan = PrepareNewNal(length);
