@@ -1,7 +1,9 @@
 ﻿using Rtsp.Messages;
 using System;
 using System.Buffers;
+using System.Buffers.Text;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -89,27 +91,30 @@ namespace Rtsp
 
             public override void Flush()
             {
+                var commandLength = (int)_sendBuffer.Length;
+                var basse64Buffer = ArrayPool<byte>.Shared.Rent(Base64.GetMaxEncodedToUtf8Length(commandLength));
+
+                _sendBuffer.Position = 0;
+                var read = _sendBuffer.Read(basse64Buffer, 0, commandLength);
+                Debug.Assert(read == commandLength);
+                Base64.EncodeToUtf8InPlace(basse64Buffer, commandLength, out int byteWritten);
+                var base64CommandBytes = basse64Buffer.AsSpan(0, byteWritten);
+
+
                 if (_outClient?.Connected != true)
                 {
                     _outClient?.Dispose();
                     _outClient = new TcpClient();
                     _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
 
-                    string base64CodedCommandString = Convert.ToBase64String(_sendBuffer.ToArray());
-                    byte[] base64CommandBytes = Encoding.ASCII.GetBytes(base64CodedCommandString);
-
                     string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
                     byte[] requestBytes = Encoding.ASCII.GetBytes(request);
 
                     _outClient.GetStream().Write(requestBytes);
-                    _outClient.GetStream().Write(base64CommandBytes);
                 }
-                else
-                {
-                    string base64CodedCommandString = Convert.ToBase64String(_sendBuffer.ToArray());
-                    byte[] base64CommandBytes = Encoding.ASCII.GetBytes(base64CodedCommandString);
-                    _outClient.GetStream().Write(base64CommandBytes);
-                }
+
+                _outClient.GetStream().Write(base64CommandBytes);
+                ArrayPool<byte>.Shared.Return(basse64Buffer);
 
                 _sendBuffer.SetLength(0);
             }
@@ -118,6 +123,10 @@ namespace Rtsp
 
             public override void Write(byte[] buffer, int offset, int count) => _sendBuffer.Write(buffer, offset, count);
 
+#if NETSTANDARD2_1_OR_GREATER || NET8_0_OR_GREATER
+            // Remove a copy when possible
+            public override void Write(ReadOnlySpan<byte> buffer) => _sendBuffer.Write(buffer);
+#endif
             private static int ReadUntilEndOfHeaders(Stream stream, byte[] buffer, int length)
             {
                 int offset = 0;
@@ -239,14 +248,15 @@ namespace Rtsp
             GC.SuppressFinalize(this);
         }
 
-        private string GetAuthorizationHeader(uint counter, string method, byte[] requestBytes)
+        private string GetAuthorizationHeader(uint counter, string method, ReadOnlySpan<byte> requestBytes)
         {
             if (_authentication == null)
             {
                 return string.Empty;
             }
 
-            string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes);
+            // check to change GetResponse body to span
+            string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes.ToArray());
             return $"Authorization: {headerValue}\r\n";
         }
 
@@ -262,7 +272,7 @@ namespace Rtsp
             return sb.ToString();
         }
 
-        private string ComposePostRequest(string sessionCookie, byte[] commandBytes)
+        private string ComposePostRequest(string sessionCookie, ReadOnlySpan<byte> commandBytes)
         {
             string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "POST", commandBytes);
 
