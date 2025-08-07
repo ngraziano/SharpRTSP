@@ -360,7 +360,7 @@ namespace Rtsp
 
             if (currentMessage?.Data.IsEmpty == false)
             {
-                if (buffer.Length > currentMessage.Data.Length)
+                if (buffer.Length >= currentMessage.Data.Length)
                 {
                     buffer.CopyTo(currentMessage.Data.Span);
                     buffer = buffer.Slice(currentMessage.Data.Length);
