@@ -12,7 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class RtspOverHttpListenSocket
+public class RtspOverHttpListenSocket : IRtspListenSocket
 {
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
@@ -36,10 +36,7 @@ public class RtspOverHttpListenSocket
         _logger = logger as ILogger ?? NullLogger.Instance;
     }
 
-    public IRtspTransport Accept()
-    {
-        return _newConnections.Take(_stop.Token);
-    }
+    public IRtspTransport Accept() => _newConnections.Take(_stop.Token);
 
     public void Start()
     {

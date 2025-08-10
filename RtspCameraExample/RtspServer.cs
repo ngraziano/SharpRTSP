@@ -32,7 +32,8 @@ namespace RtspCameraExample
         const uint global_ssrc = 0x4321FADE; // 8 hex digits
         const int rtspTimeOut = 60; // 60 seconds
 
-        private readonly TcpListener _RTSPServerListener;
+        private readonly IRtspListenSocket _RTSPServerListener;
+
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
         private CancellationTokenSource? _Stopping;
@@ -61,7 +62,7 @@ namespace RtspCameraExample
         /// <param name="portNumber">A numero port.</param>
         /// <param name="username">username.</param>
         /// <param name="password">password.</param>
-        public RtspServer(int portNumber, string username, string password, ILoggerFactory loggerFactory)
+        public RtspServer(int portNumber, string username, string password, bool useHttpTunnel, ILoggerFactory loggerFactory)
         {
             if (portNumber < IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort)
             {
@@ -83,7 +84,25 @@ namespace RtspCameraExample
             }
 
             RtspUtils.RegisterUri();
-            _RTSPServerListener = new TcpListener(IPAddress.Any, portNumber);
+            if (useHttpTunnel)
+            {
+                _RTSPServerListener = new RtspOverHttpListenSocket(new(IPAddress.Any, portNumber), loggerFactory.CreateLogger<RtspOverHttpListenSocket>());
+            }
+            else
+            {
+                if (!_useRTSPS)
+                {
+                    _RTSPServerListener = new RtspListenSocket(new(IPAddress.Any, portNumber), loggerFactory.CreateLogger<RtspListenSocket>());
+                }
+                else
+                {
+                    var certificate = X509CertificateLoader.LoadPkcs12FromFile(_pfxFile, "");
+                    // NOTE - we can add a callback where we can validate the TLS Certificates here
+                    _RTSPServerListener = new RtspTlsListenSocket(new(IPAddress.Any, portNumber),
+                        loggerFactory.CreateLogger<RtspListenSocket>(), certificate);
+
+                }
+            }
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<RtspServer>();
         }
@@ -96,7 +115,7 @@ namespace RtspCameraExample
         /// <param name="password">password.</param>
         /// <param name="pfxFile">pfxFile used for RTSPS TLS Server Certificate.</param>
         public RtspServer(int portNumber, string username, string password, string pfxFile, ILoggerFactory loggerFactory)
-            : this(portNumber, username, password, loggerFactory)
+            : this(portNumber, username, password, false, loggerFactory)
         {
             if (string.IsNullOrEmpty(pfxFile))
             {
@@ -128,20 +147,9 @@ namespace RtspCameraExample
                 while (_Stopping?.IsCancellationRequested == false)
                 {
                     // Wait for an incoming TCP Connection
-                    TcpClient oneClient = _RTSPServerListener.AcceptTcpClient();
-                    _logger.LogDebug("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
 
-                    // Hand the incoming TCP connection over to the RTSP classes
-                    IRtspTransport rtsp_socket;
-                    if (!_useRTSPS)
-                    {
-                        rtsp_socket = new RtspTcpTransport(oneClient);
-                    }
-                    else
-                    {
-                        var certificate = X509CertificateLoader.LoadPkcs12FromFile(_pfxFile, "");
-                        rtsp_socket = new RtspTcpTlsTransport(oneClient, certificate); // NOTE - we can add a callback where we can validate the TLS Certificates here
-                    }
+                    IRtspTransport rtsp_socket = _RTSPServerListener.Accept();
+                    _logger.LogDebug("Connection from {remoteEndPoint}", rtsp_socket.RemoteEndPoint);
 
                     try
                     {
