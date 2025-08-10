@@ -86,7 +86,7 @@ namespace RtspCameraExample
             RtspUtils.RegisterUri();
             if (useHttpTunnel)
             {
-                _RTSPServerListener = new RtspOverHttpListenSocket(new(IPAddress.Any, portNumber), loggerFactory.CreateLogger<RtspOverHttpListenSocket>());
+                _RTSPServerListener = new RtspOverHttpListenSocket(new(IPAddress.Any, portNumber), loggerFactory);
             }
             else
             {

@@ -1,5 +1,7 @@
 ﻿namespace Rtsp;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Buffers;
 using System.Buffers.Text;
@@ -8,6 +10,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -78,18 +81,9 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         }
 
         public override void Write(byte[] buffer, int offset, int count) => _outStream.Write(buffer, offset, count);
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _outStream.Dispose();
-                _parent.Dispose();
-            }
-            base.Dispose(disposing);
-        }
     }
 
+    private readonly ILogger _logger;
     private TcpClient? _postChannelClient;
     private TcpClient? _getChannelClient;
     private Stream? _stream;
@@ -97,7 +91,6 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
     private bool _disposedValue;
     private readonly Pipe _decodedDataPipe = new();
     private readonly CancellationTokenSource _stop = new();
-
 
     internal enum UpdateState
     {
@@ -114,10 +107,13 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
 
     public bool Connected => _getChannelClient?.Connected == true;
 
-    internal RtspHttpServerTransport() { }
+    internal RtspHttpServerTransport(ILogger<RtspHttpServerTransport>? logger) {
+        _logger = logger as ILogger ?? NullLogger.Instance;
+    }
 
     public void Close()
     {
+        _stop.Cancel();
         _postChannelClient?.Close();
         _getChannelClient?.Close();
     }
@@ -130,6 +126,7 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
 
     internal UpdateState UpdatePostChannel(TcpClient client)
     {
+        _logger.LogDebug("New post channel detected");
         var wasPresent = _postChannelClient != null;
         _postChannelClient?.Close();
 
@@ -173,10 +170,12 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
                     if (flushResult.IsCompleted)
                     {
                         // reader is closed
+                        _logger.LogDebug("Dest channel close");
                         break;
                     }
                     if (sourceReadResult.IsCompleted)
                     {
+                        _logger.LogDebug("Post Channel close");
                         // source tcp is closed
                         break;
                     }
@@ -184,17 +183,19 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
                 }
                 else if (decodeResult != OperationStatus.NeedMoreData)
                 {
-                    throw new InvalidOperationException("Fail to decode base64 post channel");
+                    _logger.LogWarning("Invalid data receive for base64, fail to decode post channel, data ={data}",
+                        Encoding.UTF8.GetString(sourceBuffer.Slice(0, roundLength).ToArray()));
+                    break;
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            // IGNORE
+            _logger.LogDebug("Decode post channel canceled");
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // IGNORE
+            _logger.LogWarning(ex,"Error during post channel decode");
         }
         _postChannelClient?.Dispose();
 
@@ -202,8 +203,12 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
 
     internal UpdateState UpdateGetChannel(TcpClient client)
     {
-        if (_getChannelClient != null) return UpdateState.Error;
-
+        _logger.LogDebug("New get channel");
+        if (_getChannelClient != null)
+        {
+            _logger.LogWarning("Get channel already present, fail");
+            return UpdateState.Error;
+        }
         _getChannelClient = client;
         _stream = new HttpTransportStream(this);
 

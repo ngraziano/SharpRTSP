@@ -70,7 +70,7 @@ namespace RtspCameraExample
                 // Step 1 - Start the RTSP Server
                 /////////////////////////////////////////
                 if (!useRTSPS)
-                    rtspServer = new RtspServer(port, username, password, false, loggerFactory);
+                    rtspServer = new RtspServer(port, username, password, true, loggerFactory);
                 else
                     rtspServer = new RtspServer(port, username, password, pfxFile, loggerFactory); // rtsps:// needs a PFX File
                 try

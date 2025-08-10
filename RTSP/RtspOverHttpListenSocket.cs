@@ -16,6 +16,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
 {
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
+    private readonly ILoggerFactory? _loggerFactory;
     private CancellationTokenSource _stop = new();
 
     private readonly BlockingCollection<RtspHttpServerTransport> _newConnections = new(100);
@@ -30,10 +31,11 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
                     + "Content-Type: application/x-rtsp-tunnelled\r\n"
                     + "\r\n");
 
-    public RtspOverHttpListenSocket(TcpListener tcpListener, ILogger<RtspOverHttpListenSocket>? logger = null)
+    public RtspOverHttpListenSocket(TcpListener tcpListener, ILoggerFactory? loggerFactory = null)
     {
         _tcpListener = tcpListener;
-        _logger = logger as ILogger ?? NullLogger.Instance;
+        _logger = loggerFactory?.CreateLogger<RtspOverHttpListenSocket>() as ILogger ?? NullLogger.Instance;
+        _loggerFactory = loggerFactory;
     }
 
     public IRtspTransport Accept() => _newConnections.Take(_stop.Token);
@@ -117,7 +119,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
             if (!_activesSessions.TryGetValue(sessionCookie, out var session))
             {
                 _logger.LogDebug("Create session {sessionCookie}", sessionCookie);
-                session = new();
+                session = new(_loggerFactory?.CreateLogger<RtspHttpServerTransport>());
                 _activesSessions[sessionCookie] = session;
             }
 
@@ -173,19 +175,37 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
             }
 
         }
+        catch(InvalidDataException ex)
+        {
+            _logger.LogWarning(ex, "Invalid data from client");
+            client.Dispose();
+        }
         catch (OperationCanceledException)
         {
             _logger.LogDebug("Operation canceled");
+            client.Dispose();
         }
         catch (IOException)
         {
-            _logger.LogDebug("Error during read");
+            _logger.LogWarning("Error during read");
+            client.Dispose();
         }
     }
 
-    private static async Task<string> ReadOneLine(Stream stream, CancellationToken token)
+    /// <summary>
+    /// Manual read stream for a full line, 
+    /// </summary>
+    /// <param name="stream">The stream to read</param>
+    /// <param name="cancellationToken">the cancelation token</param>
+    /// <returns>A line (without /r and /n)</returns>
+    /// <exception cref="InvalidDataException">Raise when data is too large</exception>
+    /// <remarks>
+    /// Exist ecause streamreader read too much data in the buffer
+    /// So slowly read one by one
+    /// </remarks>
+    private static async Task<string> ReadOneLine(Stream stream, CancellationToken cancellationToken)
     {
-        // manual read stream, beause streamreader read too much data in the buffer
+        // 
         // So slowly read one by one
         // 2048 is arbitrary, if a line of the http request is greater than 2048 
         // the client is doing something stange.
@@ -193,7 +213,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
 
         for (int i = 0; i < buffer.Length; i++)
         {
-            int n = await stream.ReadAsync(buffer.AsMemory(i, 1), token).ConfigureAwait(false);
+            int n = await stream.ReadAsync(buffer.AsMemory(i, 1), cancellationToken).ConfigureAwait(false);
             if (n != 1 || buffer[i] == '\n')
             {
                 return Encoding.UTF8.GetString(buffer, 0, i);
