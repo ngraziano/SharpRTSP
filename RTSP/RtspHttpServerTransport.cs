@@ -91,6 +91,7 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
     private bool _disposedValue;
     private readonly Pipe _decodedDataPipe = new();
     private readonly CancellationTokenSource _stop = new();
+    public readonly DateTime creationTime = DateTime.UtcNow;
 
     internal enum UpdateState
     {
@@ -101,13 +102,27 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
 
     public string RemoteAddress => RemoteEndPoint.ToString();
 
-    public IPEndPoint RemoteEndPoint => _getChannelClient?.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
+    public IPEndPoint RemoteEndPoint { get; private set; } = null!;
 
-    public IPEndPoint LocalEndPoint => _getChannelClient?.Client.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
+    public IPEndPoint LocalEndPoint { get; private set; } = null!;
 
     public bool Connected => _getChannelClient?.Connected == true;
 
-    internal RtspHttpServerTransport(ILogger<RtspHttpServerTransport>? logger) {
+    public bool IsObsolete
+    {
+        get
+        {
+            // Not fully initialized, it can live 5 minutes
+            if (_getChannelClient is null || _postChannelClient is null)
+            {
+                return creationTime.AddMinutes(5) < DateTime.UtcNow;
+            }
+            return !_getChannelClient.Connected;
+        }
+    }
+
+    internal RtspHttpServerTransport(ILogger<RtspHttpServerTransport>? logger)
+    {
         _logger = logger as ILogger ?? NullLogger.Instance;
     }
 
@@ -195,7 +210,7 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex,"Error during post channel decode");
+            _logger.LogWarning(ex, "Error during post channel decode");
         }
         _postChannelClient?.Dispose();
 
@@ -211,6 +226,9 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         }
         _getChannelClient = client;
         _stream = new HttpTransportStream(this);
+        RemoteEndPoint = _getChannelClient?.Client?.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
+        LocalEndPoint = _getChannelClient?.Client?.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
+
 
         if (_postChannelClient != null)
         {

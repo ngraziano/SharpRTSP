@@ -7,6 +7,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -73,7 +74,15 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
                 _logger.LogDebug("Connection from {remoteEndPoint}", client.Client.RemoteEndPoint);
                 await HandleHeaderAndAddToSessions(client, cancellationToken).ConfigureAwait(false);
 
-                // TODO cleanup old session
+                // remove old session
+                var sessionToRemove = _activesSessions
+                    .Where(kv => kv.Value.IsObsolete)
+                    .Select(kv => kv.Key)
+                    .ToList();
+                foreach (var session in sessionToRemove)
+                {
+                    _activesSessions.TryRemove(session, out _);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -175,7 +184,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
             }
 
         }
-        catch(InvalidDataException ex)
+        catch (InvalidDataException ex)
         {
             _logger.LogWarning(ex, "Invalid data from client");
             client.Dispose();
@@ -193,7 +202,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
     }
 
     /// <summary>
-    /// Manual read stream for a full line, 
+    /// Manual read stream for a full line,
     /// </summary>
     /// <param name="stream">The stream to read</param>
     /// <param name="cancellationToken">the cancelation token</param>
