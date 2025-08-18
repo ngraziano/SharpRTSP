@@ -10,10 +10,10 @@ public class RtspListenSocket : IRtspListenSocket
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
 
-    public RtspListenSocket(TcpListener tcpListener, ILogger<RtspListenSocket> logger)
+    public RtspListenSocket(TcpListener tcpListener, ILoggerFactory? loggerFactory = null)
     {
         _tcpListener = tcpListener;
-        _logger = logger as ILogger ?? NullLogger.Instance;
+        _logger = loggerFactory?.CreateLogger< RtspListenSocket>() as ILogger ?? NullLogger.Instance;
     }
 
     public IRtspTransport Accept()

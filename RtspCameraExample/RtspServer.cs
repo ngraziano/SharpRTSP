@@ -71,6 +71,9 @@ namespace RtspCameraExample
 
             Contract.EndContractBlock();
 
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<RtspServer>();
+
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
             {
                 const string realm = "SharpRTSPServer";
@@ -84,27 +87,20 @@ namespace RtspCameraExample
             }
 
             RtspUtils.RegisterUri();
-            if (useHttpTunnel)
+            X509Certificate2? certificate = null;
+            if (_useRTSPS)
             {
-                _RTSPServerListener = new RtspOverHttpListenSocket(new(IPAddress.Any, portNumber), loggerFactory);
+                certificate = X509CertificateLoader.LoadPkcs12FromFile(_pfxFile, "");
             }
-            else
-            {
-                if (!_useRTSPS)
-                {
-                    _RTSPServerListener = new RtspListenSocket(new(IPAddress.Any, portNumber), loggerFactory.CreateLogger<RtspListenSocket>());
-                }
-                else
-                {
-                    var certificate = X509CertificateLoader.LoadPkcs12FromFile(_pfxFile, "");
-                    // NOTE - we can add a callback where we can validate the TLS Certificates here
-                    _RTSPServerListener = new RtspTlsListenSocket(new(IPAddress.Any, portNumber),
-                        loggerFactory.CreateLogger<RtspListenSocket>(), certificate);
 
-                }
-            }
-            _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<RtspServer>();
+            var tcpListener = new TcpListener(IPAddress.Any, portNumber);
+            _RTSPServerListener = useHttpTunnel switch
+            {
+                true when certificate is null => new RtspOverHttpListenSocket(tcpListener, loggerFactory),
+                true => new RtspOverHttpTLSListenSocket(tcpListener, certificate, loggerFactory: loggerFactory),
+                false when certificate is null => new RtspListenSocket(tcpListener, loggerFactory: loggerFactory),
+                false => new RtspTlsListenSocket(tcpListener, certificate, loggerFactory: loggerFactory),
+            };
         }
 
         /// <summary>
@@ -146,24 +142,23 @@ namespace RtspCameraExample
             {
                 while (_Stopping?.IsCancellationRequested == false)
                 {
-                    // Wait for an incoming TCP Connection
-
-                    IRtspTransport rtsp_socket = _RTSPServerListener.Accept();
-                    _logger.LogDebug("Connection from {remoteEndPoint}", rtsp_socket.RemoteEndPoint);
-
                     try
                     {
-                        RtspListener newListener = new(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
+                        // Wait for an incoming TCP Connection
+                        IRtspTransport rtsp_socket = _RTSPServerListener.Accept();
+                        _logger.LogDebug("Connection from {remoteEndPoint}", rtsp_socket.RemoteEndPoint);
+
+                        var newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
                         newListener.MessageReceived += RTSPMessageReceived;
 
                         // Add the RtspListener to the RTSPConnections List
                         lock (rtspConnectionList)
                         {
-                            RTSPConnection new_connection = new()
+                            RTSPConnection newConnection = new()
                             {
                                 Listener = newListener,
                             };
-                            rtspConnectionList.Add(new_connection);
+                            rtspConnectionList.Add(newConnection);
                         }
 
                         newListener.Start();
@@ -177,11 +172,6 @@ namespace RtspCameraExample
             catch (SocketException)
             {
                 // _logger.Warn("Got an error listening, I have to handle the stopping which also throw an error", error);
-            }
-            catch (Exception)
-            {
-                // _logger.Error("Got an error listening...", error);
-                throw;
             }
         }
 
@@ -954,8 +944,8 @@ namespace RtspCameraExample
             // Client Hostname/IP Address
             public string session_id = "";             // RTSP Session ID used with this client connection
 
-            public RTPStream video = new();
-            public RTPStream audio = new();
+            public readonly RTPStream video = new();
+            public readonly RTPStream audio = new();
 
             public void UpdateKeepAlive()
             {

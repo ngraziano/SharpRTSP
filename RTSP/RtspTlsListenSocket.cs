@@ -13,11 +13,12 @@ public class RtspTlsListenSocket : IRtspListenSocket
     private readonly RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     private readonly ILogger _logger;
 
-    public RtspTlsListenSocket(TcpListener tcpListener, ILogger<RtspListenSocket> logger,
-        X509Certificate2 certificate, RemoteCertificateValidationCallback? userCertificateValidationCallback = null)
+    public RtspTlsListenSocket(TcpListener tcpListener,
+        X509Certificate2 certificate, RemoteCertificateValidationCallback? userCertificateValidationCallback = null,
+        ILoggerFactory? loggerFactory = null)
     {
         _tcpListener = tcpListener;
-        _logger = logger as ILogger ?? NullLogger.Instance;
+        _logger = loggerFactory?.CreateLogger<RtspTlsListenSocket>() as ILogger ?? NullLogger.Instance;
         _certificate = certificate;
         _userCertificateValidationCallback = userCertificateValidationCallback;
     }
