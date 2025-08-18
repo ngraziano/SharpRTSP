@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Buffers;
 using System.Buffers.Text;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
 using System.Net;
@@ -21,11 +20,10 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         private readonly Stream _outStream;
         private readonly RtspHttpServerTransport _parent;
 
-        public HttpTransportStream(RtspHttpServerTransport parent)
+        public HttpTransportStream(RtspHttpServerTransport parent, Stream getChannelStream)
         {
-            Debug.Assert(parent._getChannelClient != null);
-            _outStream = parent._getChannelClient!.GetStream();
             _parent = parent;
+            _outStream = getChannelStream;
         }
 
         public override bool CanRead => _outStream.CanRead;
@@ -139,14 +137,18 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
 
     public void Reconnect() => throw new InvalidOperationException("Server can not reconnect to client");
 
-    internal UpdateState UpdatePostChannel(TcpClient client)
+    internal UpdateState UpdatePostChannel(TcpClient client, Stream stream)
     {
         _logger.LogDebug("New post channel detected");
         var wasPresent = _postChannelClient != null;
         _postChannelClient?.Close();
 
         _postChannelClient = client;
-        _ = Task.Factory.StartNew(async () => await DecodePostChannel(_stop.Token).ConfigureAwait(false),
+        _ = Task.Factory.StartNew(async () =>
+             {
+                 await DecodePostChannel(stream, _stop.Token).ConfigureAwait(false);
+                 client.Close();
+             },
             _stop.Token,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Current);
@@ -158,12 +160,11 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         return UpdateState.Ok;
     }
 
-    private async Task DecodePostChannel(CancellationToken token)
+    private async Task DecodePostChannel(Stream postChannelStream, CancellationToken token)
     {
-        Debug.Assert(_postChannelClient != null);
         try
         {
-            var pipeSource = PipeReader.Create(_postChannelClient!.GetStream());
+            var pipeSource = PipeReader.Create(postChannelStream);
             var pipeDest = _decodedDataPipe.Writer;
             while (!token.IsCancellationRequested)
             {
@@ -212,11 +213,9 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         {
             _logger.LogWarning(ex, "Error during post channel decode");
         }
-        _postChannelClient?.Dispose();
-
     }
 
-    internal UpdateState UpdateGetChannel(TcpClient client)
+    internal UpdateState UpdateGetChannel(TcpClient client, Stream stream)
     {
         _logger.LogDebug("New get channel");
         if (_getChannelClient != null)
@@ -225,7 +224,7 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
             return UpdateState.Error;
         }
         _getChannelClient = client;
-        _stream = new HttpTransportStream(this);
+        _stream = new HttpTransportStream(this, stream);
         RemoteEndPoint = _getChannelClient?.Client?.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
         LocalEndPoint = _getChannelClient?.Client?.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
 

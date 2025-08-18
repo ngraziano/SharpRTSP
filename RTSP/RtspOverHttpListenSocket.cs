@@ -97,7 +97,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         client.ReceiveTimeout = 5000;
         try
         {
-            var clientStream = client.GetStream();
+            var clientStream = GetStream(client);
             var firstLine = await ReadOneLine(clientStream, cancellationToken).ConfigureAwait(false);
 
             bool isPostChannel;
@@ -142,7 +142,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
                     return;
                 }
 
-                var inError = session.UpdatePostChannel(client) switch
+                var inError = session.UpdatePostChannel(client, clientStream) switch
                 {
                     RtspHttpServerTransport.UpdateState.Ok => false,
                     RtspHttpServerTransport.UpdateState.NewSession => !_newConnections.TryAdd(session),
@@ -166,14 +166,14 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
                     return;
                 }
 
-                var inError = session.UpdateGetChannel(client) switch
+                var inError = session.UpdateGetChannel(client, clientStream) switch
                 {
                     RtspHttpServerTransport.UpdateState.Ok => false,
                     RtspHttpServerTransport.UpdateState.NewSession => !_newConnections.TryAdd(session),
                     _ => true,
                 };
 
-                await client.GetStream().WriteAsync(getResponse, cancellationToken).ConfigureAwait(false);
+                await clientStream.WriteAsync(getResponse, cancellationToken).ConfigureAwait(false);
 
                 if (inError)
                 {
@@ -250,5 +250,10 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         }
 
         return headers;
+    }
+
+    protected virtual Stream GetStream(TcpClient client)
+    {
+        return client.GetStream();
     }
 }
