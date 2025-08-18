@@ -110,7 +110,7 @@ namespace RtspCameraExample
                 // Everything else happens in Timed Events from av_source
                 // or Worker Threads in the RTSP library
                 /////////////////////////////////////////
-                String msg = "Connect RTSP client to Port=" + port;
+                string msg = "Connect RTSP client to Port=" + port;
                 if (username != null && password != null)
                 {
                     msg += " Username=" + username + " Password=" + password;

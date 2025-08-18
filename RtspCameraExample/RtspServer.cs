@@ -32,7 +32,7 @@ namespace RtspCameraExample
         const uint global_ssrc = 0x4321FADE; // 8 hex digits
         const int rtspTimeOut = 60; // 60 seconds
 
-        private readonly IRtspListenSocket _RTSPServerListener;
+        private readonly IRtspListenSocket _RtspServerListener;
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
@@ -40,8 +40,8 @@ namespace RtspCameraExample
         private Thread? _ListenTread;
 
         const int video_payload_type = 96; // = user defined payload, requuired for H264
-        byte[]? raw_sps;
-        byte[]? raw_pps;
+        byte[]? rawSps;
+        byte[]? rawPs;
 
         const int audio_payload_type = 0; // = Hard Coded to PCMU audio
         private ushort audioSequenceNumber = (ushort)Random.Shared.Next();
@@ -94,7 +94,7 @@ namespace RtspCameraExample
             }
 
             var tcpListener = new TcpListener(IPAddress.Any, portNumber);
-            _RTSPServerListener = useHttpTunnel switch
+            _RtspServerListener = useHttpTunnel switch
             {
                 true when certificate is null => new RtspOverHttpListenSocket(tcpListener, loggerFactory),
                 true => new RtspOverHttpTLSListenSocket(tcpListener, certificate, loggerFactory: loggerFactory),
@@ -126,7 +126,7 @@ namespace RtspCameraExample
         /// </summary>
         public void StartListen()
         {
-            _RTSPServerListener.Start();
+            _RtspServerListener.Start();
 
             _Stopping = new CancellationTokenSource();
             _ListenTread = new Thread(new ThreadStart(AcceptConnection));
@@ -145,7 +145,7 @@ namespace RtspCameraExample
                     try
                     {
                         // Wait for an incoming TCP Connection
-                        IRtspTransport rtsp_socket = _RTSPServerListener.Accept();
+                        IRtspTransport rtsp_socket = _RtspServerListener.Accept();
                         _logger.LogDebug("Connection from {remoteEndPoint}", rtsp_socket.RemoteEndPoint);
 
                         var newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
@@ -177,7 +177,7 @@ namespace RtspCameraExample
 
         public void StopListen()
         {
-            _RTSPServerListener.Stop();
+            _RtspServerListener.Stop();
             _Stopping?.Cancel();
             _ListenTread?.Join();
         }
@@ -305,8 +305,8 @@ namespace RtspCameraExample
                     play_response.AddHeader("RTP-Info: " + rtp_info);
                     listener.SendMessage(play_response);
 
-                    connection.video.must_send_rtcp_packet = true;
-                    connection.audio.must_send_rtcp_packet = true;
+                    connection.video.mustSendRtcpPacket = true;
+                    connection.audio.mustSendRtcpPacket = true;
 
                     // Allow video and audio to go to this client
                     connection.play = true;
@@ -463,7 +463,7 @@ namespace RtspCameraExample
             // TODO. Check the requsted_url is valid. In this example we accept any RTSP URL
 
             // if the SPS and PPS are not defined yet, we have to return an error
-            if (raw_sps == null || raw_pps == null)
+            if (rawSps == null || rawPs == null)
             {
                 RtspResponse describe_response2 = message.CreateResponse();
                 describe_response2.ReturnCode = 400; // 400 Bad Request
@@ -474,8 +474,8 @@ namespace RtspCameraExample
             // Make the Base64 SPS and PPS
             // raw_sps has no 0x00 0x00 0x00 0x01 or 32 bit size header
             // raw_pps has no 0x00 0x00 0x00 0x01 or 32 bit size header
-            string sps_str = Convert.ToBase64String(raw_sps);
-            string pps_str = Convert.ToBase64String(raw_pps);
+            string sps_str = Convert.ToBase64String(rawSps);
+            string pps_str = Convert.ToBase64String(rawPs);
 
             // Make the profile-level-id
             // Eg a string of profile-level-id=42A01E is
@@ -569,8 +569,8 @@ namespace RtspCameraExample
         // Feed in Raw SPS/PPS data - no 32 bit headers, no 00 00 00 01 headers
         public void FeedInRawSPSandPPS(byte[] sps_data, byte[] pps_data) // SPS data without any headers (00 00 00 01 or 32 bit lengths)
         {
-            raw_sps = sps_data;
-            raw_pps = pps_data;
+            rawSps = sps_data;
+            rawPs = pps_data;
         }
 
         // Feed in Raw NALs - no 32 bit headers, no 00 00 00 01 headers
@@ -604,7 +604,7 @@ namespace RtspCameraExample
                 _logger.LogDebug("Sending video session {sessionId} {TransportLogName} Timestamp(ms)={timestamp_ms}. RTP timestamp={rtp_timestamp}. Sequence={sequenceNumber}",
                     connection.session_id, TransportLogName(connection.video.rtpChannel), timestamp_ms, rtp_timestamp, videoSequenceNumber);
 
-                if (connection.video.must_send_rtcp_packet && !await SendRTCP(rtp_timestamp, connection, connection.video))
+                if (connection.video.mustSendRtcpPacket && !await SendRTCP(rtp_timestamp, connection, connection.video))
                 {
                     RemoveSession(connection);
                     return;
@@ -630,7 +630,7 @@ namespace RtspCameraExample
                         break; // exit out of foreach loop
                     }
                 }
-                connection.video.octet_count += (uint)nal_array.Sum(nal => nal.Length); // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
+                connection.video.octetCount += (uint)nal_array.Sum(nal => nal.Length); // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
             }).ToArray();
 
             Task.WaitAll(tasks);
@@ -650,7 +650,7 @@ namespace RtspCameraExample
             int length = (rtcpSenderReport.Length / 4) - 1; // num 32 bit words minus 1
             RtcpPacketUtil.WriteHeader(rtcpSenderReport.Span, RtcpPacketUtil.RTCP_VERSION, hasPadding, reportCount,
                 RtcpPacketUtil.RTCP_PACKET_TYPE_SENDER_REPORT, length, global_ssrc);
-            RtcpPacketUtil.WriteSenderReport(rtcpSenderReport.Span, DateTime.UtcNow, rtp_timestamp, stream.rtp_packet_count, stream.octet_count);
+            RtcpPacketUtil.WriteSenderReport(rtcpSenderReport.Span, DateTime.UtcNow, rtp_timestamp, stream.packetCount, stream.octetCount);
 
             try
             {
@@ -822,13 +822,13 @@ namespace RtspCameraExample
 
             if (currentRtspPlayCount == 0) return;
 
-            uint rtp_timestamp = timestamp_ms * 8; // 8kHz clock
+            uint rtpTimestamp = timestamp_ms * 8; // 8kHz clock
 
             // Put the whole Audio Packet into one RTP packet.
             // 12 is header size when there are no CSRCs or extensions
             var size = 12 + audio_packet.Length;
             using var owner = MemoryPool<byte>.Shared.Rent(size);
-            var rtp_packet = owner.Memory[..size];
+            var rtpPacket = owner.Memory[..size];
             // Create an single RTP fragment
 
             // RTP Packet Header
@@ -839,20 +839,20 @@ namespace RtspCameraExample
             //nn - Extension ID and Length
             //nn - Extension header
 
-            const bool rtp_padding = false;
+            const bool rtpPadding = false;
             const bool rtpHasExtension = false;
-            int rtp_csrc_count = 0;
+            uint[] csrc = [];
             const bool rtpMarker = true; // always 1 as this is the last (and only) RTP packet for this audio timestamp
 
-            RtpPacketUtil.WriteHeader(rtp_packet.Span,
-                RtpPacketUtil.RTP_VERSION, rtp_padding, rtpHasExtension, rtp_csrc_count, rtpMarker, audio_payload_type);
+            RtpPacketUtil.WriteHeader(rtpPacket.Span,
+                RtpPacketUtil.RTP_VERSION, rtpPadding, rtpHasExtension, csrc.Length, rtpMarker, audio_payload_type);
 
-            RtpPacketUtil.WriteSequenceNumber(rtp_packet.Span, audioSequenceNumber++);
-            RtpPacketUtil.WriteSSRC(rtp_packet.Span, global_ssrc);
-            RtpPacketUtil.WriteTimestamp(rtp_packet.Span, rtp_timestamp);
+            RtpPacketUtil.WriteSequenceNumber(rtpPacket.Span, audioSequenceNumber++);
+            RtpPacketUtil.WriteSSRC(rtpPacket.Span, global_ssrc);
+            RtpPacketUtil.WriteTimestamp(rtpPacket.Span, rtpTimestamp);
 
             // Now append the audio packet
-            audio_packet.CopyTo(rtp_packet[12..]);
+            audio_packet.CopyTo(rtpPacket[12..]);
 
             RTSPConnection[] listConnectionCopy;
             // SEND THE RTSP PACKET
@@ -872,12 +872,12 @@ namespace RtspCameraExample
                 // The client may have only subscribed to Video. Check if the client wants audio
                 if (connection.audio.rtpChannel is null) return;
 
-                Console.WriteLine("Sending audio session " + connection.session_id + " " + TransportLogName(connection.audio.rtpChannel) + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtp_timestamp + ". Sequence=" + audioSequenceNumber);
+                Console.WriteLine("Sending audio session " + connection.session_id + " " + TransportLogName(connection.audio.rtpChannel) + " Timestamp(ms)=" + timestamp_ms + ". RTP timestamp=" + rtpTimestamp + ". Sequence=" + audioSequenceNumber);
                 bool write_error = false;
 
-                if (connection.audio.must_send_rtcp_packet)
+                if (connection.audio.mustSendRtcpPacket)
                 {
-                    if (!await SendRTCP(rtp_timestamp, connection, connection.audio))
+                    if (!await SendRTCP(rtpTimestamp, connection, connection.audio))
                     {
                         RemoveSession(connection);
                     }
@@ -888,7 +888,7 @@ namespace RtspCameraExample
                     try
                     {
                         // send the whole RTP packet
-                        await connection.audio.rtpChannel.WriteToDataPortAsync(rtp_packet);
+                        await connection.audio.rtpChannel.WriteToDataPortAsync(rtpPacket);
                     }
                     catch (Exception e)
                     {
@@ -903,8 +903,8 @@ namespace RtspCameraExample
                     RemoveSession(connection);
                 }
 
-                connection.audio.rtp_packet_count++;
-                connection.audio.octet_count += (uint)audio_packet.Length; // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
+                connection.audio.packetCount++;
+                connection.audio.octetCount += (uint)audio_packet.Length; // QUESTION - Do I need to include the RTP header bytes/fragmenting bytes
             }).ToArray();
             Task.WaitAll(tasks);
         }
@@ -924,12 +924,12 @@ namespace RtspCameraExample
         public class RTPStream
         {
             public int trackID;
-            public bool must_send_rtcp_packet = false; // when true will send out a RTCP packet to match Wall Clock Time to RTP Payload timestamps
+            public bool mustSendRtcpPacket = false; // when true will send out a RTCP packet to match Wall Clock Time to RTP Payload timestamps
                                                        // 16 bit RTP packet sequence number used with this client connection
             public IRtpTransport? rtpChannel;     // Pair of UDP sockets (data and control) used when sending via UDP
-            public DateTime time_since_last_rtcp_keepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
-            public uint rtp_packet_count = 0;       // Used in the RTCP Sender Report to state how many RTP packets have been transmitted (for packet loss)
-            public uint octet_count = 0;        // number of bytes of video that have been transmitted (for average bandwidth monitoring)
+            public DateTime timeSinceLastRtcpKeepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
+            public uint packetCount = 0;       // Used in the RTCP Sender Report to state how many RTP packets have been transmitted (for packet loss)
+            public uint octetCount = 0;        // number of bytes of video that have been transmitted (for average bandwidth monitoring)
         }
 
         public class RTSPConnection

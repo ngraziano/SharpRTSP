@@ -58,7 +58,11 @@ namespace Rtsp
             // Use presence of server certificate to select if this is the SSL/TLS Server or the SSL/TLS Client
             if (_serverCertificate is not null)
             {
-                sslStream.AuthenticateAsServer(_serverCertificate, false, SslProtocols.Tls12, false);
+                sslStream.AuthenticateAsServer(
+                    _serverCertificate,
+                    clientCertificateRequired: false,
+                    SslProtocols.Tls12,
+                    checkCertificateRevocation: false);
             }
             else
             {
