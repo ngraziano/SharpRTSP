@@ -164,7 +164,7 @@ namespace Rtsp.Messages
                 {
                     return;
                 }
-                
+
                 if (value != DEFAULT_TIMEOUT)
                 {
                     Headers[RtspHeaderNames.Session] =
