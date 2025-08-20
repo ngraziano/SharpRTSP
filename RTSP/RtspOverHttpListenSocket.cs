@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Rtsp.Messages;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -218,14 +219,16 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         // So slowly read one by one
         // 2048 is arbitrary, if a line of the http request is greater than 2048 
         // the client is doing something stange.
-        byte[] buffer = new byte[2048];
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(2048);
 
         for (int i = 0; i < buffer.Length; i++)
         {
             int n = await stream.ReadAsync(buffer.AsMemory(i, 1), cancellationToken).ConfigureAwait(false);
             if (n != 1 || buffer[i] == '\n')
             {
-                return Encoding.UTF8.GetString(buffer, 0, i);
+                var result = Encoding.UTF8.GetString(buffer, 0, i);
+                ArrayPool<byte>.Shared.Return(buffer);
+                return result;
             }
             if (buffer[i] == '\r')
             {
