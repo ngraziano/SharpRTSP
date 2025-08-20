@@ -1,4 +1,7 @@
-﻿namespace Rtsp;
+﻿using System.Threading;
+using System.Threading.Tasks;
+
+namespace Rtsp;
 
 /// <summary>
 /// Interface for a RTSP server listening to a socket
@@ -9,7 +12,7 @@ public interface IRtspListenSocket
     /// Accept a new connection
     /// </summary>
     /// <returns>Connection accepeted</returns>
-    IRtspTransport Accept();
+    Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Start listening

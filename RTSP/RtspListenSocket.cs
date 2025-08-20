@@ -3,7 +3,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Net.Sockets;
-
+using System.Threading;
+using System.Threading.Tasks;
 
 public class RtspListenSocket : IRtspListenSocket
 {
@@ -13,12 +14,20 @@ public class RtspListenSocket : IRtspListenSocket
     public RtspListenSocket(TcpListener tcpListener, ILoggerFactory? loggerFactory = null)
     {
         _tcpListener = tcpListener;
-        _logger = loggerFactory?.CreateLogger< RtspListenSocket>() as ILogger ?? NullLogger.Instance;
+        _logger = loggerFactory?.CreateLogger<RtspListenSocket>() as ILogger ?? NullLogger.Instance;
     }
 
-    public IRtspTransport Accept()
+    public async Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken)
     {
-        var client = _tcpListener.AcceptTcpClient();
+#if NET8_0_OR_GREATER
+        var client = await _tcpListener.AcceptTcpClientAsync(cancellationToken).ConfigureAwait(false);
+#else
+        TcpClient client;
+        using (cancellationToken.Register(() => _tcpListener.Stop()))
+        {
+            client = await _tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
+        }
+#endif
         return new RtspTcpTransport(client);
     }
 

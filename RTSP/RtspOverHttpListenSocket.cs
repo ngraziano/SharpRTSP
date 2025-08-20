@@ -40,7 +40,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         _loggerFactory = loggerFactory;
     }
 
-    public IRtspTransport Accept() => _newConnections.Take(_stop.Token);
+    public Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken) => Task.Run(()=>_newConnections.Take(cancellationToken) as IRtspTransport);
 
     public void Start()
     {

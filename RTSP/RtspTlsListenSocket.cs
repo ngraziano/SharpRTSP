@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
 
 public class RtspTlsListenSocket : IRtspListenSocket
 {
@@ -23,9 +25,17 @@ public class RtspTlsListenSocket : IRtspListenSocket
         _userCertificateValidationCallback = userCertificateValidationCallback;
     }
 
-    public IRtspTransport Accept()
+    public async Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken)
     {
-        var client = _tcpListener.AcceptTcpClient();
+#if NET8_0_OR_GREATER
+        var client = await _tcpListener.AcceptTcpClientAsync(cancellationToken).ConfigureAwait(false);
+#else
+        TcpClient client;
+        using (cancellationToken.Register(() => _tcpListener.Stop()))
+        {
+            client = await _tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
+        }
+#endif
         return new RtspTcpTlsTransport(client, _certificate, _userCertificateValidationCallback);
     }
 

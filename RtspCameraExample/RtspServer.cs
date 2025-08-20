@@ -37,7 +37,7 @@ namespace RtspCameraExample
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
         private CancellationTokenSource? _Stopping;
-        private Thread? _ListenTread;
+        private Task? _ListenTask;
 
         const int video_payload_type = 96; // = user defined payload, requuired for H264
         byte[]? rawSps;
@@ -129,23 +129,25 @@ namespace RtspCameraExample
             _RtspServerListener.Start();
 
             _Stopping = new CancellationTokenSource();
-            _ListenTread = new Thread(new ThreadStart(AcceptConnection));
-            _ListenTread.Start();
+            _ListenTask = Task.Factory.StartNew(async () => await AcceptConnection(_Stopping.Token).ConfigureAwait(false),
+               _Stopping.Token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Current);
         }
 
         /// <summary>
         /// Accepts the connection.
         /// </summary>
-        private void AcceptConnection()
+        private async Task AcceptConnection(CancellationToken cancellationToken)
         {
             try
             {
-                while (_Stopping?.IsCancellationRequested == false)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
                         // Wait for an incoming TCP Connection
-                        IRtspTransport rtsp_socket = _RtspServerListener.Accept();
+                        IRtspTransport rtsp_socket = await _RtspServerListener.AcceptAsync(cancellationToken);
                         _logger.LogDebug("Connection from {remoteEndPoint}", rtsp_socket.RemoteEndPoint);
 
                         var newListener = new RtspListener(rtsp_socket, _loggerFactory.CreateLogger<RtspListener>());
@@ -163,6 +165,10 @@ namespace RtspCameraExample
 
                         newListener.Start();
                     }
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogDebug("Operation canceled");
+                    }
                     catch (AuthenticationException)
                     {
                         _logger.LogWarning("Invalid client (maybe RTSP on RTSPS socket)");
@@ -179,7 +185,7 @@ namespace RtspCameraExample
         {
             _RtspServerListener.Stop();
             _Stopping?.Cancel();
-            _ListenTread?.Join();
+            _ListenTask?.Wait();
         }
 
         #region IDisposable Membres
@@ -925,7 +931,7 @@ namespace RtspCameraExample
         {
             public int trackID;
             public bool mustSendRtcpPacket = false; // when true will send out a RTCP packet to match Wall Clock Time to RTP Payload timestamps
-                                                       // 16 bit RTP packet sequence number used with this client connection
+                                                    // 16 bit RTP packet sequence number used with this client connection
             public IRtpTransport? rtpChannel;     // Pair of UDP sockets (data and control) used when sending via UDP
             public DateTime timeSinceLastRtcpKeepalive = DateTime.UtcNow; // Time since last RTCP message received - used to spot dead UDP clients
             public uint packetCount = 0;       // Used in the RTCP Sender Report to state how many RTP packets have been transmitted (for packet loss)
