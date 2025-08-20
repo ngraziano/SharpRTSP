@@ -19,7 +19,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
     private readonly ILoggerFactory? _loggerFactory;
-    private CancellationTokenSource _stop = new();
+    private CancellationTokenSource? _stop;
 
     private readonly BlockingCollection<RtspHttpServerTransport> _newConnections = new(100);
     private readonly ConcurrentDictionary<string, RtspHttpServerTransport> _activesSessions = new(StringComparer.Ordinal);
@@ -40,12 +40,20 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         _loggerFactory = loggerFactory;
     }
 
-    public Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken) => Task.Run(()=>_newConnections.Take(cancellationToken) as IRtspTransport);
+    public async Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken)
+    {
+        if(_stop?.IsCancellationRequested != false)
+        {
+            throw new InvalidOperationException("Not listening. You must call the Start() method before calling this method.");
+        }
+
+        return await Task.Run(() => _newConnections.Take(cancellationToken) as IRtspTransport).ConfigureAwait(false);
+    }
 
     public void Start()
     {
-        // stop old one
-        _stop.Cancel();
+        if (_stop?.IsCancellationRequested == false)
+            return;
 
         _stop = new();
         _tcpListener.Start();
@@ -57,7 +65,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
 
     public void Stop()
     {
-        _stop.Cancel();
+        _stop?.Cancel();
         _tcpListener.Stop();
     }
 
