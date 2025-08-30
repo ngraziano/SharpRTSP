@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Rtsp.Rtp
 {
@@ -43,35 +45,109 @@ namespace Rtsp.Rtp
             List<Memory<byte>> rtp_packets = [];
             List<IMemoryOwner<byte>> memoryOwners = [];
 
+            int payloadMaxSize = _packetMaxSize - RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
+
 
             for (int x = 0; x < nalArray.Count; x++)
             {
-                ReadOnlySpan<byte> rawNal = nalArray[x];
+                ReadOnlySpan<byte> rawNal = SkipNalStart(nalArray[x]);
 
-                // skip NAL start code if present
-                if (rawNal.Length > 3 && rawNal[0] == 0 && rawNal[1] == 0 && rawNal[2] == 0 && rawNal[3] == 1)
+                int multipleInPacketSize = 1 + 2 + rawNal.Length;
+
+                int multiplePacketIndex = x;
+                // check if we can put multiple nal in one packet
+                for (int y = x + 1; y < nalArray.Count; y++)
                 {
-                    rawNal = rawNal[4..];
+                    int newSize = multipleInPacketSize + 2 + SkipNalStart(nalArray[y]).Length;
+                    if (newSize > payloadMaxSize)
+                    {
+                        break;
+                    }
+                    multiplePacketIndex = y;
                 }
 
-
-                bool lastNal = x == nalArray.Count - 1;
-
-                int payloadMaxSize = _packetMaxSize - RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
-
-                // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
-                // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
-                if (rawNal.Length <= payloadMaxSize)
+                if (multiplePacketIndex > x)
                 {
-                    AddFullNal(rtpTimestamp, rtp_packets, memoryOwners, rawNal, lastNal);
+                    bool lastNal = multiplePacketIndex == nalArray.Count - 1;
+                    var nals = nalArray.Skip(x).Take(1 + multiplePacketIndex - x).ToList();
+                    AddMultipleNal(rtpTimestamp, rtp_packets, memoryOwners, nals, lastNal);
+                    x = multiplePacketIndex;
                 }
                 else
                 {
-                    AddFragmentedNal(rtpTimestamp, rtp_packets, memoryOwners, rawNal, lastNal);
+
+                    bool lastNal = x == nalArray.Count - 1;
+
+                    // The H264 Payload could be sent as one large RTP packet (assuming the receiver can handle it)
+                    // or as a Fragmented Data, split over several RTP packets with the same Timestamp.
+                    if (rawNal.Length <= payloadMaxSize)
+                    {
+                        AddFullNal(rtpTimestamp, rtp_packets, memoryOwners, rawNal, lastNal);
+                    }
+                    else
+                    {
+                        AddFragmentedNal(rtpTimestamp, rtp_packets, memoryOwners, rawNal, lastNal);
+                    }
                 }
             }
 
             return (rtp_packets, memoryOwners);
+        }
+
+        private void AddMultipleNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners, List<byte[]> nals, bool lastNal)
+        {
+            // Put the whole NAL into one RTP packet.
+            var headerSize = RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
+
+            var payloadSize = 1 + nals.Sum(nal => 2 + SkipNalStart(nal).Length);
+
+            var destSize = headerSize + payloadSize;
+            var owner = pool.Rent(destSize);
+            memoryOwners.Add(owner);
+            var rtp_packet = owner.Memory[..(destSize)];
+
+            // Create an single RTP fragment
+            RtpPacketUtil.WriteHeader(rtp_packet.Span,
+                RtpPacketUtil.RTP_VERSION,
+                padding: false,
+                hasExtension: false,
+                csrcCount: 0,
+                marker: lastNal, _payloadType);
+
+            RtpPacketUtil.WriteSequenceNumber(rtp_packet.Span, SequenceNumber++);
+            RtpPacketUtil.WriteSSRC(rtp_packet.Span, Ssrc);
+
+            RtpPacketUtil.WriteTimestamp(rtp_packet.Span, rtpTimestamp);
+
+
+            var offset = headerSize;
+            rtp_packet.Span[offset++] = 24;
+            foreach (var nal in nals)
+            {
+                var rawNal = SkipNalStart(nal);
+                BinaryPrimitives.WriteUInt16BigEndian(rtp_packet[offset..(offset + 2)].Span, (ushort)rawNal.Length);
+
+                // Now append the raw NAL
+                rawNal.CopyTo(rtp_packet[(offset + 2)..].Span);
+
+                offset += rawNal.Length + 2;
+            }
+
+            rtp_packets.Add(rtp_packet);
+        }
+
+        /// <summary>
+        /// Skip the header 00 00 00 01
+        /// </summary>
+        /// <param name="nal">The nal</param>
+        /// <returns>The part of nal without the header</returns>
+        private static ReadOnlySpan<byte> SkipNalStart(ReadOnlySpan<byte> nal)
+        {
+            if (nal.Length > 3 && nal[0] == 0 && nal[1] == 0 && nal[2] == 0 && nal[3] == 1)
+            {
+                return nal[4..];
+            }
+            return nal;
         }
 
         private void AddFragmentedNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners, ReadOnlySpan<byte> rawNal, bool last_nal)
