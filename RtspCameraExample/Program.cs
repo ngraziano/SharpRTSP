@@ -54,8 +54,8 @@ namespace RtspCameraExample
 
             // 4) You now have a file called server.pfx which can be used by this application
 
-            private readonly int width =  192;
-            private readonly int height = 128;
+            private readonly int width = 192; // *8;
+            private readonly int height = 128;// *8;
             private readonly uint fps = 25;
 
             public Demo(ILoggerFactory loggerFactory)
@@ -70,9 +70,9 @@ namespace RtspCameraExample
                 // Step 1 - Start the RTSP Server
                 /////////////////////////////////////////
                 if (!useRTSPS)
-                    rtspServer = new RtspServer(port, username, password, true, loggerFactory);
+                    rtspServer = new RtspServer(port, username, password, false, loggerFactory);
                 else
-                    rtspServer = new RtspServer(port, username, password, pfxFile, loggerFactory); // rtsps:// needs a PFX File
+                    rtspServer = new RtspServer(port, username, password, false, pfxFile, loggerFactory); // rtsps:// needs a PFX File
                 try
                 {
                     rtspServer.StartListen();

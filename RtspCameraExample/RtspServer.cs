@@ -46,7 +46,7 @@ namespace RtspCameraExample
         const int audio_payload_type = 0; // = Hard Coded to PCMU audio
         private ushort audioSequenceNumber = (ushort)Random.Shared.Next();
 
-        private readonly H264PayloadBuilder videoPayloadBuilder = new H264PayloadBuilder(
+        private readonly H264PayloadBuilder videoPayloadBuilder = new (
             video_payload_type, global_ssrc, 1400 - 100, (ushort)Random.Shared.Next()
             );
 
@@ -56,7 +56,7 @@ namespace RtspCameraExample
         private readonly NetworkCredential credential;
         private readonly Authentication? auth;
 
-        private readonly bool _useRTSPS = false;
+        private readonly bool _useRTSPS;
         private readonly string _pfxFile = "";
 
         /// <summary>
@@ -112,9 +112,10 @@ namespace RtspCameraExample
         /// <param name="portNumber">A numero port.</param>
         /// <param name="username">username.</param>
         /// <param name="password">password.</param>
+        /// <param name="useHttpTunnel">The server use HTTPS tunnel</param>
         /// <param name="pfxFile">pfxFile used for RTSPS TLS Server Certificate.</param>
-        public RtspServer(int portNumber, string username, string password, string pfxFile, ILoggerFactory loggerFactory)
-            : this(portNumber, username, password, false, loggerFactory)
+        public RtspServer(int portNumber, string username, string password, bool useHttpTunnel, string pfxFile, ILoggerFactory loggerFactory)
+            : this(portNumber, username, password, useHttpTunnel, loggerFactory)
         {
             if (string.IsNullOrEmpty(pfxFile))
             {
