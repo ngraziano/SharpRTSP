@@ -157,11 +157,17 @@ namespace Rtsp.Rtp
 
             var headerSize = RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
 
-            int payloadMaxSize = _packetMaxSize - headerSize;
+            int payloadMaxSize = _packetMaxSize - headerSize - 2;
 
             // consume first byte of the raw_nal. It is used in the FU header
             byte firstByte = rawNal[0];
             rawNal = rawNal[1..];
+
+            // rent a big enought buffer for all data
+            var owner = pool.Rent(((rawNal.Length / payloadMaxSize) + 1) * _packetMaxSize);
+            memoryOwners.Add(owner);
+
+            var buffer = owner.Memory;
 
             while (rawNal.Length > 0)
             {
@@ -170,9 +176,10 @@ namespace Rtsp.Rtp
 
                 // 2 bytes for FU-A header 
                 var destSize = headerSize + 2 + payload_size;
-                var owner = pool.Rent(destSize);
-                memoryOwners.Add(owner);
-                var rtpPacket = owner.Memory[..destSize];
+
+                // Take the necessary space from the buffer
+                var rtpPacket = buffer[..destSize];
+                buffer = buffer[destSize..];
 
                 RtpPacketUtil.WriteHeader(rtpPacket.Span, RtpPacketUtil.RTP_VERSION,
                     padding: false, hasExtension: false, csrcCount: 0, marker: last_nal && end, _payloadType);
@@ -186,10 +193,10 @@ namespace Rtsp.Rtp
                 byte nri = (byte)(firstByte >> 5 & 0x03); // Part of the 1st byte of the Raw NAL (NAL Reference ID)
                 const byte type = 28; // FU-A Fragmentation
 
-                rtpPacket.Span[12] = (byte)((f_bit << 7) + (nri << 5) + type);
-                rtpPacket.Span[13] = (byte)(((start ? 1 : 0) << 7) + ((end ? 1 : 0) << 6) + (0 << 5) + (firstByte & 0x1F));
+                rtpPacket.Span[headerSize] = (byte)((f_bit << 7) + (nri << 5) + type);
+                rtpPacket.Span[headerSize+1] = (byte)(((start ? 1 : 0) << 7) + ((end ? 1 : 0) << 6) + (0 << 5) + (firstByte & 0x1F));
 
-                rawNal[..payload_size].CopyTo(rtpPacket[14..].Span);
+                rawNal[..payload_size].CopyTo(rtpPacket[(headerSize+2)..].Span);
                 rawNal = rawNal[payload_size..];
 
                 rtp_packets.Add(rtpPacket);
