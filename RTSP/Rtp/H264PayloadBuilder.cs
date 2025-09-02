@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rtsp.Utils;
+using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -35,15 +36,12 @@ namespace Rtsp.Rtp
         /// </summary>
         /// <param name="nalArray">List of NAL, each nal may or may not contain the 00 00 00 01 header</param>
         /// <param name="rtpTimestamp">Rtp timestamps of the generated packet</param>
-        /// <returns>List of memory of packet and list of owner of this memories </returns>
+        /// <returns>List of memory of packet and an disposable owner to return all the buffers</returns>
         /// <remarks>All the NALS must have the same RTP timestamp</remarks>
-        public (List<Memory<byte>>, List<IMemoryOwner<byte>>) PrepareVideoRtpPackets(
-            List<byte[]> nalArray,
-            uint rtpTimestamp
-            )
+        public (List<Memory<byte>>, IDisposable?) PrepareVideoRtpPackets(List<byte[]> nalArray, uint rtpTimestamp)
         {
             List<Memory<byte>> rtp_packets = [];
-            List<IMemoryOwner<byte>> memoryOwners = [];
+            List<IDisposable> memoryOwners = [];
 
             int payloadMaxSize = _packetMaxSize - RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
 
@@ -91,10 +89,10 @@ namespace Rtsp.Rtp
                 }
             }
 
-            return (rtp_packets, memoryOwners);
+            return (rtp_packets, DisposableList.GetDisposable(memoryOwners));
         }
 
-        private void AddMultipleNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners, List<byte[]> nals, bool lastNal)
+        private void AddMultipleNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IDisposable> memoryOwners, List<byte[]> nals, bool lastNal)
         {
             // Put the whole NAL into one RTP packet.
             var headerSize = RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);
@@ -150,7 +148,7 @@ namespace Rtsp.Rtp
             return nal;
         }
 
-        private void AddFragmentedNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners, ReadOnlySpan<byte> rawNal, bool last_nal)
+        private void AddFragmentedNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IDisposable> memoryOwners, ReadOnlySpan<byte> rawNal, bool last_nal)
         {
             bool start = true;
             bool end = false;
@@ -194,9 +192,9 @@ namespace Rtsp.Rtp
                 const byte type = 28; // FU-A Fragmentation
 
                 rtpPacket.Span[headerSize] = (byte)((f_bit << 7) + (nri << 5) + type);
-                rtpPacket.Span[headerSize+1] = (byte)(((start ? 1 : 0) << 7) + ((end ? 1 : 0) << 6) + (0 << 5) + (firstByte & 0x1F));
+                rtpPacket.Span[headerSize + 1] = (byte)(((start ? 1 : 0) << 7) + ((end ? 1 : 0) << 6) + (0 << 5) + (firstByte & 0x1F));
 
-                rawNal[..payload_size].CopyTo(rtpPacket[(headerSize+2)..].Span);
+                rawNal[..payload_size].CopyTo(rtpPacket[(headerSize + 2)..].Span);
                 rawNal = rawNal[payload_size..];
 
                 rtp_packets.Add(rtpPacket);
@@ -205,7 +203,7 @@ namespace Rtsp.Rtp
             }
         }
 
-        private void AddFullNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners, ReadOnlySpan<byte> rawNal, bool last_nal)
+        private void AddFullNal(uint rtpTimestamp, List<Memory<byte>> rtp_packets, List<IDisposable> memoryOwners, ReadOnlySpan<byte> rawNal, bool last_nal)
         {
             // Put the whole NAL into one RTP packet.
             var headerSize = RtpPacketUtil.DataOffset(0, extensionDataSizeInWord: null);

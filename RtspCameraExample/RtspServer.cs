@@ -46,7 +46,7 @@ namespace RtspCameraExample
         const int audio_payload_type = 0; // = Hard Coded to PCMU audio
         private ushort audioSequenceNumber = (ushort)Random.Shared.Next();
 
-        private readonly H264PayloadBuilder videoPayloadBuilder = new (
+        private readonly H264PayloadBuilder videoPayloadBuilder = new(
             video_payload_type, global_ssrc, 1400 - 100, (ushort)Random.Shared.Next()
             );
 
@@ -304,7 +304,7 @@ namespace RtspCameraExample
                     // Search for the Session in the Sessions List. Change the state to "PLAY"
                     const string range = "npt=0-";   // Playing the 'video' from 0 seconds until the end
                     string rtp_info = "url=" + message.RtspUri + ";seq=" + videoPayloadBuilder.SequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
-                                                                                                // Add audio too
+                                                                                                               // Add audio too
                     rtp_info += ",url=" + message.RtspUri + ";seq=" + audioSequenceNumber; // TODO Add rtptime  +";rtptime="+session.rtp_initial_timestamp;
 
                     //    'RTP-Info: url=rtsp://192.168.1.195:8557/h264/track1;seq=33026;rtptime=3014957579,url=rtsp://192.168.1.195:8557/h264/track2;seq=42116;rtptime=3335975101'
@@ -594,7 +594,7 @@ namespace RtspCameraExample
 
             // Build a list of 1 or more RTP packets
             // The last packet will have the M bit set to '1'
-            (List<Memory<byte>> rtp_packets, List<IMemoryOwner<byte>> memoryOwners) 
+            (List<Memory<byte>> rtp_packets, IDisposable memoryOwners) 
                 = videoPayloadBuilder.PrepareVideoRtpPackets(nal_array, rtp_timestamp);
 
             RTSPConnection[] rtspConnectionListCopy;
@@ -646,10 +646,7 @@ namespace RtspCameraExample
 
             Task.WaitAll(tasks);
 
-            foreach (var owner in memoryOwners)
-            {
-                owner.Dispose();
-            }
+            memoryOwners?.Dispose();
         }
 
         private async Task<bool> SendRTCP(uint rtp_timestamp, RTSPConnection connection, RTPStream stream)
@@ -681,7 +678,7 @@ namespace RtspCameraExample
 
         }
 
-        
+
 
         private void RemoveSession(RTSPConnection connection)
         {
