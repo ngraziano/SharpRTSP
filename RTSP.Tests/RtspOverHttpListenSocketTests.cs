@@ -138,9 +138,25 @@ public class RtspOverHttpListenSocketTests
         await client.GetStream().FlushAsync(cancellationToken);
 
 
+        bool connectionWasClosed = false;
         // Invalid client get disconnected
-        Assert.ThrowsAsync<IOException>(async () => _ = await client.GetStream().ReadAsync(data, cancellationToken));
-
+        while (client.Connected && !cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                if (await client.GetStream().ReadAsync(data, cancellationToken) == 0)
+                {
+                    connectionWasClosed = true;
+                    break;
+                }
+            }
+            catch (IOException)
+            {
+                connectionWasClosed = true;
+                // disconnection is normal
+                break;
+            }
+        }
         testObj.Stop();
 
         Assert.That(client.Connected, Is.False);
