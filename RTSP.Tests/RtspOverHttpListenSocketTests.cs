@@ -80,6 +80,24 @@ public class RtspOverHttpListenSocketTests
             
             """;
 
+    private const string postWithoutSession = 
+        $"""
+        POST /sw.mov HTTP/1.0
+        User-Agent: QTS (qtver=4.1;cpu=PPC;os=Mac 8.6)
+        Content-Type: application/x-rtsp-tunnelled
+        
+        
+        """;
+
+    private const string postWithoutContentType =
+        $"""
+        POST /sw.mov HTTP/1.0
+        User-Agent: QTS (qtver=4.1;cpu=PPC;os=Mac 8.6)
+        x-sessioncookie: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        
+        
+        """;
+
     [Test()]
     public void StartStopTest()
     {
@@ -133,6 +151,8 @@ public class RtspOverHttpListenSocketTests
     [TestCase(getWithoutSession)]
     [TestCase(getWithoutAccept)]
     [TestCase(rtspMessage)]
+    [TestCase(postWithoutSession)]
+    [TestCase(postWithoutContentType)]
     [CancelAfter(1000)]
 
     public async Task IncompleteDataAcceptAysnc(string dataIn, CancellationToken cancellationToken)
