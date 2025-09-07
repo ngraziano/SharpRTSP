@@ -144,7 +144,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
             if (isPostChannel)
             {
                 if (!headers.TryGetValue(RtspHeaderNames.ContentType, out var value)
-                    && string.Equals(value, "application/x-rtsp-tunnelled", StringComparison.InvariantCultureIgnoreCase))
+                    || !string.Equals(value, "application/x-rtsp-tunnelled", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogWarning("Invalid content-type header");
                     client.Dispose();
@@ -168,7 +168,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
             else
             {
                 if (!headers.TryGetValue("Accept", out var value)
-                    && string.Equals(value, "application/x-rtsp-tunnelled", StringComparison.InvariantCultureIgnoreCase))
+                    || !string.Equals(value, "application/x-rtsp-tunnelled", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogWarning("Invalid accept header");
                     client.Dispose();
@@ -256,7 +256,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         while (!string.IsNullOrEmpty(headerLine))
         {
             var headerParts = headerLine.Split(':', 2);
-            if (headerParts.Length > 1) headers.Add(headerParts[0], headerParts[1]);
+            if (headerParts.Length > 1) headers.Add(headerParts[0], headerParts[1].Trim());
             headerLine = await ReadOneLine(stream, cancellationToken).ConfigureAwait(false);
         }
 
