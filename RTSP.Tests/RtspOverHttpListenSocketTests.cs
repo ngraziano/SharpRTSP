@@ -159,7 +159,7 @@ public class RtspOverHttpListenSocketTests
         }
         testObj.Stop();
 
-        Assert.That(client.Connected, Is.False);
+        Assert.That(connectionWasClosed, Is.True);
     }
 
 
