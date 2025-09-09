@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 
 namespace Rtsp.Rtcp
 {
@@ -43,6 +44,7 @@ namespace Rtsp.Rtcp
         // This will wrap around in 2036
         private static readonly DateTime ntpStartTime = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        [StructLayout(LayoutKind.Auto)]
         public readonly ref struct SenderReportPacket
         {
             private readonly int count;
