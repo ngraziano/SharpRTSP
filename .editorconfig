@@ -6,9 +6,9 @@ dotnet_diagnostic.CA1510.severity = silent
 # Just because I don't like this rule
 dotnet_diagnostic.IDE0290.severity = silent
 
-# For now increase, double the default value
-MA0051.maximum_lines_per_method = 120
-MA0051.maximum_statements_per_method = 80
+# For now increase I do not beleive in small is always better
+MA0051.maximum_lines_per_method = 150
+MA0051.maximum_statements_per_method = 100
 
 # Only validate the first type in a file
 MA0048.only_validate_first_type = true
