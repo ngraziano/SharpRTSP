@@ -26,3 +26,7 @@ dotnet_diagnostic.MA0089.severity = none
 
 # not supported in netstandart 2.0
 dotnet_diagnostic.RCS1261.severity = none
+
+# Resolve TODO
+# TODO will not be fix soon so reduce the warning level
+dotnet_diagnostic.MA0026.severity = suggestion
