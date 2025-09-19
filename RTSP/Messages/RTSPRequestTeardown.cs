@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestTeardown : RtspRequest
 {
-    public class RtspRequestTeardown : RtspRequest
+    public RtspRequestTeardown()
     {
-        public RtspRequestTeardown()
-        {
-            Command = "TEARDOWN * RTSP/1.0";
-        }
+        Command = "TEARDOWN * RTSP/1.0";
     }
 }

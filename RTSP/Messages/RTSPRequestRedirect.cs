@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestRedirect : RtspRequest
 {
-    public class RtspRequestRedirect : RtspRequest
+    public RtspRequestRedirect()
     {
-        public RtspRequestRedirect()
-        {
-            Command = "REDIRECT * RTSP/1.0";
-        }
+        Command = "REDIRECT * RTSP/1.0";
     }
 }

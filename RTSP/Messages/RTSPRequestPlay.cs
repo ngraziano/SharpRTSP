@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestPlay : RtspRequest
 {
-    public class RtspRequestPlay : RtspRequest
+    public RtspRequestPlay()
     {
-        public RtspRequestPlay()
-        {
-            Command = "PLAY * RTSP/1.0";
-        }
+        Command = "PLAY * RTSP/1.0";
     }
 }

@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestRecord : RtspRequest
 {
-    public class RtspRequestRecord : RtspRequest
+    public RtspRequestRecord()
     {
-        public RtspRequestRecord()
-        {
-            Command = "RECORD * RTSP/1.0";
-        }
+        Command = "RECORD * RTSP/1.0";
     }
 }

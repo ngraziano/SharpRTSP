@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestAnnounce : RtspRequest
 {
-    public class RtspRequestAnnounce : RtspRequest
+    public RtspRequestAnnounce()
     {
-        public RtspRequestAnnounce()
-        {
-            Command = "ANNOUNCE * RTSP/1.0";
-        }
+        Command = "ANNOUNCE * RTSP/1.0";
     }
 }

@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestSetParameter : RtspRequest
 {
-    public class RtspRequestSetParameter : RtspRequest
+    public RtspRequestSetParameter()
     {
-        public RtspRequestSetParameter()
-        {
-            Command = "SET_PARAMETER * RTSP/1.0";
-        }
+        Command = "SET_PARAMETER * RTSP/1.0";
     }
 }

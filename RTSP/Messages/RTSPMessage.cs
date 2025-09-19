@@ -1,8 +1,7 @@
-﻿using System.Buffers;
-
-namespace Rtsp.Messages;
+﻿namespace Rtsp.Messages;
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Globalization;
@@ -45,13 +44,11 @@ public class RtspMessage : RtspChunk
             }
             else
             {
-                //  _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
                 returnValue = new RtspMessage();
             }
         }
         else
         {
-            // _logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
             returnValue = new RtspMessage();
         }
         returnValue.Command = aRequestLine;
@@ -189,20 +186,17 @@ public class RtspMessage : RtspChunk
     /// <exception cref="ArgumentException"><paramref name="stream"/> can't be written.</exception>
     public void SendTo(Stream stream)
     {
-        // <pex>
         if (stream is null)
             throw new ArgumentNullException(nameof(stream));
         if (!stream.CanWrite)
         {
             throw new ArgumentException("Stream CanWrite == false, can't send message to it", nameof(stream));
         }
-        // </pex>
         Contract.EndContractBlock();
 
-        StringBuilder outputString = new();
-
         AdjustContentLength();
-
+        
+        StringBuilder outputString = new();
         // output header
         outputString.Append(Command).Append("\r\n");
         foreach (var (key, value) in Headers)

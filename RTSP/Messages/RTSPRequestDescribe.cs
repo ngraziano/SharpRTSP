@@ -1,10 +1,9 @@
-﻿namespace Rtsp.Messages
+﻿namespace Rtsp.Messages;
+
+public class RtspRequestDescribe : RtspRequest
 {
-    public class RtspRequestDescribe : RtspRequest
+    public RtspRequestDescribe()
     {
-        public RtspRequestDescribe()
-        {
-            Command = "DESCRIBE * RTSP/1.0";
-        }
+        Command = "DESCRIBE * RTSP/1.0";
     }
 }
