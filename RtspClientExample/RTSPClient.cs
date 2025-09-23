@@ -353,7 +353,7 @@ class RTSPClient
         };
         teardownMessage.AddAuthorization(_authentication, _uri!, rtspSocket?.NextCommandIndex() ?? 0);
         rtspClient?.SendMessage(teardownMessage);
-
+   
         // Stop the keepalive timer
         keepaliveTimer.Stop();
 
@@ -363,6 +363,7 @@ class RTSPClient
 
         // Drop the RTSP session
         rtspClient?.Stop();
+        _authentication = null;
     }
 
     /// <summary>

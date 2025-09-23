@@ -41,7 +41,7 @@ namespace RtspClientExample
             // string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
-            string password = "admin";
+            string password = "asdqwe123";
             // Axis Tests
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264";
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
@@ -69,7 +69,7 @@ namespace RtspClientExample
 
             // Happytime RTSP Server
             //string url = "rtsp://127.0.0.1/screenlive";
-            string url = "http://127.0.0.1:8044/screenlive";
+            string url = "rtsp://192.168.10.60:554/Streaming/Channels/102?transportmode=unicast&profile=Profile_1";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
@@ -168,6 +168,20 @@ namespace RtspClientExample
 
             client.Stop();
             Console.WriteLine("Finished");
+            client.Connect(url, username, password, RTSPClient.RTP_TRANSPORT.TCP, RTSPClient.MEDIA_REQUEST.VIDEO_AND_AUDIO, usePlayback);
+            key = default;
+            while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
+            {
+                while (!Console.KeyAvailable && !client.StreamingFinished())
+                {
+                    // Avoid maxing out CPU on systems that instantly return null for ReadLine
+                    Thread.Sleep(250);
+                }
+                if (Console.KeyAvailable)
+                {
+                    key = Console.ReadKey();
+                }
+            }
         }
 
         private static void NewAACAudioStream(NewStreamEventArgs arg, RTSPClient client)
