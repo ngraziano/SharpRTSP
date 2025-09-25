@@ -363,6 +363,7 @@ class RTSPClient
 
         // Drop the RTSP session
         rtspClient?.Stop();
+
         _authentication = null;
     }
 
@@ -391,7 +392,7 @@ class RTSPClient
         }
 
         // this will cache the Packets until there is a Frame
-        using var nalUnits = videoPayloadProcessor.ProcessPacket(rtpPacket); 
+        using var nalUnits = videoPayloadProcessor.ProcessPacket(rtpPacket);
 
         if (nalUnits.Any())
         {
@@ -569,25 +570,25 @@ class RTSPClient
         {
             // If we get a reply to OPTIONS then start the Keepalive Timer and send DESCRIBE
             case RtspRequestOptions when message.OriginalRequest.ContextData != keepAliveContext:
-            {
-                // Check the capabilities returned by OPTIONS
-                // The Public: header contains the list of commands the RTSP server supports
-                // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
-                var supportedCommand = RTSPHeaderUtils.ParsePublicHeader(message);
-                serverSupportsGetParameter = supportedCommand.Contains("GET_PARAMETER", StringComparer.OrdinalIgnoreCase);
-                // Start a Timer to send an Keepalive RTSP command every 20 seconds
-                keepaliveTimer.Enabled = true;
-
-                // Send DESCRIBE
-                RtspRequest describeMessage = new RtspRequestDescribe
                 {
-                    RtspUri = _uri,
-                    Headers = { { "Accept", "application/sdp" } },
-                };
-                describeMessage.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
-                rtspClient?.SendMessage(describeMessage);
-                break;
-            }
+                    // Check the capabilities returned by OPTIONS
+                    // The Public: header contains the list of commands the RTSP server supports
+                    // Eg   DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, OPTIONS, ANNOUNCE, RECORD, GET_PARAMETER]}
+                    var supportedCommand = RTSPHeaderUtils.ParsePublicHeader(message);
+                    serverSupportsGetParameter = supportedCommand.Contains("GET_PARAMETER", StringComparer.OrdinalIgnoreCase);
+                    // Start a Timer to send an Keepalive RTSP command every 20 seconds
+                    keepaliveTimer.Enabled = true;
+
+                    // Send DESCRIBE
+                    RtspRequest describeMessage = new RtspRequestDescribe
+                    {
+                        RtspUri = _uri,
+                        Headers = { { "Accept", "application/sdp" } },
+                    };
+                    describeMessage.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
+                    rtspClient?.SendMessage(describeMessage);
+                    break;
+                }
             // If we get a reply to DESCRIBE (which was our second command), then process SDP and send the SETUP
             case RtspRequestDescribe:
                 HandleDescribeResponse(message);
@@ -597,11 +598,11 @@ class RTSPClient
             // (ii) check if we have any more SETUP commands to send out (eg if we are doing SETUP for Video and Audio)
             // (iii) send a PLAY command if all the SETUP command have been sent
             case RtspRequestSetup:
-            {
-                HandleSetupResponse(message);
+                {
+                    HandleSetupResponse(message);
 
-                break;
-            }
+                    break;
+                }
             // If we get a reply to PLAY (which was our fourth command), then we should have video being received
             case RtspRequestPlay:
                 _logger.LogDebug("Got reply from Play {command} ", message.Command);
