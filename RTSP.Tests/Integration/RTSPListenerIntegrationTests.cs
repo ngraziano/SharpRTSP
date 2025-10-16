@@ -31,7 +31,7 @@ public class RTSPListenerIntegrationTests
     public async Task SendOption_WhenSent_Receives200OK(string uri)
     {
         // arrange
-        var socket = RtspUtils.CreateRtspTransportFromUrl(new(uri), AcceptAllCertificate);
+        var socket = RtspUtils.CreateRtspTransportFromUrl(new(uri), new(), AcceptAllCertificate);
         var listener = new RtspListener(socket);
         var taskCompletionSource = new TaskCompletionSource<RtspResponse>();
         listener.MessageReceived += ListenerOnMessageReceived;

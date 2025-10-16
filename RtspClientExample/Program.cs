@@ -10,6 +10,18 @@ namespace RtspClientExample
     {
         private static ILogger logger = null!;
 
+        private const string ProfileMJPEG = "JPEG";
+        private const string ProfileH264 = "H264";
+        private const string ProfileH265 = "H265";
+        private const string ProfileMP2T = "MP2T";
+
+        private const string ProfilePCMU = "PCMU";
+        private const string ProfilePCMA = "PCMA";
+        private const string ProfileAMR = "AMR";
+        private const string ProfileAAC = "AAC";
+
+        private static readonly byte[] halStartCode = [0x00, 0x00, 0x00, 0x01];
+
         static void Main()
         {
             var loggerFactory = LoggerFactory.Create(builder =>
@@ -35,13 +47,13 @@ namespace RtspClientExample
 
             // string url = "rtsp://192.168.0.89/media/video2";
 
-            // string url = "http://192.168.3.72/profile1/media.smp";
+             string url = "http://192.168.3.72/profile1/media.smp";
 
             bool usePlayback = false;
             // string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
-            string password = "admin";
+            string password = "Admin123!";
             // Axis Tests
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264";
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
@@ -69,7 +81,7 @@ namespace RtspClientExample
 
             // Happytime RTSP Server
             //string url = "rtsp://127.0.0.1/screenlive";
-            string url = "http://127.0.0.1:8044/screenlive";
+            //string url = "http://127.0.0.1:8044/screenlive";
 
             // MJPEG Tests (Payload 26)
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=mobile_jpeg";
@@ -178,9 +190,9 @@ namespace RtspClientExample
             var config = arg.StreamConfigurationData as AacStreamConfigurationData;
             Debug.Assert(config != null, "config is invalid");
 
-            client.ReceivedAudioData += (_, args) =>
+            void ReceiveAudioAAC(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
-                foreach (var data in args.Data)
+                foreach (var data in dataArgs.Data)
                 {
                     // ASDT header format
                     int protection_absent = 1;
@@ -214,7 +226,9 @@ namespace RtspClientExample
                     fs_a.Write(header, 0, header.Length);
                     fs_a.Write(data.Span);
                 }
-            };
+            }
+            ;
+            client.SetupAudioPayload(ProfileAAC, ReceiveAudioAAC);
         }
 
         private static void NewAMRAudioStream(RTSPClient client)
@@ -224,13 +238,14 @@ namespace RtspClientExample
             string filename = "rtsp_capture_" + now + ".amr";
             FileStream fs_a = new(filename, FileMode.Create);
             fs_a.Write("#!AMR\n"u8);
-            client.ReceivedAudioData += (_, args) =>
+            void ReceiveAudioAMR(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
-                foreach (var data in args.Data)
+                foreach (var data in dataArgs.Data)
                 {
                     fs_a.Write(data.Span);
                 }
             };
+            client.SetupAudioPayload(ProfileAMR, ReceiveAudioAMR);
         }
 
         private static void NewGenericAudio(RTSPClient client, string extension)
@@ -238,13 +253,14 @@ namespace RtspClientExample
             string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string filename = "rtsp_capture_" + now + "." + extension;
             FileStream fs_a = new(filename, FileMode.Create);
-            client.ReceivedAudioData += (_, args) =>
+            void ReceiveAudioPCMA(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
-                foreach (var data in args.Data)
+                foreach (var data in dataArgs.Data)
                 {
                     fs_a.Write(data.Span);
                 }
             };
+            client.SetupAudioPayload(ProfilePCMA, ReceiveAudioPCMA);
         }
 
         private static void NewMP2Stream(RTSPClient client)
@@ -253,13 +269,15 @@ namespace RtspClientExample
 
             string filename = "rtsp_capture_" + now + ".mp2";
             FileStream fs_v = new(filename, FileMode.Create);
-            client.ReceivedVideoData += (_, args) =>
+            void ReceivedVideoData_MPT2(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
-                foreach (var data in args.Data)
+                foreach (var data in dataArgs.Data)
                 {
                     fs_v?.Write(data.Span);
                 }
-            };
+            }
+            ;
+            client.SetupVideoPayload(ProfileMP2T, ReceivedVideoData_MPT2);
         }
 
         private static void NewMJPEGStream(RTSPClient client)
@@ -268,18 +286,21 @@ namespace RtspClientExample
 
             Directory.CreateDirectory("rtsp_capture_" + now);
             var indexImg = 0;
-            client.ReceivedVideoData += (_, args) =>
+            void ReceivedVideoData_MJPEG(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
                 // Ugly to do it each time.
                 // The interface need to change have an event on new file
 
-                foreach (var data in args.Data)
+                
+                foreach (var data in dataArgs.Data)
                 {
                     string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
                     using var fs = new FileStream(filename, FileMode.Create);
                     fs.Write(data.Span);
                 }
-            };
+            }
+            ;
+            client.SetupVideoPayload(ProfileMJPEG, ReceivedVideoData_MJPEG);
         }
 
         private static void NewH265Stream(NewStreamEventArgs args, RTSPClient client)
@@ -293,7 +314,7 @@ namespace RtspClientExample
                 WriteNalToFile(fs_v, h265StreamConfigurationData.SPS);
                 WriteNalToFile(fs_v, h265StreamConfigurationData.PPS);
             }
-            client.ReceivedVideoData += (_, dataArgs) =>
+            void ReceivedVideoData_H265(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
                 if (fs_v != null)
                 {
@@ -319,7 +340,9 @@ namespace RtspClientExample
                         fs_v.Write(nalUnit);
                     }
                 }
-            };
+            }
+            ;
+            client.SetupVideoPayload(ProfileH265, ReceivedVideoData_H265);
         }
 
         private static void NewH264Stream(NewStreamEventArgs args, RTSPClient client)
@@ -332,7 +355,8 @@ namespace RtspClientExample
                 WriteNalToFile(fs_v, h264StreamConfigurationData.SPS);
                 WriteNalToFile(fs_v, h264StreamConfigurationData.PPS);
             }
-            client.ReceivedVideoData += (_, dataArgs) =>
+
+            void ReceivedVideoData_H264(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
                 foreach (var nalUnitMem in dataArgs.Data)
                 {
@@ -356,7 +380,9 @@ namespace RtspClientExample
                     }
                     fs_v.Write(nalUnit);
                 }
-            };
+            }
+            ;
+            client.SetupVideoPayload(ProfileH264, ReceivedVideoData_H264);
         }
 
         private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)

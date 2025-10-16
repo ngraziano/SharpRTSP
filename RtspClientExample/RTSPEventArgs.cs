@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RtspClientExample
 {
@@ -23,7 +24,7 @@ namespace RtspClientExample
         public required byte[] PPS { get; init; }
     }
 
-    public record H265StreamConfigurationData: IStreamConfigurationData
+    public record H265StreamConfigurationData : IStreamConfigurationData
     {
         public required byte[] VPS { get; init; }
         public required byte[] SPS { get; init; }
@@ -38,15 +39,14 @@ namespace RtspClientExample
         public int ChannelConfiguration { get; init; }
     }
 
-    public class SimpleDataEventArgs : EventArgs
+    public class SimpleDataEventArgs(List<ReadOnlyMemory<byte>> data, DateTime clockTimeStamp, ulong rtpTimeStamp, int baseClock, int payloadType) : EventArgs
     {
-        public SimpleDataEventArgs(IEnumerable<ReadOnlyMemory<byte>> data, DateTime timeStamp)
-        {
-            Data = data;
-            TimeStamp = timeStamp;
-        }
 
-        public DateTime TimeStamp { get; }
-        public IEnumerable<ReadOnlyMemory<byte>> Data { get; }
+        public int PayloadType { get; } = payloadType;
+        public int BaseClock { get; } = baseClock;
+        public ulong RtpTimestamp { get; } = rtpTimeStamp;
+        public DateTime ClockTimeStamp { get; } = clockTimeStamp;
+        //public DateTime TimeStamp { get; } = timeStamp;
+        public List<ReadOnlyMemory<byte>> Data { get; } = data;
     }
 }
