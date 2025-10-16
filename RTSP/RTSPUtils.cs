@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Security;
 
 namespace Rtsp
@@ -16,14 +17,14 @@ namespace Rtsp
             }
         }
 
-        public static IRtspTransport CreateRtspTransportFromUrl(Uri uri, RemoteCertificateValidationCallback? userCertificateSelectionCallback = null)
+        public static IRtspTransport CreateRtspTransportFromUrl(Uri uri, NetworkCredential networkCredential, RemoteCertificateValidationCallback? userCertificateSelectionCallback = null)
         {
             return uri.Scheme switch
             {
                 "rtsp" => new RtspTcpTransport(uri),
                 "rtsps" => new RtspTcpTlsTransport(uri, userCertificateSelectionCallback),
-                "http" => new RtspHttpTransport(uri, new()),
-                // "https" => new RtspHttpTransport(uri, new()),
+                "http" => new RtspHttpTransport(uri, networkCredential),
+                "https" => new RTSPHttpsTransport(uri, networkCredential, userCertificateSelectionCallback),
                 _ => throw new ArgumentException("The uri scheme is not supported", nameof(uri))
             };
         }

@@ -206,7 +206,7 @@ namespace Rtsp
             _dataClient?.Close();
         }
 
-        public Stream GetStream()
+        public virtual Stream GetStream()
         {
             if (_dataClient?.Connected != true || _stream is null)
                 throw new InvalidOperationException("Client is not connected");
