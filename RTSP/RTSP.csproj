@@ -10,7 +10,7 @@
     <Authors>ngraziano</Authors>
     <Product>SharpRTSP</Product>
     <Description>Handle receive and send of Rtsp Messages</Description>
-    <VersionPrefix>1.9.3</VersionPrefix>
+    <VersionPrefix>1.9.4</VersionPrefix>
     <PackageProjectUrl>https://github.com/ngraziano/SharpRTSP</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ngraziano/SharpRTSP</RepositoryUrl>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
@@ -24,17 +24,17 @@
     <None Include="..\README.md" Link="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Meziantou.Analyzer" Version="2.0.212">
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.238">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Meziantou.Polyfill" Version="1.0.49" Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="Meziantou.Polyfill" Version="1.0.62" Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.8" />
-    <PackageReference Include="System.IO.Pipelines" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.10" />
+    <PackageReference Include="System.IO.Pipelines" Version="9.0.10" />
   </ItemGroup>
 </Project>
