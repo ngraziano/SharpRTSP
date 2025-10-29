@@ -980,8 +980,8 @@ class RTSPClient
                     payloadName = rtpmap.EncodingName.ToUpper();
                     videoPayloadProcessor = payloadName switch
                     {
-                        "H264" => new H264Payload(null),
-                        "H265" => new H265Payload(h265HasDonl, null),
+                        "H264" => new H264Payload(),
+                        "H265" => new H265Payload(h265HasDonl),
                         "JPEG" => new JPEGPayload(),
                         "MP4V-ES" => new RawPayload(),
                         _ => null,
@@ -1013,8 +1013,8 @@ class RTSPClient
                         payloadName = rtpmap.EncodingName?.ToUpperInvariant() ?? string.Empty;
                         videoPayloadProcessor = payloadName switch
                         {
-                            "H264" => new H264Payload(null, memoryPool: null),
-                            "H265" => new H265Payload(h265HasDonl, null, memoryPool: null),
+                            "H264" => new H264Payload(),
+                            "H265" => new H265Payload(h265HasDonl),
                             "JPEG" => new JPEGPayload(),
                             "MP4V-ES" => new RawPayload(),
                             _ => null,

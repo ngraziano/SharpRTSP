@@ -28,7 +28,7 @@ namespace Rtsp.Rtp
 
         private DateTime _timestamp;
 
-        public H264Payload(ILogger<H264Payload>? logger, MemoryPool<byte>? memoryPool = null)
+        public H264Payload(ILogger<H264Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;

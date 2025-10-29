@@ -34,7 +34,7 @@ namespace Rtsp.Rtp
         private DateTime _timestamp;
 
         // Constructor
-        public H265Payload(bool hasDonl, ILogger<H265Payload>? logger, MemoryPool<byte>? memoryPool = null)
+        public H265Payload(bool hasDonl, ILogger<H265Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             this.hasDonl = hasDonl;
 

@@ -33,7 +33,7 @@ namespace Rtsp.Rtp
         private DateTime _timestamp;
 
         // Constructor
-        public H266Payload(bool hasDonl, ILogger<H266Payload> logger, MemoryPool<byte> memoryPool = null)
+        public H266Payload(bool hasDonl, ILogger<H266Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             this.hasDonl = hasDonl;
 

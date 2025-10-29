@@ -26,7 +26,7 @@ namespace Rtsp.Rtp
         private DateTime _timestamp;
 
         // Constructor
-        public AV1Payload(ILogger<AV1Payload> logger, MemoryPool<byte> memoryPool = null)
+        public AV1Payload(ILogger<AV1Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
             _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
@@ -49,10 +49,10 @@ namespace Rtsp.Rtp
             int dataRemaining = payload.Length - 1;
             int obuPointer = 0;
 
-            while(dataRemaining > 0)
+            while (dataRemaining > 0)
             {
                 int obuSize = dataRemaining;
-                if(wSize == 0 || (wSize > 1 && obuCount != wSize - 1))
+                if (wSize == 0 || (wSize > 1 && obuCount != wSize - 1))
                 {
                     int obuSizeLen = ReadLeb128(payload, 1 + obuPointer, out obuSize);
                     dataRemaining -= obuSizeLen;
@@ -69,7 +69,7 @@ namespace Rtsp.Rtp
                 obuCount++;
             }
 
-            if(wSize != 0 && wSize != obuCount)
+            if (wSize != 0 && wSize != obuCount)
             {
                 _logger.LogError($"Mismatched OBU count");
             }
@@ -77,17 +77,17 @@ namespace Rtsp.Rtp
 
         private void AssembleOBU(ReadOnlySpan<byte> readOnlySpan, bool isFirstObu, bool isLastObu, int zBit, int yBit, int nBit)
         {
-            if(isFirstObu && zBit != 0)
+            if (isFirstObu && zBit != 0)
             {
                 // continuation of OBU from last RTP
                 fragmentedObu.Write(readOnlySpan);
 
-                if(!(isLastObu && yBit != 0))
+                if (!(isLastObu && yBit != 0))
                 {
                     CreateOBU(fragmentedObu);
                 }
             }
-            else if(isLastObu && yBit != 0)
+            else if (isLastObu && yBit != 0)
             {
                 // reset the stream
                 fragmentedObu.SetLength(0);
@@ -99,7 +99,7 @@ namespace Rtsp.Rtp
             {
                 // we should have a complete OBU here
                 fragmentedObu.Write(readOnlySpan);
-                
+
                 CreateOBU(fragmentedObu);
             }
         }
@@ -114,7 +114,7 @@ namespace Rtsp.Rtp
             int obuHeaderLen = 1;
             int obuHeaderExtensions = -1;
             int obuType = (obuHeader & 0x78) >> 3;
-            byte[] obuLizeLeb128 = null;
+            byte[]? obuLizeLeb128 = null;
 
             if (obuType == 1)
             {
@@ -152,7 +152,7 @@ namespace Rtsp.Rtp
                 }
                 else
                 {
-                    obuSpan = PrepareNewObu(obuLength); 
+                    obuSpan = PrepareNewObu(obuLength);
                     fragmentedObu.GetBuffer().AsSpan()[..obuLength].CopyTo(obuSpan);
                 }
 
