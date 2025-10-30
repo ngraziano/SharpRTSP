@@ -1029,12 +1029,13 @@ class RTSPClient
                 {
                     // If the rtpmap contains H264 then split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64
                     var param = H264Parameters.Parse(fmtp.FormatParameter);
-                    var sps_pps = param.SpropParameterSets;
-                    if (sps_pps.Count >= 2)
+                    if (param.SpropParameterSets.Count >= 2)
                     {
-                        byte[] sps = sps_pps[0];
-                        byte[] pps = sps_pps[1];
-                        streamConfigurationData = new H264StreamConfigurationData() { SPS = sps, PPS = pps };
+                        streamConfigurationData = new H264StreamConfigurationData()
+                        {
+                            SPS = param.SequenceParameterSet,
+                            PPS = param.PictureParameterSet
+                        };
                     }
                 }
                 else if (videoPayloadProcessor is H265Payload && fmtp?.FormatParameter is not null)
