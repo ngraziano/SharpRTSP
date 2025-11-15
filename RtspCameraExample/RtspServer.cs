@@ -626,6 +626,12 @@ namespace RtspCameraExample
                         // Send to the IP address of the Client
                         // Send to the UDP Port the Client gave us in the SETUP command
                         await connection.video.rtpChannel.WriteToDataPortAsync(rtp_packet);
+                        if (connection.video.rtpChannel is RtpTcpTransport)
+                        {
+                            // for tcp transport a successful write means the connection is alive
+                            connection.UpdateKeepAlive();
+                        }
+
                     }
                     catch (Exception e)
                     {
