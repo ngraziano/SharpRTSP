@@ -893,7 +893,7 @@ class RTSPClient
             // setup is completed, we can receive now all the events we want...
             _ready = true;
             // use the event for setup completed, so the main program can call the Play command with or without the playback request.
-            SetupMessageCompleted?.Invoke(this, EventArgs.Empty);            
+            SetupMessageCompleted?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -1033,8 +1033,7 @@ class RTSPClient
                     {
                         streamConfigurationData = new H264StreamConfigurationData()
                         {
-                            SPS = param.SequenceParameterSet,
-                            PPS = param.PictureParameterSet
+                            OutOfBandNal = [.. param.SpropParameterSets],
                         };
                     }
                 }
@@ -1043,14 +1042,10 @@ class RTSPClient
                     // If the rtpmap contains H265 then split the fmtp to get the sprop-vps, sprop-sps and sprop-pps
                     // The RFC makes the VPS, SPS and PPS OPTIONAL so they may not be present. In which we pass back NULL values
                     var param = H265Parameters.Parse(fmtp.FormatParameter);
-                    var vps_sps_pps = param.SpropParameterSets;
-                    if (vps_sps_pps.Count >= 3)
+                    streamConfigurationData = new H265StreamConfigurationData()
                     {
-                        byte[] vps = vps_sps_pps[0];
-                        byte[] sps = vps_sps_pps[1];
-                        byte[] pps = vps_sps_pps[2];
-                        streamConfigurationData = new H265StreamConfigurationData() { VPS = vps, SPS = sps, PPS = pps };
-                    }
+                        OutOfBandNal = [.. param.VideoParameterSet, ..param.SequenceParameterSet, .. param.PictureParameterSet, ..param.SEIMessages],
+                    };
                 }
 
                 // Send the SETUP RTSP command if we have a matching Payload Decoder

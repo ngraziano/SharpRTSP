@@ -1,5 +1,6 @@
 ﻿namespace Rtsp.Sdp;
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,6 @@ using System.Linq;
 public class ParametersBase : IDictionary<string, string>
 {
     private readonly Dictionary<string, string> parameters = [];
-
 
     protected static T Parse<T>(string parameterString) where T : ParametersBase, new()
     {
@@ -65,5 +65,18 @@ public class ParametersBase : IDictionary<string, string>
     public bool TryGetValue(string key, out string value) => parameters.TryGetValue(key, out value!);
 
     IEnumerator IEnumerable.GetEnumerator() => ((IDictionary<string, string>)parameters).GetEnumerator();
+
+
+    public byte[] ParameterFromBase64String(string parameterName)
+    {
+        if (!TryGetValue(parameterName, out var value)) return [];
+        return Convert.FromBase64String(value);
+    }
+
+    public List<byte[]> ParameterListFromBase64String(string parameterName)
+    {
+        if (!TryGetValue(parameterName, out var value)) return [];
+        return [.. value.Split(',').Select(Convert.FromBase64String)];
+    }
 
 }

@@ -63,5 +63,11 @@ public class H266Parameters : ParametersBase, IDictionary<string, string>
         }
     }
 
+    public byte[] DecodingCapabilityInformation => ParameterFromBase64String("sprop-dci");
+    public IList<byte[]> VideoParameterSet => ParameterListFromBase64String("sprop-vps");
+    public IList<byte[]> SequenceParameterSet => ParameterListFromBase64String("sprop-sps");
+    public IList<byte[]> PictureParameterSet => ParameterListFromBase64String("sprop-pps");
+    public IList<byte[]> SEIMessages => ParameterListFromBase64String("sprop-sei");
+
     public static H266Parameters Parse(string parameterString) => Parse<H266Parameters>(parameterString);
 }

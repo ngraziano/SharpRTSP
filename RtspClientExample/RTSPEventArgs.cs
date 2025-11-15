@@ -20,15 +20,12 @@ namespace RtspClientExample
 
     public record H264StreamConfigurationData : IStreamConfigurationData
     {
-        public required byte[] SPS { get; init; }
-        public required byte[] PPS { get; init; }
+        public required List<byte[]> OutOfBandNal { get; init; }
     }
 
     public record H265StreamConfigurationData : IStreamConfigurationData
     {
-        public required byte[] VPS { get; init; }
-        public required byte[] SPS { get; init; }
-        public required byte[] PPS { get; init; }
+        public required List<byte[]> OutOfBandNal { get; init; }
     }
 
     public record AacStreamConfigurationData : IStreamConfigurationData

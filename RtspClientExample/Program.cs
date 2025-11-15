@@ -310,9 +310,10 @@ namespace RtspClientExample
             FileStream fs_v = new(filename, FileMode.Create);
             if (args.StreamConfigurationData is H265StreamConfigurationData h265StreamConfigurationData)
             {
-                WriteNalToFile(fs_v, h265StreamConfigurationData.VPS);
-                WriteNalToFile(fs_v, h265StreamConfigurationData.SPS);
-                WriteNalToFile(fs_v, h265StreamConfigurationData.PPS);
+                foreach(var data in h265StreamConfigurationData.OutOfBandNal)
+                {
+                    WriteNalToFileIfNotEmpty(fs_v, data);
+                }
             }
             void ReceivedVideoData_H265(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
@@ -352,8 +353,10 @@ namespace RtspClientExample
             FileStream fs_v = new(filename, FileMode.Create);
             if (args.StreamConfigurationData is H264StreamConfigurationData h264StreamConfigurationData)
             {
-                WriteNalToFile(fs_v, h264StreamConfigurationData.SPS);
-                WriteNalToFile(fs_v, h264StreamConfigurationData.PPS);
+                foreach (var data in h264StreamConfigurationData.OutOfBandNal)
+                {
+                    WriteNalToFileIfNotEmpty(fs_v, data);
+                }
             }
 
             void ReceivedVideoData_H264(RTSPClient client, SimpleDataEventArgs dataArgs)
@@ -385,8 +388,9 @@ namespace RtspClientExample
             client.SetupVideoPayload(ProfileH264, ReceivedVideoData_H264);
         }
 
-        private static void WriteNalToFile(FileStream fs_v, ReadOnlySpan<byte> nal)
+        private static void WriteNalToFileIfNotEmpty(FileStream fs_v, ReadOnlySpan<byte> nal)
         {
+            if (nal.IsEmpty) return;
             // Write Start Code
             fs_v.Write([0x00, 0x00, 0x00, 0x01]);
             fs_v.Write(nal);

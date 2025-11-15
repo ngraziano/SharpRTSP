@@ -35,6 +35,11 @@ public class H265Parameters : ParametersBase, IDictionary<string, string>
         }
     }
 
-    public static H265Parameters Parse(string parameterString) => Parse<H265Parameters>(parameterString);
+    public IList<byte[]> VideoParameterSet => ParameterListFromBase64String("sprop-vps");
+    public IList<byte[]> SequenceParameterSet => ParameterListFromBase64String("sprop-sps");
+    public IList<byte[]> PictureParameterSet => ParameterListFromBase64String("sprop-pps");
+    public IList<byte[]> SEIMessages => ParameterListFromBase64String("sprop-sei");
 
+
+    public static H265Parameters Parse(string parameterString) => Parse<H265Parameters>(parameterString);
 }
