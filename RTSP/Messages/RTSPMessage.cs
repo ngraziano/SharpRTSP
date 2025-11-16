@@ -9,12 +9,19 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-public class RtspMessage : RtspChunk
+public partial class RtspMessage : RtspChunk
 {
     /// <summary>
     /// The regex to validate the Rtsp message.
     /// </summary>
-    private static readonly Regex RtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
+#if NET8_0_OR_GREATER
+    [GeneratedRegex(@"^RTSP/\d\.\d", RegexOptions.None, 10)]
+    private static partial Regex RtspVersionTest();
+#else
+    private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
+    private static Regex RtspVersionTest() => _rtspVersionTest;
+#endif
+
 
     /// <summary>
     /// Create the good type of Rtsp Message from the header.
@@ -34,11 +41,11 @@ public class RtspMessage : RtspChunk
             // A request is : Method SP Request-URI SP RTSP-Version
             // A response is : RTSP-Version SP Status-Code SP Reason-Phrase
             // RTSP-Version = "RTSP" "/" 1*DIGIT "." 1*DIGIT
-            if (RtspVersionTest.IsMatch(requestParts[2]))
+            if (RtspVersionTest().IsMatch(requestParts[2]))
             {
                 returnValue = RtspRequest.GetRtspRequest(requestParts);
             }
-            else if (RtspVersionTest.IsMatch(requestParts[0]))
+            else if (RtspVersionTest().IsMatch(requestParts[0]))
             {
                 returnValue = new RtspResponse();
             }

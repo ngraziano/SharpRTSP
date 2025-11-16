@@ -332,8 +332,7 @@ namespace Rtsp
                     }
                 }
             }
-            if (currentMessage != null)
-                currentMessage.SourcePort = this;
+            currentMessage?.SourcePort = this;
             return currentMessage;
         }
 
@@ -549,8 +548,7 @@ namespace Rtsp
                         break;
                 }
             }
-            if (currentMessage != null)
-                currentMessage.SourcePort = this;
+            currentMessage?.SourcePort = this;
             return currentMessage;
         }
 

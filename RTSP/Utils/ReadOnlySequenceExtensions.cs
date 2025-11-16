@@ -1,13 +1,15 @@
-﻿using System;
+﻿namespace Rtsp.Utils;
+
+using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
-namespace Rtsp.Utils
+public static class ReadOnlySequenceExtensions
 {
-    public static class ReadOnlySequenceExtensions
+    extension(in ReadOnlySequence<byte> buffer)
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (SequencePosition endOfLinePos, SequencePosition startOfLinePos)? FindEndOfLine(in this ReadOnlySequence<byte> buffer)
+        public (SequencePosition endOfLinePos, SequencePosition startOfLinePos)? FindEndOfLine()
         {
             const byte lf = (byte)'\n';
             var crlf = "\r\n"u8;

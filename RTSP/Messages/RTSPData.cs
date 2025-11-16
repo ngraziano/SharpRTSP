@@ -25,11 +25,8 @@ public sealed class RtspData : RtspChunk, IDisposable
         get => base.Data;
         set
         {
-            if (_reservedData != null)
-            {
-                _reservedData.Dispose();
-                _reservedData = null;
-            }
+            _reservedData?.Dispose();
+            _reservedData = null;
             base.Data = value;
         }
     }

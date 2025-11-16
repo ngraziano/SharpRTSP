@@ -1,10 +1,12 @@
-﻿using System.Net;
+﻿namespace Rtsp;
 
-namespace Rtsp
+using System.Net;
+
+static class NetworkCredentialExtensions
 {
-    static class NetworkCredentialExtensions
+    extension(NetworkCredential networkCredential)
     {
-        public static bool IsEmpty(this NetworkCredential networkCredential)
+        public bool IsEmpty()
         {
             return string.IsNullOrEmpty(networkCredential.UserName) || networkCredential.Password == null;
         }
