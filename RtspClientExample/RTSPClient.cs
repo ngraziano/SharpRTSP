@@ -50,11 +50,12 @@ class RTSPClient
         MULTICAST
     };
 
+    [Flags]
     public enum MEDIA_REQUEST
     {
-        VIDEO_ONLY,
-        AUDIO_ONLY,
-        VIDEO_AND_AUDIO
+        VIDEO_ONLY = 1,
+        AUDIO_ONLY = 2,
+        VIDEO_AND_AUDIO = VIDEO_ONLY | AUDIO_ONLY
     };
 
     private enum RTSP_STATUS
@@ -547,13 +548,13 @@ class RTSPClient
 
         if (!audioPayloadProcessors.TryGetValue(rtpPacket.PayloadType, out IPayloadProcessor? audioPayloadProcessor))
         {
-            _logger.LogDebug($"No videopayload for this type.");
+            _logger.LogDebug($"No audiopayload for this type.");
             return;
         }
 
         if (!audioPayloadMapping.TryGetValue(rtpPacket.PayloadType, out string? payloadName))
         {
-            _logger.LogDebug($"No videopayload mapping for this type.");
+            _logger.LogDebug($"No audiopayload mapping for this type.");
             return;
         }
 
@@ -1179,13 +1180,13 @@ class RTSPClient
                         NewAudioStream?.Invoke(this, new(audio_codec, streamConfigurationData));
                     }
 
-                    if (!videoPayloadProcessors.TryGetValue(audio_payload, out _))
+                    if (!audioPayloadProcessors.TryGetValue(audio_payload, out _))
                     {
-                        videoPayloadProcessors.Add(audio_payload, audioPayloadProcessor);
+                        audioPayloadProcessors.Add(audio_payload, audioPayloadProcessor);
                     }
-                    if (!videoPayloadMapping.TryGetValue(audio_payload, out _))
+                    if (!audioPayloadMapping.TryGetValue(audio_payload, out _))
                     {
-                        videoPayloadMapping.Add(audio_payload, audio_codec);
+                        audioPayloadMapping.Add(audio_payload, audio_codec);
                     }
 
                     if (audio_uri != null && !video_uris.Contains(audio_uri)) { audio_uris.Add(audio_uri); }

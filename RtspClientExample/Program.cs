@@ -47,13 +47,13 @@ namespace RtspClientExample
 
             // string url = "rtsp://192.168.0.89/media/video2";
 
-             string url = "http://192.168.3.72/profile1/media.smp";
+             string url = "rtsp://127.0.0.1/screenlive+audiodevice";
 
             bool usePlayback = false;
             // string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
 
             string username = "admin";
-            string password = "Admin123!";
+            string password = "admin";
             // Axis Tests
             //String url = "rtsp://192.168.1.125/onvif-media/media.amp?profile=quality_h264";
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
@@ -118,10 +118,10 @@ namespace RtspClientExample
                 switch (arg.StreamType)
                 {
                     case "PCMU":
-                        NewGenericAudio(client, "ul");
+                        NewGenericAudio(client, "ul", "PCMU");
                         break;
                     case "PCMA":
-                        NewGenericAudio(client, "al");
+                        NewGenericAudio(client, "al", "PCMA");
                         break;
                     case "AMR":
                         NewAMRAudioStream(client);
@@ -248,19 +248,19 @@ namespace RtspClientExample
             client.SetupAudioPayload(ProfileAMR, ReceiveAudioAMR);
         }
 
-        private static void NewGenericAudio(RTSPClient client, string extension)
+        private static void NewGenericAudio(RTSPClient client, string extension, string stringType)
         {
             string now = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string filename = "rtsp_capture_" + now + "." + extension;
             FileStream fs_a = new(filename, FileMode.Create);
-            void ReceiveAudioPCMA(RTSPClient client, SimpleDataEventArgs dataArgs)
+            void ReceiveAudioPCMx(RTSPClient client, SimpleDataEventArgs dataArgs)
             {
                 foreach (var data in dataArgs.Data)
                 {
                     fs_a.Write(data.Span);
                 }
             };
-            client.SetupAudioPayload(ProfilePCMA, ReceiveAudioPCMA);
+            client.SetupAudioPayload(stringType, ReceiveAudioPCMx);
         }
 
         private static void NewMP2Stream(RTSPClient client)
