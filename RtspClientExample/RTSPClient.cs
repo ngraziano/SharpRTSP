@@ -1045,7 +1045,7 @@ class RTSPClient
                     var param = H265Parameters.Parse(fmtp.FormatParameter);
                     streamConfigurationData = new H265StreamConfigurationData()
                     {
-                        OutOfBandNal = [.. param.VideoParameterSet, ..param.SequenceParameterSet, .. param.PictureParameterSet, ..param.SEIMessages],
+                        OutOfBandNal = [.. param.VideoParameterSet, .. param.SequenceParameterSet, .. param.PictureParameterSet, .. param.SEIMessages],
                     };
                 }
 

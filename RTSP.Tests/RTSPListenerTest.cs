@@ -113,10 +113,10 @@ namespace Rtsp.Tests
             var theRequest = theMessage as RtspRequest;
             using (Assert.EnterMultipleScope())
             {
-                        Assert.That(theRequest?.RequestTyped, Is.EqualTo(RtspRequest.RequestType.OPTIONS));
-                        Assert.That(theRequest?.Headers, Has.Count.EqualTo(3));
-                        Assert.That(theRequest?.CSeq, Is.EqualTo(1));
-                    }
+                Assert.That(theRequest?.RequestTyped, Is.EqualTo(RtspRequest.RequestType.OPTIONS));
+                Assert.That(theRequest?.Headers, Has.Count.EqualTo(3));
+                Assert.That(theRequest?.CSeq, Is.EqualTo(1));
+            }
             Assert.That(theRequest.Headers.Keys, Does.Contain("Require"));
             using (Assert.EnterMultipleScope())
             {
@@ -585,7 +585,7 @@ namespace Rtsp.Tests
             var message = await testedListener.ReadOneMessageAsync(reader);
             Assert.That(message, Is.Not.Null, "Message should be parsed correctly even with split header");
             Assert.That(message, Is.InstanceOf<RtspData>());
-            
+
             var dataMsg = (RtspData)message;
             using (Assert.EnterMultipleScope())
             {

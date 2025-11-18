@@ -145,35 +145,35 @@ public class RTSPDispatcher
         switch (message)
         {
             case RtspRequest:
-            {
-                destination = HandleRequest(ref message);
-                _logger.Debug("Dispatch message from {0} to {1}",
-                    message.SourcePort != null ? message.SourcePort.RemoteEndPoint : "UNKNOWN", destination != null ? destination.RemoteEndPoint : "UNKNOWN");
-
-                // HandleRequest can change message type.
-                if (message is RtspRequest)
                 {
-                    (message as RtspRequest).ContextData = new OriginContext
+                    destination = HandleRequest(ref message);
+                    _logger.Debug("Dispatch message from {0} to {1}",
+                        message.SourcePort != null ? message.SourcePort.RemoteEndPoint : "UNKNOWN", destination != null ? destination.RemoteEndPoint : "UNKNOWN");
+
+                    // HandleRequest can change message type.
+                    if (message is RtspRequest)
                     {
-                        OriginCSeq = message.CSeq,
-                        OriginSourcePort = message.SourcePort
-                    };
-                }
+                        (message as RtspRequest).ContextData = new OriginContext
+                        {
+                            OriginCSeq = message.CSeq,
+                            OriginSourcePort = message.SourcePort
+                        };
+                    }
 
-                break;
-            }
+                    break;
+                }
             case RtspResponse rtspResponse:
-            {
-                if (rtspResponse.OriginalRequest?.ContextData is OriginContext context)
                 {
-                    destination = context.OriginSourcePort;
-                    rtspResponse.CSeq = context.OriginCSeq;
-                    _logger.Debug("Dispatch response back to {0}", destination.RemoteEndPoint);
-                }
+                    if (rtspResponse.OriginalRequest?.ContextData is OriginContext context)
+                    {
+                        destination = context.OriginSourcePort;
+                        rtspResponse.CSeq = context.OriginCSeq;
+                        _logger.Debug("Dispatch response back to {0}", destination.RemoteEndPoint);
+                    }
 
-                HandleResponse(rtspResponse);
-                break;
-            }
+                    HandleResponse(rtspResponse);
+                    break;
+                }
         }
 
         if (destination?.SendMessage(message) == false)
@@ -207,7 +207,7 @@ public class RTSPDispatcher
 
         string destinationName = destinationUri.Authority;
         if (_serverListener.TryGetValue(destinationName, out RtspListener destination)) return destination;
-        
+
         destination = new(new RtspTcpTransport(destinationUri));
 
         // un peu pourri mais pas d'autre idée...

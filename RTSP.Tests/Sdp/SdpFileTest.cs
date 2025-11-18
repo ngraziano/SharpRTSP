@@ -387,8 +387,8 @@ namespace Rtsp.Sdp.Tests
                 () => SdpFile.ReadStrict(testReader),
                 Throws.InstanceOf<InvalidDataException>());
         }
-        
-                [Test]
+
+        [Test]
         public void ReadALoose()
         {
             using var sdpFile = selfAssembly.GetManifestResourceStream("RTSP.Tests.Sdp.Data.testA.sdp");

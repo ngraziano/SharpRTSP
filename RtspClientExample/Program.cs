@@ -47,7 +47,7 @@ namespace RtspClientExample
 
             // string url = "rtsp://192.168.0.89/media/video2";
 
-             string url = "rtsp://127.0.0.1/screenlive+audiodevice";
+            string url = "rtsp://127.0.0.1/screenlive+audiodevice";
 
             bool usePlayback = false;
             // string url = "rtsp://192.168.3.72/ProfileG/Recording-1/recording/play.smp";
@@ -244,7 +244,8 @@ namespace RtspClientExample
                 {
                     fs_a.Write(data.Span);
                 }
-            };
+            }
+            ;
             client.SetupAudioPayload(ProfileAMR, ReceiveAudioAMR);
         }
 
@@ -259,7 +260,8 @@ namespace RtspClientExample
                 {
                     fs_a.Write(data.Span);
                 }
-            };
+            }
+            ;
             client.SetupAudioPayload(stringType, ReceiveAudioPCMx);
         }
 
@@ -291,7 +293,7 @@ namespace RtspClientExample
                 // Ugly to do it each time.
                 // The interface need to change have an event on new file
 
-                
+
                 foreach (var data in dataArgs.Data)
                 {
                     string filename = Path.Combine("rtsp_capture_" + now, indexImg++ + ".jpg");
@@ -310,7 +312,7 @@ namespace RtspClientExample
             FileStream fs_v = new(filename, FileMode.Create);
             if (args.StreamConfigurationData is H265StreamConfigurationData h265StreamConfigurationData)
             {
-                foreach(var data in h265StreamConfigurationData.OutOfBandNal)
+                foreach (var data in h265StreamConfigurationData.OutOfBandNal)
                 {
                     WriteNalToFileIfNotEmpty(fs_v, data);
                 }

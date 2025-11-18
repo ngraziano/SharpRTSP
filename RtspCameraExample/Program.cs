@@ -54,7 +54,7 @@ namespace RtspCameraExample
 
             // 4) You now have a file called server.pfx which can be used by this application
 
-            private readonly int width =  192;
+            private readonly int width = 192;
             private readonly int height = 128;
             private readonly uint fps = 25;
 

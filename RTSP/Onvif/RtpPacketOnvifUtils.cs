@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 
 namespace Rtsp.Onvif;
+
 public static class RtpPacketOnvifUtils
 {
     private const ushort MARKER_TS_EXT = 0xABAC;

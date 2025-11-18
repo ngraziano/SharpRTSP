@@ -159,7 +159,7 @@ namespace Rtsp
                     }));
                 }
             }
-            catch(OperationCanceledException)
+            catch (OperationCanceledException)
             {
             }
             catch (ObjectDisposedException)

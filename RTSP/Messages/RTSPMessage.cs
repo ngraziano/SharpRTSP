@@ -202,7 +202,7 @@ public partial class RtspMessage : RtspChunk
         Contract.EndContractBlock();
 
         AdjustContentLength();
-        
+
         StringBuilder outputString = new();
         // output header
         outputString.Append(Command).Append("\r\n");

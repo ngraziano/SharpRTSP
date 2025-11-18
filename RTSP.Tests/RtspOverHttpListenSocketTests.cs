@@ -80,7 +80,7 @@ public class RtspOverHttpListenSocketTests
             
             """;
 
-    private const string postWithoutSession = 
+    private const string postWithoutSession =
         $"""
         POST /sw.mov HTTP/1.0
         User-Agent: QTS (qtver=4.1;cpu=PPC;os=Mac 8.6)
@@ -194,7 +194,7 @@ public class RtspOverHttpListenSocketTests
         {
             try
             {
-                if(await client.GetStream().ReadAsync(data, cancellationToken) == 0)
+                if (await client.GetStream().ReadAsync(data, cancellationToken) == 0)
                 {
                     connectionWasClosed = true;
                     break;

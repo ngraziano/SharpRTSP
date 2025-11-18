@@ -42,7 +42,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
 
     public async Task<IRtspTransport> AcceptAsync(CancellationToken cancellationToken)
     {
-        if(_stop?.IsCancellationRequested != false)
+        if (_stop?.IsCancellationRequested != false)
         {
             throw new InvalidOperationException("Not listening. You must call the Start() method before calling this method.");
         }

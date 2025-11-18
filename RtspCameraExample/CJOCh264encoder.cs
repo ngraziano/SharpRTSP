@@ -170,7 +170,7 @@ namespace RtspCameraExample
             stream.AddExpGolombUnsigned(0); // pic_param_set_id
 
             const byte cFrameNum = 0; // (byte)(lFrameNum % 16); // H264 Spec says "If the current picture is an IDR picture, frame_num shall be equal to 0. "
-                                // Also any maths here must relate to the value of log2_max_frame_num_minus4 in the SPS
+                                      // Also any maths here must relate to the value of log2_max_frame_num_minus4 in the SPS
 
             stream.AddBits(cFrameNum, 4); // frame_num ( numbits = v = log2_max_frame_num_minus4 + 4)
 
