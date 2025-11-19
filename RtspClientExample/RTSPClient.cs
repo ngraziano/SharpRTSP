@@ -1189,7 +1189,7 @@ class RTSPClient
                         audioPayloadMapping.Add(audio_payload, audio_codec);
                     }
 
-                    if (audio_uri != null && !video_uris.Contains(audio_uri)) { audio_uris.Add(audio_uri); }
+                    if (audio_uri != null && !audio_uris.Contains(audio_uri)) { audio_uris.Add(audio_uri); }
 
                     if (!string.IsNullOrEmpty(_setupPreferredAudioRtpMap))
                     {
