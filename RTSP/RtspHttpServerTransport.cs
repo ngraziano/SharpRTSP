@@ -98,8 +98,6 @@ public class RtspHttpServerTransport : IRtspTransport, IDisposable
         Error,
     }
 
-    public string RemoteAddress => RemoteEndPoint.ToString();
-
     public IPEndPoint RemoteEndPoint { get; private set; } = null!;
 
     public IPEndPoint LocalEndPoint { get; private set; } = null!;

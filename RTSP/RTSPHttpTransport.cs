@@ -191,8 +191,7 @@ namespace Rtsp
             RemoteEndPoint = _dataClient.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The remote endpoint can not be determined.");
         }
 
-        public string RemoteAddress => _uri.ToString();
-
+        public Uri Uri => _uri;
         public IPEndPoint LocalEndPoint { get; }
         public IPEndPoint RemoteEndPoint { get; }
 

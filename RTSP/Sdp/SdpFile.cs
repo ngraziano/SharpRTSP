@@ -26,24 +26,6 @@ namespace Rtsp.Sdp
 
         /// <summary>
         /// Reads the specified SDP stream.
-        /// As define in RFC 4566
-        /// </summary>
-        /// <param name="sdpStream">The SDP stream.</param>
-        /// <param name="strictParsing">if set to <see langword="false"/> accept some error seen with camera.</param>
-        /// <returns>Parsed SDP file</returns>
-        [Obsolete("Use ReadStrict(TextReader) or ReadLoose(TextReader) instead")]
-        public static SdpFile Read(TextReader sdpStream, bool strictParsing = false)
-        {
-            if (strictParsing)
-            {
-                return ReadStrict(sdpStream);
-            }
-
-            return ReadLoose(sdpStream);
-        }
-
-        /// <summary>
-        /// Reads the specified SDP stream.
         /// Respect the RFC 4566, may not work with old camera.
         /// </summary>
         /// <param name="sdpStream">Sdp stream text</param>

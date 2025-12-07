@@ -66,7 +66,7 @@ namespace Rtsp
             }
             else
             {
-                sslStream.AuthenticateAsClient(RemoteAddress);
+                sslStream.AuthenticateAsClient(RemoteEndPoint.ToString());
             }
             return sslStream;
         }

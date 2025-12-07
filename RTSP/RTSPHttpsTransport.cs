@@ -12,7 +12,7 @@ public class RTSPHttpsTransport(Uri uri, System.Net.NetworkCredential credential
     {
         var sslStream = new SslStream(base.GetStream(), true, _userCertificateSelectionCallback);
 
-        sslStream.AuthenticateAsClient(RemoteAddress);
+        sslStream.AuthenticateAsClient(Uri.Host);
         return sslStream;
     }
 }

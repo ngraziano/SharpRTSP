@@ -52,14 +52,6 @@ namespace Rtsp
             _stream = connection.GetStream();
         }
 
-        [Obsolete("Get the address from the RemoteEndPoint instead.")]
-        /// <summary>
-        /// Gets the remote address.
-        /// </summary>
-        /// <value>The remote address.</value>
-        /// <remarks>In addition to being misspelled, this property actually returns an IP:port pair.</remarks>
-        public string RemoteAdress => RemoteEndPoint.Address.ToString();
-
         /// <summary>
         /// Gets the remote endpoint.
         /// </summary>

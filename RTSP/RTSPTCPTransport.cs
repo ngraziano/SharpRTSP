@@ -47,12 +47,6 @@ namespace Rtsp
         public virtual Stream GetStream() => _RtspServerClient.GetStream();
 
         /// <summary>
-        /// Gets the remote address.
-        /// </summary>
-        /// <value>The remote address.</value>
-        public string RemoteAddress => RemoteEndPoint.ToString();
-
-        /// <summary>
         /// Gets the remote endpoint.
         /// </summary>
         /// <value>The remote endpoint.</value>

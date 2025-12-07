@@ -88,13 +88,6 @@ public partial class RtspMessage : RtspChunk
     }
 
     /// <summary>
-    /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
-    /// </summary>
-    /// <value>The Method</value>
-    [Obsolete("Please use RequestTyped in RtspRequest")]
-    public string Method => commandArray is null ? string.Empty : commandArray[0];
-
-    /// <summary>
     /// Gets the headers of the message.
     /// </summary>
     /// <value>The headers.</value>
