@@ -141,11 +141,11 @@ namespace Rtsp
             try
             {
                 _logger.LogDebug("Connection Open");
-                // var pipe = PipeReader.Create(_stream);
+                var pipe = PipeReader.Create(_stream);
                 while (_transport.Connected && !token.IsCancellationRequested)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk? currentMessage = await ReadOneMessageAsync(_stream, token).ConfigureAwait(false);
+                    RtspChunk? currentMessage = await ReadOneMessageAsync(pipe, token).ConfigureAwait(false);
 
                     if (currentMessage is null)
                     {
@@ -412,6 +412,7 @@ namespace Rtsp
         /// </summary>
         /// <param name="commandStream">The Rtsp stream.</param>
         /// <returns>Message read</returns>
+        [Obsolete("Use the PipeReader version instead.This version will be suppress soon.")]
         public async ValueTask<RtspChunk?> ReadOneMessageAsync(Stream commandStream, CancellationToken token)
         {
             if (commandStream == null)
