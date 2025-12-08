@@ -10,6 +10,7 @@ namespace RTSP.Tests.TestUtils
 {
     public class InBlockingStream : Stream
     {
+        private bool isDisposed = false;
         private readonly CancellationTokenSource cancellationTokenSource = new();
 
         public override bool CanRead => !cancellationTokenSource.IsCancellationRequested;
@@ -26,6 +27,7 @@ namespace RTSP.Tests.TestUtils
 
         public override int Read(byte[] buffer, int offset, int count)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(InBlockingStream));
             // simulate blocking read for data
             // only unlock on close
             cancellationTokenSource.Token.WaitHandle.WaitOne();
@@ -49,8 +51,9 @@ namespace RTSP.Tests.TestUtils
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && !isDisposed)
             {
+                isDisposed = true;
                 cancellationTokenSource.Cancel();
                 cancellationTokenSource.Dispose();
             }

@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Pipelines;
-using System.Buffers;
+using NSubstitute.ClearExtensions;
 
 namespace Rtsp.Tests
 {
@@ -18,10 +18,11 @@ namespace Rtsp.Tests
     public class RtspListenerTest
     {
         IRtspTransport _mockTransport;
-        bool _connected = true;
+        private bool _connected = true;
         readonly object _lock = new();
         List<RtspChunk> _receivedMessage;
         List<RtspChunk> _receivedData;
+        
         private void MessageReceived(object? sender, RtspChunkEventArgs e)
         {
             lock (_lock)
@@ -63,9 +64,18 @@ namespace Rtsp.Tests
             _mockTransport = Substitute.For<IRtspTransport>();
             _connected = true;
             _mockTransport.Connected.Returns(_ => _connected);
-            _mockTransport.When(x => x.Close()).Do(_ => _connected = false);
+            _mockTransport.When(x => x.Close()).Do(_ =>  _connected = false);
             _mockTransport.When(x => x.Reconnect()).Do(_ => _connected = true);
 
+            _receivedData = [];
+            _receivedMessage = [];
+        }
+
+        [TearDown]
+        public void Cleanup()
+        {
+            _mockTransport.ClearSubstitute();
+            _connected = true;
             _receivedData = [];
             _receivedMessage = [];
         }
