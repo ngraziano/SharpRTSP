@@ -252,7 +252,17 @@ namespace Rtsp
             }
 
             _logger.LogDebug("Send Message\n {message}", message);
-            message.SendTo(_stream);
+
+            writeSemaphoreSlim.Wait();
+            try
+            {
+                message.SendTo(_stream);
+            }
+            finally
+            {
+                writeSemaphoreSlim.Release();
+            }            
+                        
             return true;
         }
 
