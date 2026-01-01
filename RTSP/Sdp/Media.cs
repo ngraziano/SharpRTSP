@@ -23,6 +23,15 @@ namespace Rtsp.Sdp
                 };
             }
 
+            if(parts.Length >= 3)
+            {
+                RtpType = parts[2];
+            }
+            else
+            {
+                RtpType = "RTP/AVP";
+            }
+
             if (parts.Length >= 4)
             {
                 if (int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out int pt))
@@ -46,6 +55,8 @@ namespace Rtsp.Sdp
         public MediaTypes MediaType { get; set; }
 
         public int PayloadType { get; set; }
+
+        public string RtpType { get; set; }
 
         public IList<Attribut> Attributs { get; } = [];
     }
