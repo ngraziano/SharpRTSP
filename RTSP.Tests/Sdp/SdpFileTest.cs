@@ -67,6 +67,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(1));
             }
             Media media = readenSDP.Medias[0];
+            Assert.That(media.RtpType, Is.EqualTo("RTP/AVP"));
             Assert.That(media.Attributs, Has.Count.EqualTo(3));
 
             var rtpmaps = media.Attributs.Where(x => x.Key == AttributRtpMap.NAME).ToList();
@@ -119,6 +120,7 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(readenSDP.Medias, Has.Count.EqualTo(1));
             }
             Media media = readenSDP.Medias[0];
+            Assert.That(media.RtpType, Is.EqualTo("RTP/AVP"));
             Assert.That(media.Attributs, Has.Count.EqualTo(3));
 
             var rtpmaps = media.Attributs.Where(x => x.Key == AttributRtpMap.NAME).ToList();
@@ -194,6 +196,7 @@ namespace Rtsp.Sdp.Tests
             }
 
             Media firstMedia = readenSDP.Medias[0];
+            Assert.That(firstMedia.RtpType, Is.EqualTo("RTP/AVP"));
             Assert.That(firstMedia.Bandwidths, Has.Count.EqualTo(1));
             using (Assert.EnterMultipleScope())
             {
@@ -410,9 +413,11 @@ namespace Rtsp.Sdp.Tests
                 Assert.That(sdp.Connection, Is.Null);
                 Assert.That(sdp.Attributs, Has.Count.EqualTo(1));
                 Assert.That(sdp.Medias, Has.Count.EqualTo(2));
+                Assert.That(sdp.Medias[0].RtpType, Is.EqualTo("RTP/AVP"));
                 Assert.That(sdp.Medias[0].Attributs, Has.Count.EqualTo(3));
                 Assert.That(sdp.Medias[0].Attributs, Has.One.AssignableTo<AttributRtpMap>());
                 Assert.That(sdp.Medias[0].Attributs, Has.One.AssignableTo<AttributFmtp>());
+                Assert.That(sdp.Medias[1].RtpType, Is.EqualTo("RTP/AVP"));
                 Assert.That(sdp.Medias[1].Attributs, Has.Count.EqualTo(3));
                 Assert.That(sdp.Medias[1].Attributs, Has.One.AssignableTo<AttributRtpMap>());
                 Assert.That(sdp.Medias[1].Attributs, Has.One.AssignableTo<AttributFmtp>());
