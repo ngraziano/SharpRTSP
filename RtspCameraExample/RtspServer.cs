@@ -78,7 +78,14 @@ namespace RtspCameraExample
             {
                 const string realm = "SharpRTSPServer";
                 credential = new(username, password);
-                auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty);
+                // The original RFC for Digest Auth used the MD5 Hash Algorithm
+                // There is a newer RFC that allows the SHA-256 Hash Algorithm
+                // Enable SHA-256 for some FIPS setups
+                // There is also an ONVIF "MD5 then SHA-256" which sends two WWW-Autneiticate headers
+                // which is not yet supported.
+                var useSHA256 = false;
+                var algorithm = (useSHA256 ? AuthenticationDigest.HASH_ALGORITHM.SHA256 : AuthenticationDigest.HASH_ALGORITHM.MD5);
+                auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty, algorithm);
             }
             else
             {
