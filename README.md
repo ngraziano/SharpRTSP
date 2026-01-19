@@ -7,7 +7,7 @@ The source of the nuget package [SharpRTSP](https://www.nuget.org/packages/Sharp
 
 A C# library to build RTSP Clients, RTSP Servers and handle RTP data streams. The library has several examples.
 * RTSP Client Example - will connect to a RTSP server and receive Video and Audio in H264, H265/HEVC, G711, AAC and AMR formats. UDP, TCP and Multicast are supported. The data received is written to files.
-* RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients
+* RTSP Camera Server Example - A YUV Image Generator and a very simple H264 Encoder generate H264 NALs which are then delivered via a RTSP Server to clients with MD5 and SHA256 Digest Options
 * RTP Receiver - will receieve RTP and RTCP packets and pass them to a transport handler
 * RTSP Server - will accept RTSP connections and talk to clients
 * RTP Sender - will send RTP packets to clients
