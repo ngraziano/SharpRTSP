@@ -18,6 +18,11 @@ namespace Rtsp
         private readonly string _cnonce;
         private readonly HASH_ALGORITHM _algorithm;
 
+        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop) :
+            this(credentials, realm, nonce, qop, HASH_ALGORITHM.MD5)
+        {
+        }
+
         public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop, HASH_ALGORITHM algorithm) : base(credentials)
         {
             _realm = realm ?? throw new ArgumentNullException(nameof(realm));
