@@ -51,11 +51,7 @@ namespace Rtsp
         public override string GetResponse(uint nonceCounter, string uri, string method,
             byte[] entityBodyBytes)
         {
-            System.Security.Cryptography.HashAlgorithm hashAlgorithm;
-            if (_algorithm == HashAlgorithm.SHA256)
-                hashAlgorithm = SHA256.Create();
-            else /* default is MD5 */
-                hashAlgorithm = MD5.Create();
+            using var hashAlgorithm = CreateHashAlgorithm(_algorithm);
 
             string ha1 = CalculateHash(hashAlgorithm, $"{Credentials.UserName}:{_realm}:{Credentials.Password}");
             string ha2Argument = $"{method}:{uri}";
@@ -79,8 +75,6 @@ namespace Rtsp
                 string response = CalculateHash(hashAlgorithm, $"{ha1}:{_nonce}:{nonceCounter:X8}:{_cnonce}:{_qop}:{ha2}");
                 sb.AppendFormat(CultureInfo.InvariantCulture, ", response=\"{0}\", cnonce=\"{1}\", nc=\"{2:X8}\", qop=\"{3}\"", response, _cnonce, nonceCounter, _qop);
             }
-
-            hashAlgorithm.Dispose();
 
             return sb.ToString();
         }
@@ -137,16 +131,11 @@ namespace Rtsp
 
                 // Create the MD5 Hash using all parameters passed in the Auth Header with the 
                 // addition of the 'Password'
-                System.Security.Cryptography.HashAlgorithm hashAlgorithm;
-                if (algorithm == HashAlgorithm.SHA256)
-                    hashAlgorithm = SHA256.Create();
-                else /* Default to MD5 */
-                    hashAlgorithm = MD5.Create();
+                using var hashAlgorithm = CreateHashAlgorithm(algorithm);
 
                 string hashA1 = CalculateHash(hashAlgorithm, username + ":" + realm + ":" + Credentials.Password);
                 string hashA2 = CalculateHash(hashAlgorithm, receivedMessage.RequestTyped + ":" + uri);
                 string expectedResponse = CalculateHash(hashAlgorithm, hashA1 + ":" + nonce + ":" + hashA2);
-                hashAlgorithm.Dispose();
 
                 // Check if everything matches
                 // ToDo - extract paths from the URIs (ignoring SETUP's trackID)
@@ -157,6 +146,14 @@ namespace Rtsp
             }
             return false;
         }
+
+        private static System.Security.Cryptography.HashAlgorithm CreateHashAlgorithm(HashAlgorithm algorithm) =>
+            algorithm switch
+            {
+                HashAlgorithm.SHA256 => SHA256.Create(),
+                /* default is MD5 */
+                _ => MD5.Create(),
+            };
 
         private static string CalculateHash(System.Security.Cryptography.HashAlgorithm hashAlgorithm, string input)
         {
