@@ -14,10 +14,10 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.x
+        dotnet-version: 10.x
     - name: Restore dependencies
       run: dotnet restore RTSP.sln
     - name: Build
       run: dotnet build --no-restore RTSP.sln
     - name: Test
-      run: dotnet test --no-build --verbosity normal --framework net9.0 --filter TestCategory!=Integration RTSP.sln
+      run: dotnet test --no-build --verbosity normal --framework net10.0 --filter TestCategory!=Integration RTSP.sln
