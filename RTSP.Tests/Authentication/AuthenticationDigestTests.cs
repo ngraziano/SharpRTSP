@@ -23,7 +23,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_MD5_noalg);
 
             string nonce = "556284985";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.MD5);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.MD5);
             var result = testObject.IsValid(message);
 
             Assert.That(result, Is.True);
@@ -36,7 +36,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_MD5_with_alg);
 
             string nonce = "556284985";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.MD5);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.MD5);
             var result = testObject.IsValid(message);
 
             Assert.That(result, Is.True);
@@ -49,7 +49,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_SHA256);
 
             string nonce = "729461183";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.SHA256);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.SHA256);
             var result = testObject.IsValid(message);
 
             Assert.That(result, Is.True);
@@ -62,7 +62,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_BadAlg);
 
             string nonce = "729461183";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.MD5);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.MD5);
             var result = testObject.IsValid(message);
 
             Assert.That(result, Is.False);
@@ -75,7 +75,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_BadAlg);
 
             string nonce = "11223344";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.MD5);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.MD5);
             var result = testObject.GetServerResponse();
 
             Assert.That(result.Contains("algorithm"), Is.False); // We don't add 'algorithm=MD5' as it is not required
@@ -88,7 +88,7 @@ namespace RTSP.Tests.Authentication
             message.Headers.Add("Authorization", authStringPLAY_BadAlg);
 
             string nonce = "11223344";
-            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HASH_ALGORITHM.SHA256);
+            var testObject = new AuthenticationDigest(new NetworkCredential("user", "password", realm), realm, nonce, qop, AuthenticationDigest.HashAlgorithm.SHA256);
             var result = testObject.GetServerResponse();
 
             Assert.That(result.Contains("algorithm") && result.Contains("SHA-256"), Is.True);

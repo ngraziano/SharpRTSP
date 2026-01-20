@@ -57,11 +57,11 @@ namespace Rtsp
                     parameterNameToValueMap.TryGetValue("QOP", out var qop);
 
                     // algorithm parameter is optional (and we default to MD5 if it is not present)
-                    AuthenticationDigest.HASH_ALGORITHM algorithm = AuthenticationDigest.HASH_ALGORITHM.MD5;
+                    AuthenticationDigest.HashAlgorithm algorithm = AuthenticationDigest.HashAlgorithm.MD5;
                     if (parameterNameToValueMap.TryGetValue("ALGORITHM", out var algorithm_string))
                     {
-                        if (string.Equals(algorithm_string, "SHA-256")) algorithm = AuthenticationDigest.HASH_ALGORITHM.SHA256;
-                        else if (string.Equals(algorithm_string, "MD5")) algorithm = AuthenticationDigest.HASH_ALGORITHM.MD5;
+                        if (string.Equals(algorithm_string, "SHA-256")) algorithm = AuthenticationDigest.HashAlgorithm.SHA256;
+                        else if (string.Equals(algorithm_string, "MD5")) algorithm = AuthenticationDigest.HashAlgorithm.MD5;
                         else throw new ArgumentException("\"algorithm\" parameter invalid", nameof(authenticateHeader));
                     }
 

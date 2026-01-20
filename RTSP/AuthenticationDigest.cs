@@ -10,20 +10,20 @@ namespace Rtsp
     // WWW-Authentication and Authorization Headers
     public class AuthenticationDigest : Authentication
     {
-        public enum HASH_ALGORITHM { MD5, SHA256 };
+        public enum HashAlgorithm { MD5, SHA256 };
 
         private readonly string _realm;
         private readonly string _nonce;
         private readonly string? _qop;
         private readonly string _cnonce;
-        private readonly HASH_ALGORITHM _algorithm;
+        private readonly HashAlgorithm _algorithm;
 
         public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop) :
-            this(credentials, realm, nonce, qop, HASH_ALGORITHM.MD5)
+            this(credentials, realm, nonce, qop, HashAlgorithm.MD5)
         {
         }
 
-        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop, HASH_ALGORITHM algorithm) : base(credentials)
+        public AuthenticationDigest(NetworkCredential credentials, string realm, string nonce, string? qop, HashAlgorithm algorithm) : base(credentials)
         {
             _realm = realm ?? throw new ArgumentNullException(nameof(realm));
             _nonce = nonce ?? throw new ArgumentNullException(nameof(nonce));
@@ -44,15 +44,15 @@ namespace Rtsp
             string result = $"Digest realm=\"{_realm}\", nonce=\"{_nonce}\"";
 
             // algorithm defaults to MD5 (some clients may not expect an algorithm=MD5 parameter
-            if (_algorithm == HASH_ALGORITHM.SHA256) result += $", algorithm=SHA-256";
+            if (_algorithm == HashAlgorithm.SHA256) result += $", algorithm=SHA-256";
             return result;
         }
 
         public override string GetResponse(uint nonceCounter, string uri, string method,
             byte[] entityBodyBytes)
         {
-            HashAlgorithm hashAlgorithm;
-            if (_algorithm == HASH_ALGORITHM.SHA256)
+            System.Security.Cryptography.HashAlgorithm hashAlgorithm;
+            if (_algorithm == HashAlgorithm.SHA256)
                 hashAlgorithm = SHA256.Create();
             else /* default is MD5 */
                 hashAlgorithm = MD5.Create();
@@ -98,7 +98,7 @@ namespace Rtsp
                 string? nonce = null;
                 string? uri = null;
                 string? response = null;
-                HASH_ALGORITHM algorithm = HASH_ALGORITHM.MD5; // algorithm is optional, and defaults to MD5
+                HashAlgorithm algorithm = HashAlgorithm.MD5; // algorithm is optional, and defaults to MD5
 
                 foreach (string value in valueStr.Split(','))
                 {
@@ -130,15 +130,15 @@ namespace Rtsp
                     }
                     else if (tuple[0].Equals("algorithm", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (String.Equals(var, "MD5")) algorithm = HASH_ALGORITHM.MD5;
-                        else if (String.Equals(var,"SHA-256")) algorithm = HASH_ALGORITHM.SHA256;
+                        if (String.Equals(var, "MD5")) algorithm = HashAlgorithm.MD5;
+                        else if (String.Equals(var,"SHA-256")) algorithm = HashAlgorithm.SHA256;
                     }
                 }
 
                 // Create the MD5 Hash using all parameters passed in the Auth Header with the 
                 // addition of the 'Password'
-                HashAlgorithm hashAlgorithm;
-                if (algorithm == HASH_ALGORITHM.SHA256)
+                System.Security.Cryptography.HashAlgorithm hashAlgorithm;
+                if (algorithm == HashAlgorithm.SHA256)
                     hashAlgorithm = SHA256.Create();
                 else /* Default to MD5 */
                     hashAlgorithm = MD5.Create();
@@ -158,12 +158,12 @@ namespace Rtsp
             return false;
         }
 
-        private static string CalculateHash(HashAlgorithm hashAlgorithm, string input)
+        private static string CalculateHash(System.Security.Cryptography.HashAlgorithm hashAlgorithm, string input)
         {
             byte[] inputBytes = Encoding.UTF8.GetBytes(input);
             return CalculateHash(hashAlgorithm, inputBytes);
         }
-        private static string CalculateHash(HashAlgorithm hashAlgorithm, byte[] input)
+        private static string CalculateHash(System.Security.Cryptography.HashAlgorithm hashAlgorithm, byte[] input)
         {
             byte[] hash = hashAlgorithm.ComputeHash(input);
 
