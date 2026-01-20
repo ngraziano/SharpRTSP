@@ -84,7 +84,7 @@ namespace RtspCameraExample
                 // There is also an ONVIF "MD5 then SHA-256" which sends two WWW-Autneiticate headers
                 // which is not yet supported.
                 var useSHA256 = false;
-                var algorithm = (useSHA256 ? AuthenticationDigest.HASH_ALGORITHM.SHA256 : AuthenticationDigest.HASH_ALGORITHM.MD5);
+                var algorithm = (useSHA256 ? AuthenticationDigest.HashAlgorithm.SHA256 : AuthenticationDigest.HashAlgorithm.MD5);
                 auth = new AuthenticationDigest(credential, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty, algorithm);
             }
             else
