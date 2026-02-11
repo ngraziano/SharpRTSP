@@ -70,7 +70,7 @@ namespace RtspClientExample
             //String url = "rtsp://user:password@192.168.1.102/onvif-media/media.amp?profile=quality_h264";
             
             //hik Tests
-            string url = "rtsp://admin:asdasdasd.@192.168.0.210:554/Streaming/Channels/101";
+            string url = "rtsp://office.hgnet.tech:554/Streaming/Channels/101";
 
             // Bosch Tests
             //String url = "rtsp://192.168.1.124/rtsp_tunnel?h26x=4&line=1&inst=1";
@@ -179,7 +179,8 @@ namespace RtspClientExample
             Console.WriteLine("Press ENTER to exit");
 
             ConsoleKeyInfo key = default;
-            while (key.Key != ConsoleKey.Enter && !client.StreamingFinished())
+            var endTime = DateTime.Now.AddSeconds(30);
+            while (key.Key != ConsoleKey.Enter && !client.StreamingFinished()&& DateTime.Now < endTime)
             {
                 while (!Console.KeyAvailable && !client.StreamingFinished())
                 {
