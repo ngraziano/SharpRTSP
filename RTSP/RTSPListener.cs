@@ -366,7 +366,7 @@ namespace Rtsp
             {
                 if (buffer.Length >= currentMessage.Data.Length)
                 {
-                    buffer.CopyTo(currentMessage.Data.Span);
+                    buffer.Slice(0, currentMessage.Data.Length).CopyTo(currentMessage.Data.Span);
                     buffer = buffer.Slice(currentMessage.Data.Length);
                     return ReadingMessage.MessageFinish;
                 }
