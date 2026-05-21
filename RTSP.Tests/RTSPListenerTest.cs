@@ -353,6 +353,82 @@ namespace Rtsp.Tests
                 Assert.That(dataMessage.Data.ToArray(), Is.EqualTo(data));
             }
         }
+        
+        [Test]
+        public async Task ReceiveResponseWithDataAndOtherPacket()
+        {
+            var rnd = new Random();
+
+            const string message =
+                """
+                RTSP/1.0 200 OK
+                CSeq: 2
+                Content-Type: application/sdp
+                Content-Length: 123
+
+                
+                """;
+            
+            var data = new byte[123];
+            rnd.NextBytes(data);
+            
+            const string message2 =
+                """
+                RTSP/1.0 200 OK
+                CSeq: 3
+
+                
+                """; 
+
+
+            using var pipeServer = new AnonymousPipeServerStream();
+            using var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString());
+
+            _mockTransport.GetStream().Returns(new InOutStream()
+            {
+                In = pipeClient,
+                Out = new MemoryStream()
+            });
+
+            // Setup test object.
+            using var testedListener = new RtspListener(_mockTransport);
+            testedListener.MessageReceived += MessageReceived;
+            testedListener.DataReceived += DataReceived;
+
+            // Run
+            testedListener.Start();
+            pipeServer.Write(Encoding.UTF8.GetBytes(message));
+            pipeServer.Write(data);
+            pipeServer.Write(Encoding.UTF8.GetBytes(message2));
+            await WaitNMessageOrTimeout(2, 500);
+            testedListener.Stop();
+
+            // Check the transport was closed.
+            _mockTransport.Received().Close();
+            using (Assert.EnterMultipleScope())
+            {
+                //Check the message received
+                Assert.That(_receivedMessage, Has.Count.EqualTo(2));
+                Assert.That(_receivedData, Is.Empty);
+            }
+            Assert.That(_receivedMessage[0], Is.InstanceOf<RtspResponse>());
+            var response = _receivedMessage[0] as RtspResponse;
+            Assert.That(response, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response.Data.ToArray(), Is.EqualTo(data));
+                Assert.That(response.SourcePort, Is.SameAs(testedListener));
+            }
+
+            Assert.That(_receivedMessage[1], Is.InstanceOf<RtspResponse>());
+            response = _receivedMessage[1] as RtspResponse;
+            Assert.That(response, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response.SourcePort, Is.SameAs(testedListener));
+                Assert.That(response.Data.ToArray(), Is.Empty);
+            }
+        }
 
         [Test]
         public async Task ReceiveNoMessage()
