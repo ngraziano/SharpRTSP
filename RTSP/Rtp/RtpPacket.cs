@@ -12,6 +12,8 @@ namespace Rtsp.Rtp
             this.rawData = rawData;
         }
 
+        public ReadOnlySpan<byte> RawData => rawData;
+
         public bool IsWellFormed => rawData.Length >= 12 && Version == 2 && PayloadSize >= 0;
 
         public int Version => (rawData[0] >> 6) & 0x03;
