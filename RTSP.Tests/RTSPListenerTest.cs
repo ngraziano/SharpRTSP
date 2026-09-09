@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Pipelines;
+using System.Threading;
 using NSubstitute.ClearExtensions;
 
 namespace Rtsp.Tests
@@ -19,7 +20,7 @@ namespace Rtsp.Tests
     {
         IRtspTransport _mockTransport;
         private bool _connected = true;
-        readonly object _lock = new();
+        readonly Lock _lock = new();
         List<RtspChunk> _receivedMessage;
         List<RtspChunk> _receivedData;
         
