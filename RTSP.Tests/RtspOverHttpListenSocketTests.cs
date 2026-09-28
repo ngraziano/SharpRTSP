@@ -60,6 +60,19 @@ public class RtspOverHttpListenSocketTests
             
             """;
 
+    private const string getWithTwoSession =
+        $"""
+         GET /sw.mov HTTP/1.0
+         User-Agent: QTS (qtver=4.1;cpu=PPC;os=Mac 8.6)
+         x-sessioncookie: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+         x-sessioncookie: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab
+         Accept: application/x-rtsp-tunnelled
+         Pragma: no-cache
+         Cache-Control: no-cache
+
+
+         """;
+    
     private const string getWithoutAccept =
             $"""
             GET /sw.mov HTTP/1.0
@@ -165,6 +178,7 @@ public class RtspOverHttpListenSocketTests
 
     [Test]
     [TestCase(getWithoutSession)]
+    [TestCase(getWithTwoSession)]
     [TestCase(getWithoutAccept)]
     [TestCase(rtspMessage)]
     [TestCase(postWithoutSession)]

@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 public class RtspOverHttpListenSocket : IRtspListenSocket
 {
     private const int TimeoutWaitingClient = 5000;
+    private const int HeaderCountLimit = 50;
     
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
@@ -257,11 +258,24 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         var headerLine = await ReadOneLine(stream, cancellationToken).ConfigureAwait(false);
+        var headerCount = 0;
         while (!string.IsNullOrEmpty(headerLine))
         {
             var headerParts = headerLine.Split(':', 2);
-            if (headerParts.Length > 1) headers.Add(headerParts[0], headerParts[1].Trim());
+            try
+            {
+                if (headerParts.Length > 1) headers.Add(headerParts[0], headerParts[1].Trim());
+            }
+            catch (ArgumentException e)
+            {
+                // duplicate header is bad behavior
+                throw new InvalidDataException($"Duplicate header {headerParts[0]}", e);
+            }
             headerLine = await ReadOneLine(stream, cancellationToken).ConfigureAwait(false);
+
+            // if the client send too many header the client may be evil.
+            if (headerCount++ > HeaderCountLimit) throw new InvalidDataException("Too many headers");
+
         }
 
         return headers;
