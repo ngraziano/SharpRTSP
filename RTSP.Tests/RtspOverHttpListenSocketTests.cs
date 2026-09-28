@@ -243,6 +243,40 @@ public class RtspOverHttpListenSocketTests
 
         Assert.That(result, Is.AssignableTo<RtspHttpServerTransport>());
     }
+    
+    [Test]
+    [CancelAfter(1000)]
+
+    public async Task NotBlockedBySlowlorisAsync(CancellationToken cancellationToken)
+    {
+        var sessionCookie = GenerateCookie();
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
+
+        testObj.Start();
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
+        Debug.Assert(listenEndpoint != null);
+
+
+        var acceptTask = testObj.AcceptAsync(cancellationToken);
+
+        using var clientBlocking = new TcpClient();
+        clientBlocking.Connect(listenEndpoint);
+        
+        using var getClient = new TcpClient();
+        getClient.Connect(listenEndpoint);
+        getClient.GetStream().Write(GetRequest(sessionCookie));
+
+        using var postClient = new TcpClient();
+        postClient.Connect(listenEndpoint);
+        postClient.GetStream().Write(PostRequest(sessionCookie));
+
+        var result = await acceptTask;
+
+        testObj.Stop();
+
+        Assert.That(result, Is.AssignableTo<RtspHttpServerTransport>());
+    }
 
     [Test]
     [CancelAfter(1000)]
