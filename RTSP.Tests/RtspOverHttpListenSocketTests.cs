@@ -19,7 +19,7 @@ public class RtspOverHttpListenSocketTests
     {
         var cookieLength = random.Next(2, 30);
         var sb = new StringBuilder();
-        for (int i = 0; i < cookieLength; i++)
+        for (var i = 0; i < cookieLength; i++)
         {
             sb.Append((char)random.Next(33, 127));
         }
@@ -101,31 +101,31 @@ public class RtspOverHttpListenSocketTests
     [Test()]
     public void StartStopTest()
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
 
         testObj.Start();
-        Assert.That((tcplistener.LocalEndpoint as IPEndPoint)?.Port, Is.GreaterThan(0));
+        Assert.That((tcpListener.LocalEndpoint as IPEndPoint)?.Port, Is.GreaterThan(0));
         testObj.Stop();
         testObj.Start();
         testObj.Start();
         testObj.Stop();
         testObj.Stop();
 
-        // should success without execption
+        // should success without exception
     }
 
 
     [Test]
     [CancelAfter(1000)]
 
-    public async Task InvalidDataAcceptAysnc(CancellationToken cancellationToken)
+    public async Task InvalidDataAcceptAsync(CancellationToken cancellationToken)
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
 
         testObj.Start();
-        var listenEndpoint = tcplistener.LocalEndpoint as IPEndPoint;
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
         Debug.Assert(listenEndpoint != null);
 
         using var client = new TcpClient();
@@ -171,13 +171,13 @@ public class RtspOverHttpListenSocketTests
     [TestCase(postWithoutContentType)]
     [CancelAfter(1000)]
 
-    public async Task IncompleteDataAcceptAysnc(string dataIn, CancellationToken cancellationToken)
+    public async Task IncompleteDataAcceptAsync(string dataIn, CancellationToken cancellationToken)
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
 
         testObj.Start();
-        var listenEndpoint = tcplistener.LocalEndpoint as IPEndPoint;
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
         Debug.Assert(listenEndpoint != null);
 
         using var client = new TcpClient();
@@ -216,26 +216,26 @@ public class RtspOverHttpListenSocketTests
     [Test]
     [CancelAfter(1000)]
 
-    public async Task SimpleAcceptAysnc(CancellationToken cancellationToken)
+    public async Task SimpleAcceptAsync(CancellationToken cancellationToken)
     {
         var sessionCookie = GenerateCookie();
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
 
         testObj.Start();
-        var listenEndpoint = tcplistener.LocalEndpoint as IPEndPoint;
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
         Debug.Assert(listenEndpoint != null);
 
 
         var acceptTask = testObj.AcceptAsync(cancellationToken);
 
-        using var getclient = new TcpClient();
-        getclient.Connect(listenEndpoint);
-        getclient.GetStream().Write(GetRequest(sessionCookie));
+        using var getClient = new TcpClient();
+        getClient.Connect(listenEndpoint);
+        getClient.GetStream().Write(GetRequest(sessionCookie));
 
-        using var postclient = new TcpClient();
-        postclient.Connect(listenEndpoint);
-        postclient.GetStream().Write(PostRequest(sessionCookie));
+        using var postClient = new TcpClient();
+        postClient.Connect(listenEndpoint);
+        postClient.GetStream().Write(PostRequest(sessionCookie));
 
         var result = await acceptTask;
 
@@ -247,26 +247,26 @@ public class RtspOverHttpListenSocketTests
     [Test]
     [CancelAfter(1000)]
 
-    public async Task PostBeforeGetAcceptAysnc(CancellationToken cancellationToken)
+    public async Task PostBeforeGetAcceptAsync(CancellationToken cancellationToken)
     {
         var sessionCookie = GenerateCookie();
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
 
         testObj.Start();
-        var listenEndpoint = tcplistener.LocalEndpoint as IPEndPoint;
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
         Debug.Assert(listenEndpoint != null);
 
 
         var acceptTask = testObj.AcceptAsync(cancellationToken);
 
-        using var postclient = new TcpClient();
-        postclient.Connect(listenEndpoint);
-        postclient.GetStream().Write(PostRequest(sessionCookie));
+        using var postClient = new TcpClient();
+        postClient.Connect(listenEndpoint);
+        postClient.GetStream().Write(PostRequest(sessionCookie));
 
-        using var getclient = new TcpClient();
-        getclient.Connect(listenEndpoint);
-        getclient.GetStream().Write(GetRequest(sessionCookie));
+        using var getClient = new TcpClient();
+        getClient.Connect(listenEndpoint);
+        getClient.GetStream().Write(GetRequest(sessionCookie));
 
         var result = await acceptTask;
 
@@ -280,8 +280,8 @@ public class RtspOverHttpListenSocketTests
     [CancelAfter(1000)]
     public void AcceptWithoutStart(CancellationToken cancellationToken)
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspOverHttpListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspOverHttpListenSocket(tcpListener);
         Assert.ThrowsAsync<InvalidOperationException>(async () => await testObj.AcceptAsync(cancellationToken));
     }
 }
