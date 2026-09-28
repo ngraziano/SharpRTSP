@@ -16,6 +16,8 @@ using System.Threading.Tasks;
 
 public class RtspOverHttpListenSocket : IRtspListenSocket
 {
+    private const int TimeoutWaitingClient = 5000;
+    
     private readonly TcpListener _tcpListener;
     private readonly ILogger _logger;
     private readonly ILoggerFactory? _loggerFactory;
@@ -81,8 +83,11 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
                 var client = await _tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
 #endif
                 _logger.LogDebug("Connection from {remoteEndPoint}", client.Client.RemoteEndPoint);
-                await HandleHeaderAndAddToSessions(client, cancellationToken).ConfigureAwait(false);
 
+                var addCancellation=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+               addCancellation.CancelAfter(TimeoutWaitingClient);
+                _ = HandleHeaderAndAddToSessions(client, addCancellation.Token).ConfigureAwait(false);
+                
                 // remove old session
                 var sessionToRemove = _activesSessions
                     .Where(kv => kv.Value.IsObsolete)
@@ -102,8 +107,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
 
     private async Task HandleHeaderAndAddToSessions(TcpClient client, CancellationToken cancellationToken)
     {
-        // prevent bad client to totally block the system
-        client.ReceiveTimeout = 5000;
+        client.ReceiveTimeout = TimeoutWaitingClient;
         try
         {
             var clientStream = GetStream(client);
