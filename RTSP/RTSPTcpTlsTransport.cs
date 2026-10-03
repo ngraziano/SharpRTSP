@@ -33,7 +33,17 @@ namespace Rtsp
         public RtspTcpTlsTransport(Uri uri, RemoteCertificateValidationCallback? userCertificateValidationCallback)
             : this(new TcpClient(uri.Host, uri.Port), userCertificateValidationCallback)
         {
+            TargetHost = uri.DnsSafeHost;
         }
+
+        /// <summary>
+        /// Gets or sets the name of the server the certificate must be issued to, as a TLS Client.
+        /// </summary>
+        /// <remarks>
+        /// Set from the uri when the transport makes the connection. For a connection made elsewhere,
+        /// <see langword="null"/> checks the certificate against the remote address.
+        /// </remarks>
+        public string? TargetHost { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspTcpTlsTransport"/> class as a SSL/TLS Server with a certificate.
@@ -66,7 +76,7 @@ namespace Rtsp
             }
             else
             {
-                sslStream.AuthenticateAsClient(RemoteEndPoint.ToString());
+                sslStream.AuthenticateAsClient(TargetHost ?? RemoteEndPoint.Address.ToString());
             }
             return sslStream;
         }
