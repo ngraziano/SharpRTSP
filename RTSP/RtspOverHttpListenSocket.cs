@@ -223,7 +223,7 @@ public class RtspOverHttpListenSocket : IRtspListenSocket
     /// <returns>A line (without /r and /n)</returns>
     /// <exception cref="InvalidDataException">Raise when data is too large</exception>
     /// <remarks>
-    /// Exist ecause streamreader read too much data in the buffer
+    /// Exist because streamreader read too much data in the buffer
     /// So slowly read one by one
     /// </remarks>
     private static async Task<string> ReadOneLine(Stream stream, CancellationToken cancellationToken)
