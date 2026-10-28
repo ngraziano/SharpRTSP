@@ -24,11 +24,12 @@ namespace Rtsp
             private readonly string _sessionCookie = Guid.NewGuid().ToString("N")[..10];
             private readonly RtspHttpTransport _parent;
             private TcpClient? _outClient;
+            private Stream? _outStream;
             private readonly MemoryStream _sendBuffer = new();
 
             public HttpTransportStream(RtspHttpTransport parent)
             {
-                _inStream = parent._dataClient!.GetStream();
+                _inStream = parent.OpenStream(parent._dataClient!);
                 _parent = parent;
             }
 
@@ -101,19 +102,21 @@ namespace Rtsp
                 var base64CommandBytes = basse64Buffer.AsSpan(0, byteWritten);
 
 
-                if (_outClient?.Connected != true)
+                if (_outClient?.Connected != true || _outStream is null)
                 {
+                    _outStream?.Dispose();
                     _outClient?.Dispose();
-                    _outClient = new TcpClient();
-                    _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
+                    _outClient = _parent.Connect();
+                    _outStream = _parent.OpenStream(_outClient);
 
                     string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
                     byte[] requestBytes = Encoding.ASCII.GetBytes(request);
 
-                    _outClient.GetStream().Write(requestBytes);
+                    _outStream.Write(requestBytes);
                 }
 
-                _outClient.GetStream().Write(base64CommandBytes);
+                _outStream.Write(base64CommandBytes);
+                _outStream.Flush();
                 ArrayPool<byte>.Shared.Return(basse64Buffer);
 
                 _sendBuffer.SetLength(0);
@@ -161,6 +164,7 @@ namespace Rtsp
                 if (disposing)
                 {
                     _inStream.Dispose();
+                    _outStream?.Dispose();
                     _outClient?.Dispose();
                     _sendBuffer.Dispose();
                 }
@@ -221,13 +225,28 @@ namespace Rtsp
             do
             {
                 // retry if need authentication
-                _dataClient = new TcpClient();
-                _dataClient.Connect(_uri.Host, _uri.Port);
+                _dataClient = Connect();
                 _stream = new HttpTransportStream(this);
                 retry++;
             }
             while (!_stream.Open() && retry < 2);
         }
+
+        /// <summary>
+        /// Connects one of the two connections of the tunnel.
+        /// </summary>
+        /// <remarks>
+        /// By name, so every address of the host is tried, IPv6 as well: a <see cref="TcpClient"/>
+        /// made without an address family is IPv4 only on .NET Framework.
+        /// </remarks>
+        private TcpClient Connect() => new(_uri.DnsSafeHost, _uri.Port);
+
+        /// <summary>
+        /// Gets the stream of one of the two connections of the tunnel, before any HTTP is written on it.
+        /// </summary>
+        /// <param name="client">The connection.</param>
+        /// <returns>The stream the HTTP requests and responses go over.</returns>
+        protected virtual Stream OpenStream(TcpClient client) => client.GetStream();
 
         protected virtual void Dispose(bool disposing)
         {
