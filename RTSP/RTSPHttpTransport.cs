@@ -1,4 +1,5 @@
-﻿using Rtsp.Messages;
+﻿namespace Rtsp;
+
 using System;
 using System.Buffers;
 using System.Buffers.Text;
@@ -11,278 +12,302 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 
-namespace Rtsp
+using Rtsp.Messages;
+using Rtsp.Utils;
+
+public class RtspHttpTransport : IRtspTransport, IDisposable
 {
-    public class RtspHttpTransport : IRtspTransport, IDisposable
+    private const int MaxResponseHeadersSize = 8 * 1024;
+    private static readonly byte[] DoubleCrlfBytes = "\r\n\r\n"u8.ToArray();
+
+    private class HttpTransportStream : Stream
     {
-        private const int MaxResponseHeadersSize = 8 * 1024;
-        private static readonly byte[] DoubleCrlfBytes = "\r\n\r\n"u8.ToArray();
+        private readonly Stream _inStream;
+        private readonly string _sessionCookie = Guid.NewGuid().ToString("N")[..10];
+        private readonly RtspHttpTransport _parent;
+        private TcpClient? _outClient;
+        private readonly MemoryStream _sendBuffer = new();
 
-        private class HttpTransportStream : Stream
+        public HttpTransportStream(RtspHttpTransport parent)
         {
-            private readonly Stream _inStream;
-            private readonly string _sessionCookie = Guid.NewGuid().ToString("N")[..10];
-            private readonly RtspHttpTransport _parent;
-            private TcpClient? _outClient;
-            private readonly MemoryStream _sendBuffer = new();
+            _inStream = parent._dataClient!.GetStream();
+            _parent = parent;
+        }
 
-            public HttpTransportStream(RtspHttpTransport parent)
+        internal bool Open()
+        {
+            string request = _parent.ComposeGetRequest(_sessionCookie);
+            byte[] requestByte = Encoding.ASCII.GetBytes(request);
+            _inStream.Write(requestByte);
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(MaxResponseHeadersSize);
+            int read = ReadUntilEndOfHeaders(_inStream, buffer, MaxResponseHeadersSize);
+
+            using MemoryStream ms = new(buffer, 0, read);
+            using StreamReader streamReader = new(ms, Encoding.ASCII);
+
+            // Parse first HTTP response line
+            string? responseLine = streamReader.ReadLine();
+            if (string.IsNullOrEmpty(responseLine))
             {
-                _inStream = parent._dataClient!.GetStream();
-                _parent = parent;
+                throw new HttpBadResponseException("Empty response");
             }
 
-            internal bool Open()
+            string[] tokens = responseLine.Split(' ', 3);
+            if (tokens.Length != 3)
             {
-                string request = _parent.ComposeGetRequest(_sessionCookie);
-                byte[] requestByte = Encoding.ASCII.GetBytes(request);
-                _inStream.Write(requestByte);
-
-                byte[] buffer = ArrayPool<byte>.Shared.Rent(MaxResponseHeadersSize);
-                int read = ReadUntilEndOfHeaders(_inStream, buffer, MaxResponseHeadersSize);
-
-                using MemoryStream ms = new(buffer, 0, read);
-                using StreamReader streamReader = new(ms, Encoding.ASCII);
-
-                // Parse first HTTP response line
-                string? responseLine = streamReader.ReadLine();
-                if (string.IsNullOrEmpty(responseLine)) { throw new HttpBadResponseException("Empty response"); }
-
-                string[] tokens = responseLine.Split(' ', 3);
-                if (tokens.Length != 3) { throw new HttpRequestException("Invalid first response line"); }
-
-                HttpStatusCode statusCode = (HttpStatusCode)int.Parse(tokens[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                if (statusCode == HttpStatusCode.OK) { return true; }
-
-                if (statusCode == HttpStatusCode.Unauthorized && !_parent._credentials.IsEmpty() && _parent._authentication is null)
-                {
-                    NameValueCollection headers = HeadersParser.ParseHeaders(streamReader);
-                    string? authenticateHeader = headers.Get(RtspHeaderNames.WWWAuthenticate);
-
-                    if (string.IsNullOrEmpty(authenticateHeader))
-                        throw new HttpBadResponseCodeException(statusCode);
-
-                    _parent._authentication = Authentication.Create(_parent._credentials, authenticateHeader);
-
-                    return false;
-                }
-
-                throw new HttpBadResponseCodeException(statusCode);
+                throw new HttpRequestException("Invalid first response line");
             }
 
-            public override bool CanRead => _inStream.CanRead;
-
-            public override bool CanSeek => false;
-
-            // we can write when read stream is available because we reconnect if necessary
-            public override bool CanWrite => _inStream.CanRead;
-
-            public override long Length => throw new NotSupportedException("Not supported in network");
-
-            public override long Position
+            HttpStatusCode statusCode =
+                (HttpStatusCode)int.Parse(tokens[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            if (statusCode == HttpStatusCode.OK)
             {
-                get => throw new NotSupportedException("Not supported in network");
-                set => throw new NotSupportedException("Not supported in network");
+                return true;
             }
 
-            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException("Not supported in network");
-
-            public override void SetLength(long value) => throw new NotSupportedException("Not supported in network");
-
-            public override void Flush()
+            if (statusCode == HttpStatusCode.Unauthorized && !_parent._credentials.IsEmpty() &&
+                _parent._authentication is null)
             {
-                var commandLength = (int)_sendBuffer.Length;
-                var basse64Buffer = ArrayPool<byte>.Shared.Rent(Base64.GetMaxEncodedToUtf8Length(commandLength));
+                NameValueCollection headers = HeadersParser.ParseHeaders(streamReader);
+                string? authenticateHeader = headers.Get(RtspHeaderNames.WWWAuthenticate);
 
-                _sendBuffer.Position = 0;
-                var read = _sendBuffer.Read(basse64Buffer, 0, commandLength);
-                Debug.Assert(read == commandLength);
-                Base64.EncodeToUtf8InPlace(basse64Buffer, commandLength, out int byteWritten);
-                var base64CommandBytes = basse64Buffer.AsSpan(0, byteWritten);
+                if (string.IsNullOrEmpty(authenticateHeader))
+                    throw new HttpBadResponseCodeException(statusCode);
 
+                _parent._authentication = Authentication.Create(_parent._credentials, authenticateHeader);
 
-                if (_outClient?.Connected != true)
-                {
-                    _outClient?.Dispose();
-                    _outClient = new TcpClient();
-                    _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
-
-                    string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
-                    byte[] requestBytes = Encoding.ASCII.GetBytes(request);
-
-                    _outClient.GetStream().Write(requestBytes);
-                }
-
-                _outClient.GetStream().Write(base64CommandBytes);
-                ArrayPool<byte>.Shared.Return(basse64Buffer);
-
-                _sendBuffer.SetLength(0);
+                return false;
             }
 
-            public override int Read(byte[] buffer, int offset, int count) => _inStream.Read(buffer, offset, count);
+            throw new HttpBadResponseCodeException(statusCode);
+        }
 
-            public override void Write(byte[] buffer, int offset, int count) => _sendBuffer.Write(buffer, offset, count);
+        public override bool CanRead => _inStream.CanRead;
+
+        public override bool CanSeek => false;
+
+        // we can write when read stream is available because we reconnect if necessary
+        public override bool CanWrite => _inStream.CanRead;
+
+        public override long Length => throw new NotSupportedException("Not supported in network");
+
+        public override long Position
+        {
+            get => throw new NotSupportedException("Not supported in network");
+            set => throw new NotSupportedException("Not supported in network");
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            throw new NotSupportedException("Not supported in network");
+
+        public override void SetLength(long value) => throw new NotSupportedException("Not supported in network");
+
+        public override void Flush()
+        {
+            var commandLength = (int)_sendBuffer.Length;
+            var basse64Buffer = ArrayPool<byte>.Shared.Rent(Base64.GetMaxEncodedToUtf8Length(commandLength));
+
+            _sendBuffer.Position = 0;
+            var read = _sendBuffer.Read(basse64Buffer, 0, commandLength);
+            Debug.Assert(read == commandLength);
+            Base64.EncodeToUtf8InPlace(basse64Buffer, commandLength, out int byteWritten);
+            var base64CommandBytes = basse64Buffer.AsSpan(0, byteWritten);
+
+
+            if (_outClient?.Connected != true)
+            {
+                _outClient?.Dispose();
+                _outClient = new TcpClient();
+                _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
+
+                string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
+                byte[] requestBytes = Encoding.ASCII.GetBytes(request);
+
+                _outClient.GetStream().Write(requestBytes);
+            }
+
+            _outClient.GetStream().Write(base64CommandBytes);
+            ArrayPool<byte>.Shared.Return(basse64Buffer);
+
+            _sendBuffer.SetLength(0);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => _inStream.Read(buffer, offset, count);
+
+        public override void Write(byte[] buffer, int offset, int count) => _sendBuffer.Write(buffer, offset, count);
 
 #if NETSTANDARD2_1_OR_GREATER || NET8_0_OR_GREATER
-            // Remove a copy when possible
-            public override void Write(ReadOnlySpan<byte> buffer) => _sendBuffer.Write(buffer);
+        // Remove a copy when possible
+        public override void Write(ReadOnlySpan<byte> buffer) => _sendBuffer.Write(buffer);
 #endif
-            private static int ReadUntilEndOfHeaders(Stream stream, byte[] buffer, int length)
-            {
-                int offset = 0;
-                int totalRead = 0;
+        private static int ReadUntilEndOfHeaders(Stream stream, byte[] buffer, int length)
+        {
+            int offset = 0;
+            int totalRead = 0;
 
-                while (true)
+            while (true)
+            {
+                int count = length - totalRead;
+
+                if (count == 0)
+                    throw new InvalidOperationException($"Response is too large (> {length / 1024} KB)");
+
+                int read = stream.Read(buffer, offset, count);
+
+                if (read == 0)
+                    throw new EndOfStreamException("End of http stream");
+
+                totalRead += read;
+
+                int startIndex = Math.Max(0, offset - (DoubleCrlfBytes.Length - 1));
+                if (buffer.AsSpan()[startIndex..totalRead].IndexOf(DoubleCrlfBytes) != -1)
                 {
-                    int count = length - totalRead;
-
-                    if (count == 0)
-                        throw new InvalidOperationException($"Response is too large (> {length / 1024} KB)");
-
-                    int read = stream.Read(buffer, offset, count);
-
-                    if (read == 0)
-                        throw new EndOfStreamException("End of http stream");
-
-                    totalRead += read;
-
-                    int startIndex = Math.Max(0, offset - (DoubleCrlfBytes.Length - 1));
-                    if (buffer.AsSpan()[startIndex..totalRead].IndexOf(DoubleCrlfBytes) != -1)
-                    {
-                        return totalRead;
-                    }
-
-                    offset += read;
+                    return totalRead;
                 }
-            }
 
-            protected override void Dispose(bool disposing)
+                offset += read;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                if (disposing)
-                {
-                    _inStream.Dispose();
-                    _outClient?.Dispose();
-                    _sendBuffer.Dispose();
-                }
-                base.Dispose(disposing);
+                _inStream.Dispose();
+                _outClient?.Dispose();
+                _sendBuffer.Dispose();
             }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    private readonly NetworkCredential _credentials;
+    private readonly Uri _uri;
+
+    private TcpClient? _dataClient;
+
+    private HttpTransportStream? _stream;
+    private Authentication? _authentication;
+    private uint _commandCounter;
+    private bool disposedValue;
+
+    public RtspHttpTransport(Uri uri, NetworkCredential credentials)
+    {
+        _credentials = credentials;
+        _uri = uri;
+        Reconnect();
+        if (_dataClient is null)
+        {
+            throw new InvalidOperationException("The HTTP client could not be opened.");
         }
 
-        private readonly NetworkCredential _credentials;
-        private readonly Uri _uri;
+        LocalEndPoint = _dataClient.Client.LocalEndPoint as IPEndPoint ??
+                        throw new InvalidOperationException("The local endpoint can not be determined.");
+        RemoteEndPoint = _dataClient.Client.RemoteEndPoint as IPEndPoint ??
+                         throw new InvalidOperationException("The remote endpoint can not be determined.");
+    }
 
-        private TcpClient? _dataClient;
+    public Uri Uri => _uri;
+    public IPEndPoint LocalEndPoint { get; }
+    public IPEndPoint RemoteEndPoint { get; }
 
-        private HttpTransportStream? _stream;
-        private Authentication? _authentication;
-        private uint _commandCounter;
-        private bool disposedValue;
+    public bool Connected => _dataClient?.Connected == true;
 
-        public RtspHttpTransport(Uri uri, NetworkCredential credentials)
+    public uint NextCommandIndex() => ++_commandCounter;
+
+    public void Close()
+    {
+        _stream?.Close();
+        _dataClient?.Close();
+    }
+
+    public virtual Stream GetStream()
+    {
+        if (_dataClient?.Connected != true || _stream is null)
+            throw new InvalidOperationException("Client is not connected");
+
+        return _stream;
+    }
+
+    public void Reconnect()
+    {
+        if (Connected) return;
+        _commandCounter = 0;
+        int retry = 0;
+        do
         {
-            _credentials = credentials;
-            _uri = uri;
-            Reconnect();
-            if (_dataClient is null)
+            // retry if authentication is needed
+            _dataClient = new TcpClient();
+            _dataClient.Connect(_uri.Host, _uri.Port);
+            _stream = new HttpTransportStream(this);
+            retry++;
+        } while (!_stream.Open() && retry < 2);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
             {
-                throw new InvalidOperationException("The HTTP client could not be opened.");
-            }
-            LocalEndPoint = _dataClient.Client.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("The local endpoint can not be determined.");
-            RemoteEndPoint = _dataClient.Client.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("The remote endpoint can not be determined.");
-        }
-
-        public Uri Uri => _uri;
-        public IPEndPoint LocalEndPoint { get; }
-        public IPEndPoint RemoteEndPoint { get; }
-
-        public bool Connected => _dataClient?.Connected == true;
-
-        public uint NextCommandIndex() => ++_commandCounter;
-
-        public void Close()
-        {
-            _stream?.Close();
-            _dataClient?.Close();
-        }
-
-        public virtual Stream GetStream()
-        {
-            if (_dataClient?.Connected != true || _stream is null)
-                throw new InvalidOperationException("Client is not connected");
-
-            return _stream;
-        }
-
-        public void Reconnect()
-        {
-            if (Connected) return;
-            _commandCounter = 0;
-            int retry = 0;
-            do
-            {
-                // retry if need authentication
-                _dataClient = new TcpClient();
-                _dataClient.Connect(_uri.Host, _uri.Port);
-                _stream = new HttpTransportStream(this);
-                retry++;
-            }
-            while (!_stream.Open() && retry < 2);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    Close();
-                }
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        private string GetAuthorizationHeader(uint counter, string method, ReadOnlySpan<byte> requestBytes)
-        {
-            if (_authentication == null)
-            {
-                return string.Empty;
+                Close();
             }
 
-            // check to change GetResponse body to span
-            string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes.ToArray());
-            return $"Authorization: {headerValue}\r\n";
+            disposedValue = true;
         }
+    }
 
-        private string ComposeGetRequest(string sessionCookie)
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    private string GetAuthorizationHeader(uint counter, string method, ReadOnlySpan<byte> requestBytes)
+    {
+        if (_authentication == null)
         {
-            string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "GET", []);
-
-            StringBuilder sb = new();
-            sb.AppendLine($"GET {_uri.PathAndQuery} HTTP/1.0");
-            sb.AppendLine($"x-sessioncookie: {sessionCookie}");
-            if (!string.IsNullOrEmpty(authorizationHeader)) { sb.AppendLine(authorizationHeader); }
-            sb.AppendLine();
-            return sb.ToString();
+            return string.Empty;
         }
 
-        private string ComposePostRequest(string sessionCookie, ReadOnlySpan<byte> commandBytes)
+        // check to change GetResponse body to span
+        string headerValue = _authentication.GetResponse(counter, _uri.PathAndQuery, method, requestBytes.ToArray());
+        return $"Authorization: {headerValue}\r\n";
+    }
+
+    private string ComposeGetRequest(string sessionCookie)
+    {
+        string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "GET", []);
+
+        StringBuilder sb = new();
+        sb.AppendHttpLine($"GET {_uri.PathAndQuery} HTTP/1.0");
+        sb.AppendHttpLine($"x-sessioncookie: {sessionCookie}");
+        if (!string.IsNullOrEmpty(authorizationHeader))
         {
-            string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "POST", commandBytes);
-
-            StringBuilder sb = new();
-            sb.AppendLine($"POST {_uri.PathAndQuery} HTTP/1.0");
-            sb.AppendLine($"x-sessioncookie: {sessionCookie}");
-            sb.AppendLine("Content-Type: application/x-rtsp-tunnelled");
-            sb.AppendLine("Content-Length: 32767");
-            if (!string.IsNullOrEmpty(authorizationHeader)) { sb.AppendLine(authorizationHeader); }
-            sb.AppendLine();
-            return sb.ToString();
+            sb.AppendHttpLine(authorizationHeader);
         }
+
+        sb.AppendHttpLine();
+        return sb.ToString();
+    }
+
+    private string ComposePostRequest(string sessionCookie, ReadOnlySpan<byte> commandBytes)
+    {
+        string authorizationHeader = GetAuthorizationHeader(NextCommandIndex(), "POST", commandBytes);
+
+        StringBuilder sb = new();
+        sb.AppendHttpLine($"POST {_uri.PathAndQuery} HTTP/1.0");
+        sb.AppendHttpLine($"x-sessioncookie: {sessionCookie}");
+        sb.AppendHttpLine("Content-Type: application/x-rtsp-tunnelled");
+        sb.AppendHttpLine("Content-Length: 32767");
+        if (!string.IsNullOrEmpty(authorizationHeader))
+        {
+            sb.AppendHttpLine(authorizationHeader);
+        }
+
+        sb.AppendHttpLine();
+        return sb.ToString();
     }
 }
