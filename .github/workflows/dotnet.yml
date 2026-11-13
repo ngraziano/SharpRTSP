@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-dotnet@v4
+    - uses: actions/checkout@v7
+    - uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 10.x
+        dotnet-version: 11.x
     - name: Restore dependencies
       run: dotnet restore RTSP.sln
     - name: Build
       run: dotnet build --no-restore RTSP.sln
     - name: Test
-      run: dotnet test --no-build --verbosity normal --framework net10.0 --filter TestCategory!=Integration RTSP.sln
+      run: dotnet test --no-build --verbosity normal --framework net11.0 --filter TestCategory!=Integration RTSP.sln
