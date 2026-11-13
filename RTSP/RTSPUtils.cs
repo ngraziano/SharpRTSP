@@ -30,7 +30,7 @@ public static class RtspUtils
             "rtsp" => new RtspTcpTransport(uri),
             "rtsps" => new RtspTcpTlsTransport(uri, userCertificateSelectionCallback),
             "http" => new RtspHttpTransport(uri, networkCredential),
-            "https" => new RTSPHttpsTransport(uri, networkCredential, userCertificateSelectionCallback),
+            "https" => new RtspHttpsTransport(uri, networkCredential, userCertificateSelectionCallback),
             _ => throw new ArgumentException("The uri scheme is not supported", nameof(uri)),
         };
     }
@@ -44,7 +44,7 @@ public static class RtspUtils
             "rtsp" => new RtspTcpTransport(uri),
             "rtsps" => new RtspTcpTlsTransport(uri, userCertificateSelectionCallback),
             "http" => new RtspHttpTransport(uri, new()),
-            "https" => new RTSPHttpsTransport(uri, new(), userCertificateSelectionCallback),
+            "https" => new RtspHttpsTransport(uri, new(), userCertificateSelectionCallback),
             _ => throw new ArgumentException("The uri scheme is not supported", nameof(uri)),
         };
     }

@@ -11,7 +11,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
-
 using Rtsp.Messages;
 using Rtsp.Utils;
 
@@ -26,11 +25,12 @@ public class RtspHttpTransport : IRtspTransport, IDisposable
         private readonly string _sessionCookie = Guid.NewGuid().ToString("N")[..10];
         private readonly RtspHttpTransport _parent;
         private TcpClient? _outClient;
+        private Stream? _outStream;
         private readonly MemoryStream _sendBuffer = new();
 
         public HttpTransportStream(RtspHttpTransport parent)
         {
-            _inStream = parent._dataClient!.GetStream();
+            _inStream = parent.OpenStream(parent._dataClient!);
             _parent = parent;
         }
 
@@ -115,19 +115,21 @@ public class RtspHttpTransport : IRtspTransport, IDisposable
             var base64CommandBytes = basse64Buffer.AsSpan(0, byteWritten);
 
 
-            if (_outClient?.Connected != true)
+            if (_outClient?.Connected != true || _outStream is null)
             {
+                _outStream?.Dispose();
                 _outClient?.Dispose();
-                _outClient = new TcpClient();
-                _outClient.Connect(_parent._uri.Host, _parent._uri.Port);
+                _outClient = _parent.CreateClient();
+                _outStream = _parent.OpenStream(_outClient);
 
                 string request = _parent.ComposePostRequest(_sessionCookie, base64CommandBytes);
                 byte[] requestBytes = Encoding.ASCII.GetBytes(request);
 
-                _outClient.GetStream().Write(requestBytes);
+                _outStream.Write(requestBytes);
             }
 
-            _outClient.GetStream().Write(base64CommandBytes);
+            _outStream.Write(base64CommandBytes);
+            _outStream.Flush();
             ArrayPool<byte>.Shared.Return(basse64Buffer);
 
             _sendBuffer.SetLength(0);
@@ -175,6 +177,7 @@ public class RtspHttpTransport : IRtspTransport, IDisposable
             if (disposing)
             {
                 _inStream.Dispose();
+                _outStream?.Dispose();
                 _outClient?.Dispose();
                 _sendBuffer.Dispose();
             }
@@ -191,7 +194,7 @@ public class RtspHttpTransport : IRtspTransport, IDisposable
     private HttpTransportStream? _stream;
     private Authentication? _authentication;
     private uint _commandCounter;
-    private bool disposedValue;
+    private bool _disposedValue;
 
     public RtspHttpTransport(Uri uri, NetworkCredential credentials)
     {
@@ -239,23 +242,31 @@ public class RtspHttpTransport : IRtspTransport, IDisposable
         do
         {
             // retry if authentication is needed
-            _dataClient = new TcpClient();
-            _dataClient.Connect(_uri.Host, _uri.Port);
+            _dataClient = CreateClient();
             _stream = new HttpTransportStream(this);
             retry++;
         } while (!_stream.Open() && retry < 2);
     }
 
+    private TcpClient CreateClient() => new(_uri.DnsSafeHost, _uri.Port);
+
+    /// <summary>
+    /// Gets the stream of one of the two connections of the tunnel, before any HTTP is written on it.
+    /// </summary>
+    /// <param name="client">The TCP connection.</param>
+    /// <returns>The stream the HTTP requests and responses go over.</returns>
+    protected virtual Stream OpenStream(TcpClient client) => client.GetStream();
+
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
                 Close();
             }
 
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 
