@@ -17,16 +17,16 @@ public class RtspListenSocketTests
     [Test()]
     public void StartStopTest()
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspListenSocket(tcpListener);
 
         testObj.Start();
-        Assert.That((tcplistener.LocalEndpoint as IPEndPoint)?.Port, Is.GreaterThan(0));
+        Assert.That((tcpListener.LocalEndpoint as IPEndPoint)?.Port, Is.GreaterThan(0));
         testObj.Stop();
         testObj.Start();
         testObj.Stop();
 
-        // should success without execption
+        // should success without exception
     }
 
     [Test]
@@ -34,11 +34,11 @@ public class RtspListenSocketTests
 
     public async Task SimpleAccept(CancellationToken cancellationToken)
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspListenSocket(tcpListener);
 
         testObj.Start();
-        var listenEndpoint = tcplistener.LocalEndpoint as IPEndPoint;
+        var listenEndpoint = tcpListener.LocalEndpoint as IPEndPoint;
         Debug.Assert(listenEndpoint != null);
 
 
@@ -53,11 +53,11 @@ public class RtspListenSocketTests
 
     [Test()]
     [CancelAfter(1000)]
-    public void AccpetWithoutStart(CancellationToken cancellationToken)
+    public async Task AcceptWithoutStart(CancellationToken cancellationToken)
     {
-        var tcplistener = new TcpListener(IPAddress.Loopback, 0);
-        var testObj = new RtspListenSocket(tcplistener);
+        var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        var testObj = new RtspListenSocket(tcpListener);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await testObj.AcceptAsync(cancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await testObj.AcceptAsync(cancellationToken));
     }
 }

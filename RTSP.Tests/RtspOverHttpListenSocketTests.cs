@@ -326,10 +326,10 @@ public class RtspOverHttpListenSocketTests
 
     [Test()]
     [CancelAfter(1000)]
-    public void AcceptWithoutStart(CancellationToken cancellationToken)
+    public async Task AcceptWithoutStart(CancellationToken cancellationToken)
     {
         var tcpListener = new TcpListener(IPAddress.Loopback, 0);
         var testObj = new RtspOverHttpListenSocket(tcpListener);
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await testObj.AcceptAsync(cancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await testObj.AcceptAsync(cancellationToken));
     }
 }
