@@ -14,7 +14,7 @@ namespace Rtsp.Rtp
 
         public AMRPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -34,11 +34,7 @@ namespace Rtsp.Rtp
             // The rest of the RTP packet is the AMR data
             packet.Payload[1..].CopyTo(owner.Memory.Span);
 
-            return new([owner.Memory[..lenght]], [owner])
-            {
-                ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
-                RtpTimestamp = packet.Timestamp,
-            };
+            return RawMediaFrame.Rent(owner.Memory[..lenght], owner, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
         }
     }
 }

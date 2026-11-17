@@ -38,7 +38,7 @@ namespace Rtsp.Rtp
             this.hasDonl = hasDonl;
 
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
         }
 
         /// <summary>
@@ -115,7 +115,8 @@ namespace Rtsp.Rtp
             int fu_header_p = payload[2] >> 5 & 0x01;  // last VCL NAL unit marker
             int fu_header_type = payload[2] & 0x1F; // fu type
 
-            _logger.LogTrace("Frag FU-A s={headerS} e={headerE} p={headerP}", fu_header_s, fu_header_e, fu_header_p);
+            if (_logger.IsEnabled(LogLevel.Trace)) // the arguments boxed otherwise, of each packet
+                _logger.LogTrace("Frag FU-A s={headerS} e={headerE} p={headerP}", fu_header_s, fu_header_e, fu_header_p);
 
             // Check Start and End flags
             if (fu_header_s == 1)
@@ -218,11 +219,7 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
-            var result = new RawMediaFrame([.. nals], [.. owners])
-            {
-                RtpTimestamp = packet.Timestamp,
-                ClockTimestamp = _timestamp,
-            };
+            var result = RawMediaFrame.Rent(nals, owners, packet.Timestamp, _timestamp);
             nals.Clear();
             owners.Clear();
             return result;

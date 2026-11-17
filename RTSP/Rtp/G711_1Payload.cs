@@ -11,10 +11,12 @@ namespace Rtsp.Rtp
     public class G711_1Payload : IPayloadProcessor
     {
         private readonly MemoryPool<byte> _memoryPool;
+        private readonly List<ReadOnlyMemory<byte>> _audioData = [];
+        private readonly List<IMemoryOwner<byte>> _owners = [];
 
         public G711_1Payload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -43,8 +45,11 @@ namespace Rtsp.Rtp
                 return RawMediaFrame.Empty;
             }
 
-            List<ReadOnlyMemory<byte>> audioDatas = [];
-            List<IMemoryOwner<byte>> owners = [];
+            // the parser's own lists, copied into the frame
+            var audioDatas = _audioData;
+            var owners = _owners;
+            audioDatas.Clear();
+            owners.Clear();
 
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
@@ -59,11 +64,10 @@ namespace Rtsp.Rtp
                 audioDatas.Add(memory);
                 frame_start += sizeOfOneFrame;
             }
-            return new(audioDatas, owners)
-            {
-                ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
-                RtpTimestamp = packet.Timestamp,
-            };
+            var frame = RawMediaFrame.Rent(audioDatas, owners, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
+            audioDatas.Clear();
+            owners.Clear();
+            return frame;
         }
     }
 }
