@@ -7,6 +7,7 @@ using Rtsp.Rtcp;
 using Rtsp.Rtp;
 using Rtsp.Sdp;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -15,6 +16,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Text;
+using System.Threading;
 
 namespace RtspClientExample;
 
@@ -133,6 +135,20 @@ class RTSPClient
 
     // setup messages still to send
     readonly Queue<RtspRequestSetup> setupMessages = new();
+
+
+    /// <summary>
+    /// Working thread for queue messages management
+    /// </summary>
+    Thread? _queueRequestThread = null;
+    /// <summary>
+    /// AutoResetEvent for <see cref="_queueRequestThread"/> quit.
+    /// </summary>
+    AutoResetEvent _queueRequestEvent = new(false);
+    /// <summary>
+    /// Queue for request to send to rtsp channel.
+    /// </summary>
+    readonly ConcurrentQueue<RtspRequest> _queueRequests = [];
 
     /// <summary>
     /// Called when the Setup command are completed, so we can start the right Play message (with or without playback informations)
@@ -345,50 +361,21 @@ class RTSPClient
 
     public bool Pause()
     {
-        if (rtspSocket is null || _uri is null)
-        {
-            _logger.LogInformation("Not connected");
-            return false;
-        }
-        if (!_ready) { return false; }
-
         // Send PAUSE
-        RtspRequest pauseMessage = new RtspRequestPause
-        {
-            RtspUri = _uri,
-            Session = session
-        };
-        pauseMessage.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
-        rtspClient?.SendMessage(pauseMessage);
+        RtspRequestPause pauseMessage = new();
+        CheckQueueRequest(pauseMessage);
         return true;
     }
 
     public bool Play()
     {
-        if (rtspSocket is null || _uri is null)
-        {
-            _logger.LogInformation("Not connected");
-            return false;
-        }
-        if (!_ready) { return false; }
-
         // Send PLAY
-        var playMessage = new RtspRequestPlay
-        {
-            RtspUri = _uri,
-            Session = session
-        };
-        playMessage.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
-
+        RtspRequestPlay playMessage = new();
         //// Need for old sony camera SNC-CS20
         playMessage.Headers.Add("range", "npt=0.000-");
-        if (_playbackSession)
-        {
-            playMessage.AddRequireOnvifRequest();
-            playMessage.AddRateControlOnvifRequest(false);
-        }
 
-        rtspClient?.SendMessage(playMessage);
+        CheckQueueRequest(playMessage);
+
         return true;
     }
 
@@ -399,30 +386,11 @@ class RTSPClient
     /// <param name="speed">Speed information (1.0 means normal speed, -1.0 backward speed), other values >1.0 and <-1.0 allow a different speed</param>
     public bool Play(DateTime seekTime, double speed = 1.0)
     {
-        if (rtspSocket is null || _uri is null)
-        {
-            _logger.LogInformation("Not connected");
-            return false;
-        }
-        if (!_ready)
-        {
-            return false;
-        }
-
-        var playMessage = new RtspRequestPlay
-        {
-            RtspUri = _uri,
-            Session = session,
-        };
-        playMessage.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+        RtspRequestPlay playMessage = new();
         playMessage.AddPlayback(seekTime, speed);
-        if (_playbackSession)
-        {
-            playMessage.AddRequireOnvifRequest();
-            playMessage.AddRateControlOnvifRequest(false);
-        }
 
-        rtspClient?.SendMessage(playMessage);
+        CheckQueueRequest(playMessage);
+
         return true;
     }
 
@@ -435,34 +403,17 @@ class RTSPClient
     /// <exception cref="InvalidOperationException"></exception>
     public bool Play(DateTime seekTimeFrom, DateTime seekTimeTo, double speed = 1.0)
     {
-        if (rtspSocket is null || _uri is null)
-        {
-            _logger.LogInformation("Not connected");
-            return false;
-        }
-        if (_ready) { return false; }
-
         if (seekTimeFrom > seekTimeTo)
         {
             throw new ArgumentOutOfRangeException(nameof(seekTimeFrom),
                 "Starting seek cannot be major than ending seek.");
         }
 
-        var playMessage = new RtspRequestPlay
-        {
-            RtspUri = _uri,
-            Session = session,
-        };
-
-        playMessage.AddAuthorization(_authentication, _uri, rtspSocket.NextCommandIndex());
+        RtspRequestPlay playMessage = new();
         playMessage.AddPlayback(seekTimeFrom, seekTimeTo, speed);
-        if (_playbackSession)
-        {
-            playMessage.AddRequireOnvifRequest();
-            playMessage.AddRateControlOnvifRequest(false);
-        }
 
-        rtspClient?.SendMessage(playMessage);
+        CheckQueueRequest(playMessage);
+
         return true;
     }
 
@@ -1290,5 +1241,55 @@ class RTSPClient
         keepAliveMessage.ContextData = keepAliveContext;
         keepAliveMessage.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
         rtspClient?.SendMessage(keepAliveMessage);
+    }
+
+
+    private void CheckQueueRequest(RtspRequest request)
+    {
+        if (_queueRequestThread is null)
+        {
+            _queueRequestEvent = new(false);
+            _queueRequestThread = new(QueueRequestMethod)
+            {
+                Name = nameof(QueueRequestMethod),
+            };
+            _queueRequestThread.Start();
+        }
+        // add request to queue.
+        _queueRequests.Enqueue(request);
+    }
+
+    /// <summary>
+    /// This is the main method for sending requests.<br />
+    /// Since the rtsp can use some times to connect, in an "async" scenario, the requests would be lost, since we check <see cref="rtspSocket"/>
+    /// and url connection.<br />
+    /// We avoid to lost messages in this way.
+    /// </summary>
+    private void QueueRequestMethod()
+    {
+        // we check every second (avoid sending messages too close togheter, some rtsp implementation does not work correctly if so)
+        while (!_queueRequestEvent.WaitOne(1000))
+        {
+            // If we have not completed the Setup process, continue.
+            if (!_ready) { continue; }
+
+            if (_queueRequests.TryDequeue(out RtspRequest? request))
+            {
+                request.RtspUri = _uri;
+                request.Session = session;
+                // we are sure uri and socket are setup.
+                request.AddAuthorization(_authentication, _uri!, rtspSocket!.NextCommandIndex());
+
+                if (_playbackSession && request is RtspRequestPlay)
+                {
+                    // only on play requests.
+                    request.AddRequireOnvifRequest();
+                    request.AddRateControlOnvifRequest(true);
+                }
+
+                // we are sure client is online, but, since we dispose it, use compound request.
+                rtspClient?.SendMessage(request);
+            }
+        }
     }
 }
