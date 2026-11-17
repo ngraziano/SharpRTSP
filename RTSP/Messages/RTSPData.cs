@@ -2,6 +2,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Text;
 
 /// <summary>
@@ -11,6 +12,34 @@ public sealed class RtspData : RtspChunk, IDisposable
 {
     private IMemoryOwner<byte>? _reservedData;
     private bool _disposedValue;
+
+    // the messages of the listener's own, kept once disposed to be filled again
+    private bool _pooled;
+    private static readonly Stack<RtspData> Idle = new();
+    private const int MaxIdle = 64;
+
+    /// <summary>
+    /// A message of the data of <paramref name="reservedData"/>, of one disposed before where there is one: disposed, it
+    /// is kept to be filled again; one never disposed is collected as any other.
+    /// </summary>
+    internal static RtspData Rent(IMemoryOwner<byte> reservedData, int size, int channel)
+    {
+        RtspData? data = null;
+        lock (Idle)
+        {
+            if (Idle.Count > 0) data = Idle.Pop();
+        }
+        data ??= new RtspData { _pooled = true };
+        data._reservedData = reservedData;
+        data.SetData(reservedData.Memory[..size]);
+        data.Channel = channel;
+        data.SourcePort = null;
+        data._disposedValue = false;
+        return data;
+    }
+
+    // the data without the setter's release of the buffer
+    private void SetData(Memory<byte> data) => base.Data = data;
 
     public RtspData() { }
 
@@ -64,8 +93,18 @@ public sealed class RtspData : RtspChunk, IDisposable
         {
             _reservedData?.Dispose();
         }
+        // released once: the setter would release it again, which a recycled buffer must not be
+        _reservedData = null;
         Data = Memory<byte>.Empty;
         _disposedValue = true;
+        if (_pooled)
+        {
+            SourcePort = null;
+            lock (Idle)
+            {
+                if (Idle.Count < MaxIdle) Idle.Push(this);
+            }
+        }
     }
 
     public void Dispose()

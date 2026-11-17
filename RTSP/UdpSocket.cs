@@ -141,6 +141,8 @@ namespace Rtsp
             {
                 // to be compatible with netstandard2.0 we can't use the memory directly for the receive call 
                 byte[] buffer = new byte[65536];
+                // the arguments, filled again for each datagram: valid only during the call
+                RtspDataEventArgs? eventArgs = null;
                 // loop until we get an exception eg the socket closed or the cancellation token is set
                 while (!cancellation.IsCancellationRequested)
                 {
@@ -150,13 +152,13 @@ namespace Rtsp
                     // Task to prevent warning and keep the same code than .NET 8
                     var size = await Task.FromResult(client.Client.Receive(buffer)).ConfigureAwait(false);
 #endif
-                    var bufferOwner = MemoryPool<byte>.Shared.Rent(size);
+                    var bufferOwner = RecyclingMemoryPool.Instance.Rent(size);
                     buffer.AsSpan()[..size].CopyTo(bufferOwner.Memory.Span);
 
-                    handler(new RtspDataEventArgs(new RtspData(bufferOwner, size)
-                    {
-                        Channel = port,
-                    }));
+                    var data = RtspData.Rent(bufferOwner, size, port);
+                    eventArgs ??= new RtspDataEventArgs(data);
+                    eventArgs.Data = data;
+                    handler(eventArgs);
                 }
             }
             catch (OperationCanceledException)

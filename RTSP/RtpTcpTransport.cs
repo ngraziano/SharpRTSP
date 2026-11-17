@@ -61,16 +61,21 @@ namespace Rtsp
         {
             rtspListener.DataReceived -= RtspListenerDataReceived;
         }
+        // the arguments, filled again for each packet: valid only during the call
+        private RtspDataEventArgs? _eventArgs;
+
         private void RtspListenerDataReceived(object? sender, RtspChunkEventArgs e)
         {
             if (e.Message is not RtspData dataMessage || dataMessage.Data.IsEmpty) return;
+            _eventArgs ??= new RtspDataEventArgs(dataMessage);
+            _eventArgs.Data = dataMessage;
             if (dataMessage.Channel == ControlChannel)
             {
-                ControlReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                ControlReceived?.Invoke(this, _eventArgs);
             }
             else if (dataMessage.Channel == DataChannel)
             {
-                DataReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                DataReceived?.Invoke(this, _eventArgs);
             }
         }
     }
