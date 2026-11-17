@@ -29,7 +29,7 @@ namespace Rtsp.Rtp
         public AV1Payload(ILogger<AV1Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
         }
 
         private void ProcessRTPFrame(ReadOnlySpan<byte> payload)
@@ -114,7 +114,9 @@ namespace Rtsp.Rtp
             int obuHeaderLen = 1;
             int obuHeaderExtensions = -1;
             int obuType = (obuHeader & 0x78) >> 3;
-            byte[]? obuLizeLeb128 = null;
+            // the size restored of a buffer of the stack, not of an array of each OBU
+            Span<byte> obuSizeLeb128 = stackalloc byte[8];
+            int obuSizeLeb128Length = 0;
 
             if (obuType == 1)
             {
@@ -130,7 +132,7 @@ namespace Rtsp.Rtp
             {
                 // we'll have to restore the OBU size inside the OBU
                 obuHeader = (byte)(obuHeader | 0x02);
-                obuLizeLeb128 = WriteLeb128(obuLength - obuHeaderLen);
+                obuSizeLeb128Length = WriteLeb128(obuLength - obuHeaderLen, obuSizeLeb128);
             }
 
             // keep dropping frames until we get a sequence header
@@ -138,17 +140,17 @@ namespace Rtsp.Rtp
             {
                 Span<byte> obuSpan;
 
-                if (obuLizeLeb128 != null)
+                if (obuSizeLeb128Length > 0)
                 {
                     // restore the OBU size inside the OBU
-                    obuSpan = PrepareNewObu(obuLength + obuLizeLeb128.Length);
+                    obuSpan = PrepareNewObu(obuLength + obuSizeLeb128Length);
                     obuSpan[0] = (byte)obuHeader;
                     if (obuHeaderExtensions != -1)
                     {
                         obuSpan[1] = (byte)obuHeaderExtensions;
                     }
-                    obuLizeLeb128.CopyTo(obuSpan[obuHeaderLen..]);
-                    fragmentedObu.GetBuffer().AsSpan()[obuHeaderLen..obuLength].CopyTo(obuSpan[(obuHeaderLen + obuLizeLeb128.Length)..]);
+                    obuSizeLeb128[..obuSizeLeb128Length].CopyTo(obuSpan[obuHeaderLen..]);
+                    fragmentedObu.GetBuffer().AsSpan()[obuHeaderLen..obuLength].CopyTo(obuSpan[(obuHeaderLen + obuSizeLeb128Length)..]);
                 }
                 else
                 {
@@ -180,11 +182,7 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of OBUs
             // clone list of nalUnits and owners
-            var result = new RawMediaFrame([.. obus], [.. owners])
-            {
-                RtpTimestamp = packet.Timestamp,
-                ClockTimestamp = _timestamp,
-            };
+            var result = RawMediaFrame.Rent(obus, owners, packet.Timestamp, _timestamp);
             obus.Clear();
             owners.Clear();
             return result;
@@ -220,9 +218,14 @@ namespace Rtsp.Rtp
 
         public byte[] WriteLeb128(int value)
         {
-            List<byte> bytes = new List<byte>();
+            Span<byte> bytes = stackalloc byte[8];
+            return bytes[..WriteLeb128(value, bytes)].ToArray();
+        }
+
+        // the LEB128 of value into destination, of 8 bytes at most: its length
+        internal static int WriteLeb128(int value, Span<byte> destination)
+        {
             int v = value;
-            int Leb128Bytes = 0;
             for (int i = 0; i < 8; i++)
             {
                 int vv = v & 0x7f;
@@ -230,18 +233,15 @@ namespace Rtsp.Rtp
 
                 if (v > 0)
                 {
-                    bytes.Add((byte)(vv | 0x80));
-                    Leb128Bytes++;
+                    destination[i] = (byte)(vv | 0x80);
                 }
                 else
                 {
-                    bytes.Add((byte)vv);
-                    Leb128Bytes++;
-                    break;
+                    destination[i] = (byte)vv;
+                    return i + 1;
                 }
             }
-
-            return bytes.ToArray();
+            return 8;
         }
     }
 }

@@ -45,7 +45,7 @@ namespace Rtsp.Rtp
 
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -73,11 +73,7 @@ namespace Rtsp.Rtp
             var memoryOwner = _memoryPool.Rent(length);
             _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
             _frameStream.SetLength(0);
-            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner])
-            {
-                RtpTimestamp = packet.Timestamp,
-                ClockTimestamp = _timestamp ?? DateTime.MinValue,
-            };
+            return RawMediaFrame.Rent(memoryOwner.Memory[..length], memoryOwner, packet.Timestamp, _timestamp ?? DateTime.MinValue);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)

@@ -63,6 +63,8 @@ namespace Rtsp.Rtp
     public class AACPayload : IPayloadProcessor
     {
         private readonly MemoryPool<byte> _memoryPool;
+        private readonly List<ReadOnlyMemory<byte>> _audioData = [];
+        private readonly List<IMemoryOwner<byte>> _owners = [];
 
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
@@ -72,7 +74,7 @@ namespace Rtsp.Rtp
         // Constructor
         public AACPayload(string configString, MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
 
             /* 
             Format of config string  
@@ -120,8 +122,11 @@ namespace Rtsp.Rtp
             // Part 3 - Access Unit Audio Data
 
             // The rest of the RTP packet is the AMR data
-            List<ReadOnlyMemory<byte>> audioData = [];
-            List<IMemoryOwner<byte>> owners = [];
+            // the parser's own lists, copied into the frame
+            var audioData = _audioData;
+            var owners = _owners;
+            audioData.Clear();
+            owners.Clear();
 
             int position = 0;
             var rtpPayload = packet.Payload;
@@ -151,11 +156,10 @@ namespace Rtsp.Rtp
                 position += aac_frame_size;
             }
 
-            return new(audioData, owners)
-            {
-                RtpTimestamp = packet.Timestamp,
-                ClockTimestamp = RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _),
-            };
+            var frame = RawMediaFrame.Rent(audioData, owners, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
+            audioData.Clear();
+            owners.Clear();
+            return frame;
         }
     }
 }
