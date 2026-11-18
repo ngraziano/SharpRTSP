@@ -38,7 +38,7 @@ namespace Rtsp.Rtp
             this.hasDonl = hasDonl;
 
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
         /// <summary>

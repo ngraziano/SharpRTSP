@@ -74,7 +74,7 @@ namespace Rtsp.Rtp
         // Constructor
         public AACPayload(string configString, MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
 
             /* 
             Format of config string  
