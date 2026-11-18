@@ -29,7 +29,7 @@ namespace Rtsp.Rtp
         public AV1Payload(ILogger<AV1Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
         private void ProcessRTPFrame(ReadOnlySpan<byte> payload)

@@ -31,7 +31,7 @@ namespace Rtsp.Rtp
         public H264Payload(ILogger<H264Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
         // Process a RTP Packet.

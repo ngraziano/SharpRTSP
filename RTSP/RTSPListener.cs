@@ -11,7 +11,6 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,7 +48,7 @@ namespace Rtsp
             )
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
 
             _transport = connection ?? throw new ArgumentNullException(nameof(connection));
             _stream = connection.GetStream();
@@ -309,9 +308,6 @@ namespace Rtsp
         /// </summary>
         /// <param name="reader">The Rtsp stream pipereader.</param>
         /// <returns>Message readen</returns>
-#if NET6_0_OR_GREATER
-        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))] // its state machine reused, of each message read
-#endif
         public async ValueTask<RtspChunk?> ReadOneMessageAsync(PipeReader reader, CancellationToken token = default)
         {
             if (reader == null)
@@ -361,7 +357,10 @@ namespace Rtsp
                     return ReadingMessage.NotEnoughtData;
 
                 var reservedData = _memoryPool.Rent(size);
-                currentMessage = RtspData.Rent(reservedData, size, channel);
+                currentMessage = new RtspData(reservedData, size)
+                {
+                    Channel = channel,
+                };
                 buffer.Slice(4, size).CopyTo(reservedData.Memory.Span);
                 buffer = buffer.Slice(size + 4);
                 return ReadingMessage.MessageFinish;

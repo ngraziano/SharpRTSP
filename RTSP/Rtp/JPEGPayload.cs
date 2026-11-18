@@ -45,7 +45,7 @@ namespace Rtsp.Rtp
 
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? RecyclingMemoryPool.Instance;
+            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)

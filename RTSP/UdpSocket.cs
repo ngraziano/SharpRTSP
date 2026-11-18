@@ -152,10 +152,13 @@ namespace Rtsp
                     // Task to prevent warning and keep the same code than .NET 8
                     var size = await Task.FromResult(client.Client.Receive(buffer)).ConfigureAwait(false);
 #endif
-                    var bufferOwner = RecyclingMemoryPool.Instance.Rent(size);
+                    var bufferOwner = MemoryPool<byte>.Shared.Rent(size);
                     buffer.AsSpan()[..size].CopyTo(bufferOwner.Memory.Span);
 
-                    var data = RtspData.Rent(bufferOwner, size, port);
+                    var data = new RtspData(bufferOwner, size)
+                    {
+                        Channel = port,
+                    };
                     eventArgs ??= new RtspDataEventArgs(data);
                     eventArgs.Data = data;
                     handler(eventArgs);
