@@ -23,7 +23,7 @@ namespace Rtsp
     public class RtspListener : IDisposable
     {
         private readonly ILogger _logger;
-        private readonly MemoryPool<byte> _memoryPool;
+        private readonly MemoryPool<byte>? _memoryPool;
         private readonly IRtspTransport _transport;
         private readonly SentMessageList _sentMessage = new();
         // the arguments of data, filled again for each packet: valid only during the call
@@ -48,7 +48,8 @@ namespace Rtsp
             )
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            // of none, arrays of ArrayPool<byte>.Shared, of no owner object of each packet
+            _memoryPool = memoryPool;
 
             _transport = connection ?? throw new ArgumentNullException(nameof(connection));
             _stream = connection.GetStream();
@@ -342,6 +343,10 @@ namespace Rtsp
             return currentMessage;
         }
 
+        private RtspData NewData(int size) => _memoryPool == null
+            ? new RtspData(ArrayPool<byte>.Shared.Rent(size), size)
+            : new RtspData(_memoryPool.Rent(size), size);
+
         private ReadingMessage TryReadMessage(ref ReadOnlySequence<byte> buffer, ref RtspChunk? currentMessage)
         {
             if (currentMessage is null && buffer.First.Length > 0 && buffer.First.Span[0] == '$')
@@ -356,12 +361,10 @@ namespace Rtsp
                 if (buffer.Length < size + 4)
                     return ReadingMessage.NotEnoughtData;
 
-                var reservedData = _memoryPool.Rent(size);
-                currentMessage = new RtspData(reservedData, size)
-                {
-                    Channel = channel,
-                };
-                buffer.Slice(4, size).CopyTo(reservedData.Memory.Span);
+                var data = NewData(size);
+                data.Channel = channel;
+                currentMessage = data;
+                buffer.Slice(4, size).CopyTo(data.Data.Span);
                 buffer = buffer.Slice(size + 4);
                 return ReadingMessage.MessageFinish;
             }
@@ -528,11 +531,8 @@ namespace Rtsp
                         }
                         size = (sizeByte1 << 8) + sizeByte2;
 
-                        var reservedData = _memoryPool.Rent(size);
-                        currentMessage = new RtspData(reservedData, size)
-                        {
-                            Channel = channelByte,
-                        };
+                        currentMessage = NewData(size);
+                        ((RtspData)currentMessage).Channel = channelByte;
                         currentReadingState = ReadingState.MoreInterleavedData;
                         break;
                     case ReadingState.MoreInterleavedData when currentMessage is not null:
