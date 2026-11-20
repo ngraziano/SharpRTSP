@@ -28,6 +28,15 @@ namespace Rtsp
         private readonly SentMessageList _sentMessage = new();
         // the arguments of data, filled again for each packet: valid only during the call
         private RtspChunkEventArgs? _dataEventArgs;
+        private RtspData? _reusedData;
+        private byte[] _reusedBuffer = [];
+
+        /// <summary>
+        /// Of true, the data messages one of this listener, filled again for each packet of a buffer of its own: valid
+        /// only during <see cref="DataReceived"/>, a handler keeping one to copy it. Of false (the default), a message
+        /// of its own of each packet.
+        /// </summary>
+        public bool ReuseDataMessages { get; set; }
 
         private CancellationTokenSource? _cancelationTokenSource;
         private Task? _mainTask;
@@ -140,7 +149,15 @@ namespace Rtsp
                 while (_transport.Connected && !token.IsCancellationRequested)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk? currentMessage = await ReadOneMessageAsync(pipe, token).ConfigureAwait(false);
+                    // of this loop's own await, not of ReadOneMessageAsync's: its state machine was allocated of
+                    //  each read that waited
+                    RtspChunk? currentMessage = null;
+                    while (true)
+                    {
+                        var result = await pipe.ReadAsync(token).ConfigureAwait(false);
+                        if (TryReadMessage(pipe, result, ref currentMessage)) break;
+                    }
+                    currentMessage?.SourcePort = this;
 
                     if (currentMessage is null)
                     {
@@ -314,36 +331,49 @@ namespace Rtsp
             if (reader == null)
                 throw new ArgumentNullException(nameof(reader));
 
-            ReadingMessage currentReadingState = ReadingMessage.NotEnoughtData;
             RtspChunk? currentMessage = null;
-
-            while (currentReadingState != ReadingMessage.MessageFinish)
+            while (true)
             {
                 var result = await reader.ReadAsync(token).ConfigureAwait(false);
-                var buffer = result.Buffer;
-                try
-                {
-                    currentReadingState = TryReadMessage(ref buffer, ref currentMessage);
-                    if (result.IsCompleted)
-                        break;
-                }
-                finally
-                {
-                    if (currentReadingState != ReadingMessage.NotEnoughtData)
-                    {
-                        reader.AdvanceTo(buffer.Start, buffer.Start);
-                    }
-                    else
-                    {
-                        reader.AdvanceTo(buffer.Start, buffer.End);
-                    }
-                }
+                if (TryReadMessage(reader, result, ref currentMessage)) break;
             }
             currentMessage?.SourcePort = this;
             return currentMessage;
         }
 
-        private RtspData NewData(int size) => _memoryPool == null
+        // one read of the pipe: true of the message complete, or of the pipe
+        private bool TryReadMessage(PipeReader reader, ReadResult result, ref RtspChunk? currentMessage)
+        {
+            var buffer = result.Buffer;
+            ReadingMessage currentReadingState = ReadingMessage.NotEnoughtData;
+            try
+            {
+                currentReadingState = TryReadMessage(ref buffer, ref currentMessage);
+            }
+            finally
+            {
+                if (currentReadingState != ReadingMessage.NotEnoughtData)
+                {
+                    reader.AdvanceTo(buffer.Start, buffer.Start);
+                }
+                else
+                {
+                    reader.AdvanceTo(buffer.Start, buffer.End);
+                }
+            }
+            return currentReadingState == ReadingMessage.MessageFinish || result.IsCompleted;
+        }
+
+        private RtspData NewData(int size)
+        {
+            if (!ReuseDataMessages) return NewOwnData(size);
+            if (_reusedBuffer.Length < size) _reusedBuffer = new byte[Math.Max(size, 2048)];
+            _reusedData ??= new RtspData();
+            _reusedData.Reuse(_reusedBuffer.AsMemory(0, size));
+            return _reusedData;
+        }
+
+        private RtspData NewOwnData(int size) => _memoryPool == null
             ? new RtspData(ArrayPool<byte>.Shared.Rent(size), size)
             : new RtspData(_memoryPool.Rent(size), size);
 
