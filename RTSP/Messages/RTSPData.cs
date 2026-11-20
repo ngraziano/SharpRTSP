@@ -22,6 +22,13 @@ public sealed class RtspData : RtspChunk, IDisposable
         base.Data = reservedData.Memory[..size];
     }
 
+    // a listener's own message, filled again for each packet
+    internal void Reuse(Memory<byte> data)
+    {
+        _disposedValue = false;
+        base.Data = data;
+    }
+
     internal RtspData(byte[] array, int size)
     {
         _array = array;

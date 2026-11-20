@@ -286,6 +286,35 @@ namespace Rtsp.Tests
         }
 
         [Test]
+        public async Task ReusedDataMessagesAreOneMessageOfEachPacketsBytes()
+        {
+            // two packets, of their bytes copied of the event: the message is filled again after it
+            byte[] buffer = [0x24, 1, 0, 2, 0xAA, 0xBB, 0x24, 2, 0, 3, 0xCC, 0xDD, 0xEE];
+            _mockTransport.GetStream().Returns(new InOutStream() { In = new MemoryStream(buffer), Out = new MemoryStream() });
+            var seen = new List<(RtspChunk, int, byte[])>();
+
+            using var testedListener = new RtspListener(_mockTransport) { ReuseDataMessages = true };
+            testedListener.DataReceived += (_, e) =>
+            {
+                lock (_lock) seen.Add((e.Message, ((RtspData)e.Message).Channel, e.Message.Data.ToArray()));
+                DataReceived(_, e);
+            };
+            testedListener.Start();
+            await WaitNMessageOrTimeout(2, 500);
+            testedListener.Stop();
+
+            Assert.That(seen, Has.Count.EqualTo(2));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(seen[1].Item1, Is.SameAs(seen[0].Item1));
+                Assert.That(seen[0].Item2, Is.EqualTo(1));
+                Assert.That(seen[0].Item3, Is.EqualTo(new byte[] { 0xAA, 0xBB }));
+                Assert.That(seen[1].Item2, Is.EqualTo(2));
+                Assert.That(seen[1].Item3, Is.EqualTo(new byte[] { 0xCC, 0xDD, 0xEE }));
+            }
+        }
+
+        [Test]
         public async Task ReceiveDataInTwoPart()
         {
             var rnd = new Random();
