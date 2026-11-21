@@ -631,6 +631,26 @@ namespace Rtsp.Tests
         }
 
         [Test]
+        public void SendDataOfSeveralPacketsWritesEachAsSendDataOfOne()
+        {
+            var stream = new MemoryStream();
+            _mockTransport.GetStream().Returns(new InOutStream()
+            {
+                In = new InBlockingStream(),
+                Out = stream
+            });
+
+            using var testedListener = new RtspListener(_mockTransport);
+            testedListener.Start();
+
+            byte[] first = [1, 2, 3], second = Enumerable.Range(0, 300).Select(x => (byte)x).ToArray();
+            testedListener.SendData(2, new List<Memory<byte>> { first, second });
+
+            byte[] expected = new byte[] { (byte)'$', 2, 0, 3 }.Concat(first).Concat(new byte[] { (byte)'$', 2, 300 >> 8, 300 & 0xFF }).Concat(second).ToArray();
+            Assert.That(stream.ToArray(), Is.EqualTo(expected));
+        }
+
+        [Test]
         public void SendDataTooLargeAsync()
         {
             const int dataLenght = 0x10001;
