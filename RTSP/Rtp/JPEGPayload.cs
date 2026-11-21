@@ -24,7 +24,8 @@ namespace Rtsp.Rtp
         const int JPEG_MAX_SIZE = 16 * 1024 * 1024;
 
         private readonly MemoryStream _frameStream = new(64 * 1024);
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
         private int _currentDri;
         private int _currentQ;
         private int _currentType;
@@ -45,7 +46,7 @@ namespace Rtsp.Rtp
 
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -70,10 +71,10 @@ namespace Rtsp.Rtp
             }
             // End Marker is set. The frame is complete
             var length = (int)_frameStream.Length;
-            var memoryOwner = _memoryPool.Rent(length);
-            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
+            var memory = RawMediaFrame.RentBuffer(_memoryPool, length, out IMemoryOwner<byte>? memoryOwner, out byte[]? array);
+            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memory.Span);
             _frameStream.SetLength(0);
-            return RawMediaFrame.Rent(memoryOwner.Memory[..length], memoryOwner, packet.Timestamp, _timestamp ?? DateTime.MinValue);
+            return RawMediaFrame.Rent(memory, memoryOwner, array, packet.Timestamp, _timestamp ?? DateTime.MinValue);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)

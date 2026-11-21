@@ -10,11 +10,12 @@ namespace Rtsp.Rtp
     /// </summary>
     public class AMRPayload : IPayloadProcessor
     {
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
 
         public AMRPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -30,11 +31,11 @@ namespace Rtsp.Rtp
             // byte payloadHeader = payload[0];
 
             int lenght = packet.PayloadSize - 1;
-            IMemoryOwner<byte> owner = _memoryPool.Rent(lenght);
+            var memory = RawMediaFrame.RentBuffer(_memoryPool, lenght, out IMemoryOwner<byte>? owner, out byte[]? array);
             // The rest of the RTP packet is the AMR data
-            packet.Payload[1..].CopyTo(owner.Memory.Span);
+            packet.Payload[1..].CopyTo(memory.Span);
 
-            return RawMediaFrame.Rent(owner.Memory[..lenght], owner, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
+            return RawMediaFrame.Rent(memory, owner, array, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
         }
     }
 }

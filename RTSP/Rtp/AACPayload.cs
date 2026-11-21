@@ -62,9 +62,11 @@ namespace Rtsp.Rtp
 
     public class AACPayload : IPayloadProcessor
     {
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
         private readonly List<ReadOnlyMemory<byte>> _audioData = [];
         private readonly List<IMemoryOwner<byte>> _owners = [];
+        private readonly List<byte[]> _arrays = [];
 
         public int ObjectType { get; set; } = 0;
         public int FrequencyIndex { get; set; } = 0;
@@ -74,7 +76,7 @@ namespace Rtsp.Rtp
         // Constructor
         public AACPayload(string configString, MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
 
             /* 
             Format of config string  
@@ -127,6 +129,7 @@ namespace Rtsp.Rtp
             var owners = _owners;
             audioData.Clear();
             owners.Clear();
+            _arrays.Clear();
 
             int position = 0;
             var rtpPayload = packet.Payload;
@@ -147,18 +150,17 @@ namespace Rtsp.Rtp
                 // extract the AAC block
                 if (position + aac_frame_size > rtpPayload.Length) break; // not enough data to copy
 
-                var owner = _memoryPool.Rent(aac_frame_size);
-                var data = owner.Memory[..aac_frame_size];
+                var data = RawMediaFrame.RentBuffer(_memoryPool, aac_frame_size, owners, _arrays);
                 rtpPayload[position..(position + aac_frame_size)].CopyTo(data.Span);
-                owners.Add(owner);
                 audioData.Add(data);
 
                 position += aac_frame_size;
             }
 
-            var frame = RawMediaFrame.Rent(audioData, owners, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
+            var frame = RawMediaFrame.Rent(audioData, owners, _arrays, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
             audioData.Clear();
             owners.Clear();
+            _arrays.Clear();
             return frame;
         }
     }

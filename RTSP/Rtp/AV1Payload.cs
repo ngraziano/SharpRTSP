@@ -20,16 +20,18 @@ namespace Rtsp.Rtp
 
         private readonly List<ReadOnlyMemory<byte>> obus = [];
         private readonly List<IMemoryOwner<byte>> owners = [];
+        private readonly List<byte[]> arrays = [];
 
         private readonly MemoryStream fragmentedObu = new();
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
         private DateTime _timestamp;
 
         // Constructor
         public AV1Payload(ILogger<AV1Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         private void ProcessRTPFrame(ReadOnlySpan<byte> payload)
@@ -182,17 +184,16 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of OBUs
             // clone list of nalUnits and owners
-            var result = RawMediaFrame.Rent(obus, owners, packet.Timestamp, _timestamp);
+            var result = RawMediaFrame.Rent(obus, owners, arrays, packet.Timestamp, _timestamp);
             obus.Clear();
             owners.Clear();
+            arrays.Clear();
             return result;
         }
 
         private Span<byte> PrepareNewObu(int size)
         {
-            var owner = _memoryPool.Rent(size);
-            owners.Add(owner);
-            var memory = owner.Memory[..(size)];
+            var memory = RawMediaFrame.RentBuffer(_memoryPool, size, owners, arrays);
             obus.Add(memory);
             return memory.Span;
         }
