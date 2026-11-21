@@ -163,7 +163,11 @@ namespace Rtsp.Rtp
         {
             if (!_hasExternalQuantizationTable) { GenerateQuantizationTables(_currentQ); }
             int jpegHeaderSize = GetJpegHeaderSize(_currentDri);
-            _jpegHeaderBytes = new byte[jpegHeaderSize];
+            // of the same size, the one before cleared - of a camera of a Q of its own of each frame, a header of each otherwise
+            if (_jpegHeaderBytes.Length == jpegHeaderSize)
+                Array.Clear(_jpegHeaderBytes, 0, jpegHeaderSize);
+            else
+                _jpegHeaderBytes = new byte[jpegHeaderSize];
 
             FillJpegHeader(_jpegHeaderBytes, _currentType, _currentFrameWidth, _currentFrameHeight, _currentDri);
         }
