@@ -10,6 +10,8 @@ using System.Text;
 public sealed class RtspData : RtspChunk, IDisposable
 {
     private IMemoryOwner<byte>? _reservedData;
+    // or an array of ArrayPool<byte>.Shared: no owner object of each packet
+    private byte[]? _array;
     private bool _disposedValue;
 
     public RtspData() { }
@@ -20,6 +22,19 @@ public sealed class RtspData : RtspChunk, IDisposable
         base.Data = reservedData.Memory[..size];
     }
 
+    // a listener's own message, filled again for each packet
+    internal void Reuse(Memory<byte> data)
+    {
+        _disposedValue = false;
+        base.Data = data;
+    }
+
+    internal RtspData(byte[] array, int size)
+    {
+        _array = array;
+        base.Data = array.AsMemory(0, size);
+    }
+
     public override Memory<byte> Data
     {
         get => base.Data;
@@ -27,6 +42,8 @@ public sealed class RtspData : RtspChunk, IDisposable
         {
             _reservedData?.Dispose();
             _reservedData = null;
+            if (_array != null) ArrayPool<byte>.Shared.Return(_array);
+            _array = null;
             base.Data = value;
         }
     }
@@ -63,6 +80,7 @@ public sealed class RtspData : RtspChunk, IDisposable
         if (disposing)
         {
             _reservedData?.Dispose();
+            _reservedData = null;
         }
         Data = Memory<byte>.Empty;
         _disposedValue = true;

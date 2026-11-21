@@ -1,5 +1,6 @@
 ﻿using Rtsp.Messages;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Rtsp
@@ -31,6 +32,9 @@ namespace Rtsp
 
         public void WriteToDataPort(ReadOnlySpan<byte> data) => rtspListener.SendData(DataChannel, data);
 
+        /// <summary>The packets of a frame, in one write: see <see cref="RtspListener.SendData(int, IReadOnlyList{Memory{byte}})"/>.</summary>
+        public void WriteToDataPort(IReadOnlyList<Memory<byte>> packets) => rtspListener.SendData(DataChannel, packets);
+
         public Task WriteToDataPortAsync(ReadOnlyMemory<byte> data) => rtspListener.SendDataAsync(DataChannel, data);
 
         protected virtual void Dispose(bool disposing)
@@ -61,16 +65,21 @@ namespace Rtsp
         {
             rtspListener.DataReceived -= RtspListenerDataReceived;
         }
+        // the arguments, filled again for each packet: valid only during the call
+        private RtspDataEventArgs? _eventArgs;
+
         private void RtspListenerDataReceived(object? sender, RtspChunkEventArgs e)
         {
             if (e.Message is not RtspData dataMessage || dataMessage.Data.IsEmpty) return;
+            _eventArgs ??= new RtspDataEventArgs(dataMessage);
+            _eventArgs.Data = dataMessage;
             if (dataMessage.Channel == ControlChannel)
             {
-                ControlReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                ControlReceived?.Invoke(this, _eventArgs);
             }
             else if (dataMessage.Channel == DataChannel)
             {
-                DataReceived?.Invoke(this, new RtspDataEventArgs(dataMessage));
+                DataReceived?.Invoke(this, _eventArgs);
             }
         }
     }

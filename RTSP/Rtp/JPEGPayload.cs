@@ -24,7 +24,8 @@ namespace Rtsp.Rtp
         const int JPEG_MAX_SIZE = 16 * 1024 * 1024;
 
         private readonly MemoryStream _frameStream = new(64 * 1024);
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
         private int _currentDri;
         private int _currentQ;
         private int _currentType;
@@ -45,7 +46,7 @@ namespace Rtsp.Rtp
 
         public JPEGPayload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -70,14 +71,10 @@ namespace Rtsp.Rtp
             }
             // End Marker is set. The frame is complete
             var length = (int)_frameStream.Length;
-            var memoryOwner = _memoryPool.Rent(length);
-            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memoryOwner.Memory.Span);
+            var memory = RawMediaFrame.RentBuffer(_memoryPool, length, out IMemoryOwner<byte>? memoryOwner, out byte[]? array);
+            _frameStream.GetBuffer().AsSpan()[..length].CopyTo(memory.Span);
             _frameStream.SetLength(0);
-            return new RawMediaFrame([memoryOwner.Memory[..length]], [memoryOwner])
-            {
-                RtpTimestamp = packet.Timestamp,
-                ClockTimestamp = _timestamp ?? DateTime.MinValue,
-            };
+            return RawMediaFrame.Rent(memory, memoryOwner, array, packet.Timestamp, _timestamp ?? DateTime.MinValue);
         }
 
         private bool ProcessJPEGRTPFrame(ReadOnlySpan<byte> payload)
@@ -166,7 +163,11 @@ namespace Rtsp.Rtp
         {
             if (!_hasExternalQuantizationTable) { GenerateQuantizationTables(_currentQ); }
             int jpegHeaderSize = GetJpegHeaderSize(_currentDri);
-            _jpegHeaderBytes = new byte[jpegHeaderSize];
+            // of the same size, the one before cleared - of a camera of a Q of its own of each frame, a header of each otherwise
+            if (_jpegHeaderBytes.Length == jpegHeaderSize)
+                Array.Clear(_jpegHeaderBytes, 0, jpegHeaderSize);
+            else
+                _jpegHeaderBytes = new byte[jpegHeaderSize];
 
             FillJpegHeader(_jpegHeaderBytes, _currentType, _currentFrameWidth, _currentFrameHeight, _currentDri);
         }

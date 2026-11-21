@@ -23,9 +23,20 @@ namespace Rtsp
     public class RtspListener : IDisposable
     {
         private readonly ILogger _logger;
-        private readonly MemoryPool<byte> _memoryPool;
+        private readonly MemoryPool<byte>? _memoryPool;
         private readonly IRtspTransport _transport;
         private readonly SentMessageList _sentMessage = new();
+        // the arguments of data, filled again for each packet: valid only during the call
+        private RtspChunkEventArgs? _dataEventArgs;
+        private RtspData? _reusedData;
+        private byte[] _reusedBuffer = [];
+
+        /// <summary>
+        /// Of true, the data messages one of this listener, filled again for each packet of a buffer of its own: valid
+        /// only during <see cref="DataReceived"/>, a handler keeping one to copy it. Of false (the default), a message
+        /// of its own of each packet.
+        /// </summary>
+        public bool ReuseDataMessages { get; set; }
 
         private CancellationTokenSource? _cancelationTokenSource;
         private Task? _mainTask;
@@ -46,7 +57,8 @@ namespace Rtsp
             )
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            // of none, arrays of ArrayPool<byte>.Shared, of no owner object of each packet
+            _memoryPool = memoryPool;
 
             _transport = connection ?? throw new ArgumentNullException(nameof(connection));
             _stream = connection.GetStream();
@@ -137,7 +149,15 @@ namespace Rtsp
                 while (_transport.Connected && !token.IsCancellationRequested)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk? currentMessage = await ReadOneMessageAsync(pipe, token).ConfigureAwait(false);
+                    // of this loop's own await, not of ReadOneMessageAsync's: its state machine was allocated of
+                    //  each read that waited
+                    RtspChunk? currentMessage = null;
+                    while (true)
+                    {
+                        var result = await pipe.ReadAsync(token).ConfigureAwait(false);
+                        if (TryReadMessage(pipe, result, ref currentMessage)) break;
+                    }
+                    currentMessage?.SourcePort = this;
 
                     if (currentMessage is null)
                     {
@@ -170,7 +190,9 @@ namespace Rtsp
                             OnMessageReceived(new RtspChunkEventArgs(currentMessage));
                             break;
                         case RtspData:
-                            OnDataReceived(new RtspChunkEventArgs(currentMessage));
+                            _dataEventArgs ??= new RtspChunkEventArgs(currentMessage);
+                            _dataEventArgs.Message = currentMessage;
+                            OnDataReceived(_dataEventArgs);
                             break;
                     }
                 }
@@ -309,34 +331,51 @@ namespace Rtsp
             if (reader == null)
                 throw new ArgumentNullException(nameof(reader));
 
-            ReadingMessage currentReadingState = ReadingMessage.NotEnoughtData;
             RtspChunk? currentMessage = null;
-
-            while (currentReadingState != ReadingMessage.MessageFinish)
+            while (true)
             {
                 var result = await reader.ReadAsync(token).ConfigureAwait(false);
-                var buffer = result.Buffer;
-                try
-                {
-                    currentReadingState = TryReadMessage(ref buffer, ref currentMessage);
-                    if (result.IsCompleted)
-                        break;
-                }
-                finally
-                {
-                    if (currentReadingState != ReadingMessage.NotEnoughtData)
-                    {
-                        reader.AdvanceTo(buffer.Start, buffer.Start);
-                    }
-                    else
-                    {
-                        reader.AdvanceTo(buffer.Start, buffer.End);
-                    }
-                }
+                if (TryReadMessage(reader, result, ref currentMessage)) break;
             }
             currentMessage?.SourcePort = this;
             return currentMessage;
         }
+
+        // one read of the pipe: true of the message complete, or of the pipe
+        private bool TryReadMessage(PipeReader reader, ReadResult result, ref RtspChunk? currentMessage)
+        {
+            var buffer = result.Buffer;
+            ReadingMessage currentReadingState = ReadingMessage.NotEnoughtData;
+            try
+            {
+                currentReadingState = TryReadMessage(ref buffer, ref currentMessage);
+            }
+            finally
+            {
+                if (currentReadingState != ReadingMessage.NotEnoughtData)
+                {
+                    reader.AdvanceTo(buffer.Start, buffer.Start);
+                }
+                else
+                {
+                    reader.AdvanceTo(buffer.Start, buffer.End);
+                }
+            }
+            return currentReadingState == ReadingMessage.MessageFinish || result.IsCompleted;
+        }
+
+        private RtspData NewData(int size)
+        {
+            if (!ReuseDataMessages) return NewOwnData(size);
+            if (_reusedBuffer.Length < size) _reusedBuffer = new byte[Math.Max(size, 2048)];
+            _reusedData ??= new RtspData();
+            _reusedData.Reuse(_reusedBuffer.AsMemory(0, size));
+            return _reusedData;
+        }
+
+        private RtspData NewOwnData(int size) => _memoryPool == null
+            ? new RtspData(ArrayPool<byte>.Shared.Rent(size), size)
+            : new RtspData(_memoryPool.Rent(size), size);
 
         private ReadingMessage TryReadMessage(ref ReadOnlySequence<byte> buffer, ref RtspChunk? currentMessage)
         {
@@ -352,12 +391,10 @@ namespace Rtsp
                 if (buffer.Length < size + 4)
                     return ReadingMessage.NotEnoughtData;
 
-                var reservedData = _memoryPool.Rent(size);
-                currentMessage = new RtspData(reservedData, size)
-                {
-                    Channel = channel,
-                };
-                buffer.Slice(4, size).CopyTo(reservedData.Memory.Span);
+                var data = NewData(size);
+                data.Channel = channel;
+                currentMessage = data;
+                buffer.Slice(4, size).CopyTo(data.Data.Span);
                 buffer = buffer.Slice(size + 4);
                 return ReadingMessage.MessageFinish;
             }
@@ -524,11 +561,8 @@ namespace Rtsp
                         }
                         size = (sizeByte1 << 8) + sizeByte2;
 
-                        var reservedData = _memoryPool.Rent(size);
-                        currentMessage = new RtspData(reservedData, size)
-                        {
-                            Channel = channelByte,
-                        };
+                        currentMessage = NewData(size);
+                        ((RtspData)currentMessage).Channel = channelByte;
                         currentReadingState = ReadingState.MoreInterleavedData;
                         break;
                     case ReadingState.MoreInterleavedData when currentMessage is not null:
@@ -647,6 +681,61 @@ namespace Rtsp
         /// <param name="channel">The channel.</param>
         /// <param name="frame">The frame.</param>
         public void SendData(int channel, ReadOnlyMemory<byte> frame) => SendData(channel, frame.Span);
+
+        /// <summary>
+        /// Sends packets of one channel, each as <see cref="SendData(int, ReadOnlySpan{byte})"/> sends one, in one write: of a
+        /// frame of several packets, one call to the stream rather than one of each - of a server of 1000 clients, half of
+        /// what it did was the sends of each packet.
+        /// </summary>
+        /// <param name="channel">The channel.</param>
+        /// <param name="frames">The packets, in their order.</param>
+        public void SendData(int channel, IReadOnlyList<Memory<byte>> frames)
+        {
+            if (frames == null)
+                throw new ArgumentNullException(nameof(frames));
+            int total = 0;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                if (frames[i].Length > 0xFFFF)
+                    throw new ArgumentException("frame too large", nameof(frames));
+                total += 4 + frames[i].Length;
+            }
+            if (total == 0)
+                return;
+
+            if (!_transport.Connected)
+            {
+                if (!AutoReconnect)
+                    throw new Exception("Connection is lost");
+
+                _logger.LogWarning("Reconnect to a client, strange.");
+                Reconnect();
+            }
+
+            var data = ArrayPool<byte>.Shared.Rent(total);
+            int offset = 0;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                var frame = frames[i].Span;
+                data[offset] = 36; // '$' character
+                data[offset + 1] = (byte)channel;
+                data[offset + 2] = (byte)((frame.Length & 0xFF00) >> 8);
+                data[offset + 3] = (byte)(frame.Length & 0x00FF);
+                frame.CopyTo(data.AsSpan(offset + 4));
+                offset += 4 + frame.Length;
+            }
+            writeSemaphoreSlim.Wait();
+            try
+            {
+                _stream.Write(data, 0, total);
+            }
+            finally
+            {
+                writeSemaphoreSlim.Release();
+            }
+
+            ArrayPool<byte>.Shared.Return(data);
+        }
 
         #region IDisposable Membres
 
