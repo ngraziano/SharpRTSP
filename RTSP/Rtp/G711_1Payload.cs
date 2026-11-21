@@ -10,13 +10,15 @@ namespace Rtsp.Rtp
     /// </summary>
     public class G711_1Payload : IPayloadProcessor
     {
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
         private readonly List<ReadOnlyMemory<byte>> _audioData = [];
         private readonly List<IMemoryOwner<byte>> _owners = [];
+        private readonly List<byte[]> _arrays = [];
 
         public G711_1Payload(MemoryPool<byte>? memoryPool = null)
         {
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         public RawMediaFrame ProcessPacket(RtpPacket packet)
@@ -50,23 +52,23 @@ namespace Rtsp.Rtp
             var owners = _owners;
             audioDatas.Clear();
             owners.Clear();
+            _arrays.Clear();
 
             // Extract each audio frame and place in the audio_data List
             int frame_start = 1; // starts just after the MI header
             while (frame_start + sizeOfOneFrame < rtpPayload.Length)
             {
                 // Return just the basic u-Law or A-Law audio (the Layer 0 audio)
-                var owner = _memoryPool.Rent(40);
-                owners.Add(owner);
-                var memory = owner.Memory[..40];
+                var memory = RawMediaFrame.RentBuffer(_memoryPool, 40, owners, _arrays);
                 // only copy the Layer 0 data (the first 40 bytes)
                 rtpPayload[frame_start..(frame_start + 40)].CopyTo(memory.Span);
                 audioDatas.Add(memory);
                 frame_start += sizeOfOneFrame;
             }
-            var frame = RawMediaFrame.Rent(audioDatas, owners, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
+            var frame = RawMediaFrame.Rent(audioDatas, owners, _arrays, packet.Timestamp, RtpPacketOnvifUtils.ProcessRTPTimestampExtension(packet.Extension, headerPosition: out _));
             audioDatas.Clear();
             owners.Clear();
+            _arrays.Clear();
             return frame;
         }
     }

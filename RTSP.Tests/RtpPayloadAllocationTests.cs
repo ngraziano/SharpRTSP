@@ -7,9 +7,9 @@ using System.Linq;
 namespace RTSP.Tests
 {
     /// <summary>
-    /// The payload parsers allocate nothing of each packet and frame, once warmed up, of frames disposed, but the owner
-    /// <see cref="System.Buffers.MemoryPool{T}.Shared"/> makes of each buffer rented: every codec, of its single and its
-    /// fragmented or aggregated packets.
+    /// The payload parsers allocate nothing of each packet and frame, once warmed up, of frames disposed - of no memory pool
+    /// given, their buffers arrays of <see cref="System.Buffers.ArrayPool{T}.Shared"/>, of no owner object of each: every codec,
+    /// of its single and its fragmented or aggregated packets.
     /// </summary>
     public class RtpPayloadAllocationTests
     {
@@ -26,19 +26,15 @@ namespace RTSP.Tests
         // a payload of a header and 100 bytes of data
         private static byte[] With(params byte[] header) => header.Concat(new byte[100]).ToArray();
 
-        // what MemoryPool<byte>.Shared makes of each rent: an owner of the array, of 24 bytes on 64 bits
-        private const int MostBytesABuffer = 32;
-
         private static void AssertNothingAllocated(string name, IPayloadProcessor parser, byte[][] frame, byte[]? prime = null)
         {
             if (prime != null)
                 parser.ProcessPacket(new RtpPacket(prime)).Dispose();
             // the frames counted, and checked after: an assertion inside allocates of its own
-            int framesOut = 0, buffers = 0;
+            int framesOut = 0;
             long Run(int frames)
             {
                 framesOut = 0;
-                buffers = 0;
                 long before = GC.GetAllocatedBytesForCurrentThread();
                 for (int i = 0; i < frames; i++)
                 {
@@ -46,10 +42,7 @@ namespace RTSP.Tests
                     {
                         using var result = parser.ProcessPacket(new RtpPacket(frame[p]));
                         if (result.Any())
-                        {
                             framesOut++;
-                            buffers += ((System.Collections.Generic.ICollection<ReadOnlyMemory<byte>>)result.Data).Count;
-                        }
                     }
                 }
                 return GC.GetAllocatedBytesForCurrentThread() - before;
@@ -57,7 +50,7 @@ namespace RTSP.Tests
             Run(200);
             long allocated = Run(2000);
             Assert.That(framesOut, Is.EqualTo(2000), name + ": a frame of each last packet alone");
-            Assert.That(allocated, Is.LessThanOrEqualTo((long)buffers * MostBytesABuffer), name);
+            Assert.That(allocated, Is.EqualTo(0L), name);
         }
 
         [Test]

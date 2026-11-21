@@ -16,6 +16,8 @@ namespace Rtsp.Rtp
         // a frame of the parsers' own: its lists, and the frames disposed kept to be filled again
         private List<ReadOnlyMemory<byte>>? _dataList;
         private List<IMemoryOwner<byte>>? _ownerList;
+        // of a parser of no memory pool given: its buffers' arrays of ArrayPool<byte>.Shared, of no owner object of each
+        private List<byte[]>? _arrayList;
         private static readonly Stack<RawMediaFrame> Idle = new();
         private const int MaxIdle = 64;
 
@@ -41,25 +43,58 @@ namespace Rtsp.Rtp
         /// A frame of copies of the lists, of one disposed before where there is one: disposed, it is kept to be filled
         /// again; one never disposed is collected as any other.
         /// </summary>
-        internal static RawMediaFrame Rent(List<ReadOnlyMemory<byte>> data, List<IMemoryOwner<byte>> owners, uint rtpTimestamp, DateTime clockTimestamp)
+        internal static RawMediaFrame Rent(List<ReadOnlyMemory<byte>> data, List<IMemoryOwner<byte>> owners, List<byte[]> arrays, uint rtpTimestamp, DateTime clockTimestamp)
         {
             var frame = Take();
             frame._dataList!.AddRange(data);
             frame._ownerList!.AddRange(owners);
+            frame._arrayList!.AddRange(arrays);
             frame._rtpTimestamp = rtpTimestamp;
             frame._clockTimestamp = clockTimestamp;
             return frame;
         }
 
-        /// <summary>A frame of one buffer, as <see cref="Rent(List{ReadOnlyMemory{byte}}, List{IMemoryOwner{byte}}, uint, DateTime)"/>.</summary>
-        internal static RawMediaFrame Rent(ReadOnlyMemory<byte> data, IMemoryOwner<byte> owner, uint rtpTimestamp, DateTime clockTimestamp)
+        /// <summary>A frame of one buffer, of its owner or its array (<see cref="RentBuffer(MemoryPool{byte}?, int, out IMemoryOwner{byte}?, out byte[]?)"/>).</summary>
+        internal static RawMediaFrame Rent(ReadOnlyMemory<byte> data, IMemoryOwner<byte>? owner, byte[]? array, uint rtpTimestamp, DateTime clockTimestamp)
         {
             var frame = Take();
             frame._dataList!.Add(data);
-            frame._ownerList!.Add(owner);
+            if (owner != null)
+                frame._ownerList!.Add(owner);
+            if (array != null)
+                frame._arrayList!.Add(array);
             frame._rtpTimestamp = rtpTimestamp;
             frame._clockTimestamp = clockTimestamp;
             return frame;
+        }
+
+        /// <summary>
+        /// A buffer of a frame of a parser's, of the size: of the memory pool the parser was given, of an owner in the owners; of
+        /// none, of an array of <see cref="ArrayPool{T}.Shared"/> in the arrays - of <see cref="MemoryPool{T}.Shared"/>, an owner
+        /// object was allocated of each buffer.
+        /// </summary>
+        internal static Memory<byte> RentBuffer(MemoryPool<byte>? pool, int size, List<IMemoryOwner<byte>> owners, List<byte[]> arrays)
+        {
+            var memory = RentBuffer(pool, size, out IMemoryOwner<byte>? owner, out byte[]? array);
+            if (owner != null)
+                owners.Add(owner);
+            else
+                arrays.Add(array!);
+            return memory;
+        }
+
+        /// <summary>A buffer as <see cref="RentBuffer(MemoryPool{byte}?, int, List{IMemoryOwner{byte}}, List{byte[]})"/>, of its owner or its array.</summary>
+        internal static Memory<byte> RentBuffer(MemoryPool<byte>? pool, int size, out IMemoryOwner<byte>? owner, out byte[]? array)
+        {
+            if (pool != null)
+            {
+                owner = pool.Rent(size);
+                array = null;
+                return owner.Memory[..size];
+            }
+            owner = null;
+            array = ArrayPool<byte>.Shared.Rent(size);
+            return array.AsMemory(0, size);
         }
 
         private static RawMediaFrame Take()
@@ -76,6 +111,7 @@ namespace Rtsp.Rtp
                 frame = new RawMediaFrame(data, owners) { RtpTimestamp = 0, ClockTimestamp = DateTime.MinValue };
                 frame._dataList = data;
                 frame._ownerList = owners;
+                frame._arrayList = new List<byte[]>();
             }
             frame.disposedValue = false;
             return frame;
@@ -96,6 +132,11 @@ namespace Rtsp.Rtp
                         _ownerList[i].Dispose();
                     }
                     _ownerList.Clear();
+                    for (int i = 0; i < _arrayList!.Count; i++)
+                    {
+                        ArrayPool<byte>.Shared.Return(_arrayList[i]);
+                    }
+                    _arrayList.Clear();
                     _dataList!.Clear();
                     disposedValue = true;
                     lock (Idle)

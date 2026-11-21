@@ -22,16 +22,18 @@ namespace Rtsp.Rtp
         // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
         private readonly List<ReadOnlyMemory<byte>> nalUnits = [];
         private readonly List<IMemoryOwner<byte>> owners = [];
+        private readonly List<byte[]> arrays = [];
         // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
         private readonly MemoryStream fragmentedNal = new();
-        private readonly MemoryPool<byte> _memoryPool;
+        // null: of arrays of ArrayPool<byte>.Shared, of no owner object of each buffer
+        private readonly MemoryPool<byte>? _memoryPool;
 
         private DateTime _timestamp;
 
         public H264Payload(ILogger<H264Payload>? logger = null, MemoryPool<byte>? memoryPool = null)
         {
             _logger = logger as ILogger ?? NullLogger.Instance;
-            _memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
+            _memoryPool = memoryPool;
         }
 
         // Process a RTP Packet.
@@ -150,9 +152,7 @@ namespace Rtsp.Rtp
 
         private Span<byte> PrepareNewNal(int sizeWitoutHeader)
         {
-            var owner = _memoryPool.Rent(sizeWitoutHeader + 4);
-            owners.Add(owner);
-            var memory = owner.Memory[..(sizeWitoutHeader + 4)];
+            var memory = RawMediaFrame.RentBuffer(_memoryPool, sizeWitoutHeader + 4, owners, arrays);
             nalUnits.Add(memory);
             // Add the NAL start code 00 00 00 01
             memory.Span[0] = 0;
@@ -184,9 +184,10 @@ namespace Rtsp.Rtp
 
             // End Marker is set return the list of NALs
             // clone list of nalUnits and owners
-            var result = RawMediaFrame.Rent(nalUnits, owners, packet.Timestamp, _timestamp);
+            var result = RawMediaFrame.Rent(nalUnits, owners, arrays, packet.Timestamp, _timestamp);
             nalUnits.Clear();
             owners.Clear();
+            arrays.Clear();
             return result;
         }
     }
