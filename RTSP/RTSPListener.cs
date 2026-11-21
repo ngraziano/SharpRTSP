@@ -682,6 +682,61 @@ namespace Rtsp
         /// <param name="frame">The frame.</param>
         public void SendData(int channel, ReadOnlyMemory<byte> frame) => SendData(channel, frame.Span);
 
+        /// <summary>
+        /// Sends packets of one channel, each as <see cref="SendData(int, ReadOnlySpan{byte})"/> sends one, in one write: of a
+        /// frame of several packets, one call to the stream rather than one of each - of a server of 1000 clients, half of
+        /// what it did was the sends of each packet.
+        /// </summary>
+        /// <param name="channel">The channel.</param>
+        /// <param name="frames">The packets, in their order.</param>
+        public void SendData(int channel, IReadOnlyList<Memory<byte>> frames)
+        {
+            if (frames == null)
+                throw new ArgumentNullException(nameof(frames));
+            int total = 0;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                if (frames[i].Length > 0xFFFF)
+                    throw new ArgumentException("frame too large", nameof(frames));
+                total += 4 + frames[i].Length;
+            }
+            if (total == 0)
+                return;
+
+            if (!_transport.Connected)
+            {
+                if (!AutoReconnect)
+                    throw new Exception("Connection is lost");
+
+                _logger.LogWarning("Reconnect to a client, strange.");
+                Reconnect();
+            }
+
+            var data = ArrayPool<byte>.Shared.Rent(total);
+            int offset = 0;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                var frame = frames[i].Span;
+                data[offset] = 36; // '$' character
+                data[offset + 1] = (byte)channel;
+                data[offset + 2] = (byte)((frame.Length & 0xFF00) >> 8);
+                data[offset + 3] = (byte)(frame.Length & 0x00FF);
+                frame.CopyTo(data.AsSpan(offset + 4));
+                offset += 4 + frame.Length;
+            }
+            writeSemaphoreSlim.Wait();
+            try
+            {
+                _stream.Write(data, 0, total);
+            }
+            finally
+            {
+                writeSemaphoreSlim.Release();
+            }
+
+            ArrayPool<byte>.Shared.Return(data);
+        }
+
         #region IDisposable Membres
 
         public void Dispose()

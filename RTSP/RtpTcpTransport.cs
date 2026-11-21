@@ -1,5 +1,6 @@
 ﻿using Rtsp.Messages;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Rtsp
@@ -30,6 +31,9 @@ namespace Rtsp
         public Task WriteToControlPortAsync(ReadOnlyMemory<byte> data) => rtspListener.SendDataAsync(ControlChannel, data);
 
         public void WriteToDataPort(ReadOnlySpan<byte> data) => rtspListener.SendData(DataChannel, data);
+
+        /// <summary>The packets of a frame, in one write: see <see cref="RtspListener.SendData(int, IReadOnlyList{Memory{byte}})"/>.</summary>
+        public void WriteToDataPort(IReadOnlyList<Memory<byte>> packets) => rtspListener.SendData(DataChannel, packets);
 
         public Task WriteToDataPortAsync(ReadOnlyMemory<byte> data) => rtspListener.SendDataAsync(DataChannel, data);
 
