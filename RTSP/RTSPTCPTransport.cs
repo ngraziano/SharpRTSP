@@ -83,8 +83,21 @@ namespace Rtsp
         {
             if (Connected)
                 return;
+
+#if NETSTANDARD2_0
+            // Special case for dtonet Framework.
+            // A dual mode socket reports an IPv4 server as an IPv4 address mapped into IPv6.
+            IPEndPoint remoteEndPoint = RemoteEndPoint.Address.IsIPv4MappedToIPv6
+                ? new IPEndPoint(RemoteEndPoint.Address.MapToIPv4(), RemoteEndPoint.Port)
+                : RemoteEndPoint;
+
+            // A TcpClient made without an address family is IPv4 only on .NET Framework.
+            _RtspServerClient = new TcpClient(remoteEndPoint.AddressFamily);
+            _RtspServerClient.Connect(remoteEndPoint);
+#else
             _RtspServerClient = new TcpClient();
             _RtspServerClient.Connect(RemoteEndPoint);
+#endif
         }
 
         #endregion
