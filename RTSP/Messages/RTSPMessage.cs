@@ -12,13 +12,19 @@ using System.Text.RegularExpressions;
 public partial class RtspMessage : RtspChunk
 {
     /// <summary>
+    /// Maximum data length accepted into an RTSP message.
+    /// </summary>
+    public const int MaxDataLength = 5 * 1024 * 1024;
+
+    /// <summary>
     /// The regex to validate the Rtsp message.
     /// </summary>
 #if NET8_0_OR_GREATER
     [GeneratedRegex(@"^RTSP/\d\.\d", RegexOptions.None, 10)]
     private static partial Regex RtspVersionTest();
 #else
-    private static readonly Regex _rtspVersionTest = new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
+    private static readonly Regex _rtspVersionTest =
+ new(@"^RTSP/\d\.\d", RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
     private static Regex RtspVersionTest() => _rtspVersionTest;
 #endif
 
@@ -58,6 +64,7 @@ public partial class RtspMessage : RtspChunk
         {
             returnValue = new RtspMessage();
         }
+
         returnValue.Command = aRequestLine;
         return returnValue;
     }
@@ -91,7 +98,8 @@ public partial class RtspMessage : RtspChunk
     /// Gets the headers of the message.
     /// </summary>
     /// <value>The headers.</value>
-    public IDictionary<string, string?> Headers { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    public IDictionary<string, string?> Headers { get; } =
+        new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Adds one header from a string.
@@ -127,17 +135,15 @@ public partial class RtspMessage : RtspChunk
         get
         {
             if (!(Headers.TryGetValue(RtspHeaderNames.CSeq, out string? returnStringValue) &&
-                  int.TryParse(returnStringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out int returnValue)))
+                  int.TryParse(returnStringValue, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                      out int returnValue)))
             {
                 returnValue = 0;
             }
 
             return returnValue;
         }
-        set
-        {
-            Headers[RtspHeaderNames.CSeq] = value.ToString(CultureInfo.InvariantCulture);
-        }
+        set { Headers[RtspHeaderNames.CSeq] = value.ToString(CultureInfo.InvariantCulture); }
     }
 
     /// <summary>
@@ -151,15 +157,23 @@ public partial class RtspMessage : RtspChunk
     }
 
     /// <summary>
-    /// Initialises the length of the data byte array from content length header.
+    /// Initializes the length of the data byte array from content length header.
     /// </summary>
     public void InitialiseDataFromContentLength()
     {
         if (!(Headers.ContainsKey("Content-Length")
-              && int.TryParse(Headers["Content-Length"], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dataLength)))
+              && int.TryParse(Headers["Content-Length"], NumberStyles.Integer, CultureInfo.InvariantCulture,
+                  out int dataLength)))
         {
             dataLength = 0;
         }
+
+        // Content length can be forged with attacking values, limit it.
+        if (dataLength is < 0 or > MaxDataLength)
+        {
+            throw new InvalidDataException("Content-Length header is invalid");
+        }
+
         Data = new byte[dataLength];
     }
 
@@ -192,6 +206,7 @@ public partial class RtspMessage : RtspChunk
         {
             throw new ArgumentException("Stream CanWrite == false, can't send message to it", nameof(stream));
         }
+
         Contract.EndContractBlock();
 
         AdjustContentLength();
@@ -203,6 +218,7 @@ public partial class RtspMessage : RtspChunk
         {
             outputString.Append(key).Append(": ").Append(value).Append("\r\n");
         }
+
         outputString.Append("\r\n");
         var output = outputString.ToString();
         var buffer = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(output.Length));
@@ -215,6 +231,7 @@ public partial class RtspMessage : RtspChunk
             if (!Data.IsEmpty)
                 stream.Write(Data.Span);
         }
+
         ArrayPool<byte>.Shared.Return(buffer);
         stream.Flush();
     }
@@ -234,7 +251,8 @@ public partial class RtspMessage : RtspChunk
 
         if (!Data.IsEmpty)
         {
-            stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data.Span.ToArray())).Append('-').AppendLine();
+            stringBuilder.Append("Data :-").Append(Encoding.ASCII.GetString(Data.Span.ToArray())).Append('-')
+                .AppendLine();
         }
 
         return stringBuilder.ToString();
@@ -248,6 +266,7 @@ public partial class RtspMessage : RtspChunk
         {
             returnValue.Headers.Add(item.Key, item.Value);
         }
+
         returnValue.Data = Data;
         returnValue.SourcePort = SourcePort;
 
