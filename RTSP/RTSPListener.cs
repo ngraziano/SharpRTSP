@@ -312,7 +312,7 @@ namespace Rtsp
                 Start();
         }
 
-        private readonly List<byte> readOneMessageBuffer = new(256);
+        private readonly List<byte> readOneMessageBuffer = [with(256)];
 
         private enum ReadingMessage
         {

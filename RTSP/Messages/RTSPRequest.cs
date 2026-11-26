@@ -85,13 +85,7 @@ public class RtspRequest : RtspMessage
     public RequestType RequestTyped
     {
         get => ParseRequest(commandArray[0]);
-        set
-        {
-            if (Enum.IsDefined(typeof(RequestType), value))
-                commandArray[0] = value.ToString();
-            else
-                commandArray[0] = nameof(RequestType.UNKNOWN);
-        }
+        set => commandArray[0] = Enum.IsDefined(value) ? value.ToString() : nameof(RequestType.UNKNOWN);
     }
 
     private Uri? _rtspUri;
