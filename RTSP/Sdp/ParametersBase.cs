@@ -7,7 +7,7 @@ using System.Linq;
 
 public class ParametersBase : IDictionary<string, string>
 {
-    private readonly Dictionary<string, string> parameters = [];
+    private readonly Dictionary<string, string> parameters = [with(StringComparer.OrdinalIgnoreCase)];
 
     protected static T Parse<T>(string parameterString) where T : ParametersBase, new()
     {
@@ -73,6 +73,9 @@ public class ParametersBase : IDictionary<string, string>
         return Convert.FromBase64String(value);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design",
+        "MA0016:Prefer using collection abstraction instead of implementation", 
+        Justification = "Utility method, I prefer the implementation")]
     public List<byte[]> ParameterListFromBase64String(string parameterName)
     {
         if (!TryGetValue(parameterName, out var value)) return [];

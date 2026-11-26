@@ -85,7 +85,8 @@ public class RtspResponse : RtspMessage
         {
             if (_returnCode == 0 && commandArray.Length >= 2)
             {
-                int.TryParse(commandArray[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _returnCode);
+                // if the parse fail, _returnCode remains 0.
+                _ = int.TryParse(commandArray[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _returnCode);
             }
 
             return _returnCode;

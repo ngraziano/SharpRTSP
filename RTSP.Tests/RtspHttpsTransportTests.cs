@@ -39,7 +39,7 @@ public class RtspHttpsTransportTests
         Task<TunnelData> serving = ServeTunnel(listener, token);
 
         var errors = SslPolicyErrors.None;
-        using var transport = new RTSPHttpsTransport(new Uri($"https://localhost:{port}/stream"), new NetworkCredential(),
+        using var transport = new RtspHttpsTransport(new Uri($"https://localhost:{port}/stream"), new NetworkCredential(),
             (_, _, _, policyErrors) => { errors |= policyErrors; return true; });
         var request = Encoding.ASCII.GetBytes(Request);
         var stream = transport.GetStream();
