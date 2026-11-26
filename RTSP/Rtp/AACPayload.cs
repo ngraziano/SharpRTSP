@@ -144,7 +144,7 @@ namespace Rtsp.Rtp
 
                 // Examine the AU Header. Get the size of the AAC data
                 int aac_frame_size = (rtpPayload[position] << 8) + (rtpPayload[position + 1] << 0) >> 3; // 13 bits
-                int aac_index_delta = rtpPayload[position + 1] & 0x03; // 3 bits
+                // int aac_index_delta = rtpPayload[position + 1] & 0x03; // 3 bits
                 position += au_headers_length;
 
                 // extract the AAC block

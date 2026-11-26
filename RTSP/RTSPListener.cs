@@ -20,7 +20,7 @@ namespace Rtsp
     /// <summary>
     /// Rtsp lister
     /// </summary>
-    public class RtspListener : IDisposable
+    public partial class RtspListener : IDisposable
     {
         private readonly ILogger _logger;
         private readonly MemoryPool<byte>? _memoryPool;
@@ -273,7 +273,7 @@ namespace Rtsp
                 _sentMessage.Add(message.CSeq, originalMessage);
             }
 
-            _logger.LogDebug("Send Message\n {message}", message);
+            LogSendMessage(message);
 
             writeSemaphoreSlim.Wait();
             try
@@ -534,7 +534,7 @@ namespace Rtsp
                                 break;
                             }
                             byteReaden += byteCount;
-                            _logger.LogDebug("Readen {byteReaden} byte of data", byteReaden);
+                            LogByteReaden(byteReaden);
                         }
                         // if we haven't read all go there again else go to end. 
                         if (byteReaden >= currentMessage.Data.Length)
@@ -736,6 +736,12 @@ namespace Rtsp
 
             ArrayPool<byte>.Shared.Return(data);
         }
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Send Message\n {message}")]
+        private partial void LogSendMessage(RtspMessage message);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Readen {byteReaden} byte of data")]
+        private partial void LogByteReaden(int byteReaden);
 
         #region IDisposable Membres
 

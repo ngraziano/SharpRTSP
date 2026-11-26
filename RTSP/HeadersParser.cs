@@ -8,7 +8,7 @@ internal static class HeadersParser
 {
     public static NameValueCollection ParseHeaders(StreamReader headersReader)
     {
-        NameValueCollection headers = new(StringComparer.InvariantCultureIgnoreCase);
+        NameValueCollection headers = [with(StringComparer.InvariantCultureIgnoreCase)];
         string? header;
         while (!string.IsNullOrEmpty(header = headersReader.ReadLine()))
         {

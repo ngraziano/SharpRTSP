@@ -75,7 +75,7 @@ namespace Rtsp
 
         private static Dictionary<string, string> ParseParameters(string parameters)
         {
-            Dictionary<string, string> parameterNameToValueMap = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> parameterNameToValueMap = [with(StringComparer.OrdinalIgnoreCase)];
 
             int parameterStartOffset = 0;
             while (parameterStartOffset < parameters.Length)
